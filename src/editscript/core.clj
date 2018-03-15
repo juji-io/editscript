@@ -2,7 +2,7 @@
   (:require [clojure.set :as set])
   (:import [clojure.lang Seqable PersistentVector IPersistentCollection]))
 
-(set! *warn-on-reflection* true)
+;; (set! *warn-on-reflection* true)
 
 (defprotocol IEdit
   (add-data [this path value])
@@ -87,8 +87,93 @@
    nil
    b))
 
-(defn- diff-vec [script path a b]
-  )
+(def a (vec (seq "acbdeacbed")))
+(def b (vec (seq "acebdabbabed")))
+[1 :+ 2 :- 1 :- 1 :+ :+ :+ 3] [2 :+ 2 :- 1 :- :+ :+ :+ 3]
+
+(diff-vec nil nil a b)
+
+(def a (vec (seq "bd")))
+(def b (vec (seq "abcde")))
+[:+ :+ 1 :+ 1] [:+ 1 :+ 1 :+]
+
+;; (diff-vec nil nil a b)
+
+(def a (vec (seq "abc")))
+(def b (vec (seq "abd")))
+[1 :- :+ 1] [2 :- :+]
+;; (diff-vec nil nil a b)
+
+(def a (vec (seq "a")))
+(def b (vec (seq "ab")))
+[:+ 1] [1 :+]
+
+(def a (vec (seq "a")))
+(def b (vec (seq "eab")))
+[:+ :+ 1] [:+ 1 :+]
+
+(defn- diff-vec
+  "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
+  Information Processing Letters, 35:6, p317-23.'"
+  [script path a b]
+  (let [m     (count a)
+        n     (count b)
+        delta (- n m)
+        fp    (transient {})
+        snake (fn [k y]
+                (loop [x (- y k) y y]
+                  (let [x' (inc x) y' (inc y)]
+                    (if (and (< x m)
+                             (< y n)
+                             (= (get a x') (get b y')))
+                      (recur x' y')
+                      y))))
+        fp-fn (fn [fp k]
+                (let [[d-k-1 v-k-1] (get fp (dec k) [-1 []])
+                      d-k-1         (inc d-k-1)
+                      [d-k+1 v-k+1] (get fp (inc k) [-1 []])
+                      y             (max d-k-1 d-k+1)
+                      sk            (snake k y)
+                      v             (let [es (if (> d-k+1 d-k-1)
+                                               (conj v-k+1 :-)
+                                               (conj v-k-1 :+))]
+                                      (if (> sk y)
+                                        (conj es (- sk y))
+                                        es))]
+                  (assoc! fp k [sk v])))
+        fp    (loop [p 0]
+                (let [fp (loop [k (* -1 p) fp fp]
+                           (if (< k delta)
+                             (recur (inc k) (fp-fn fp k))
+                             fp))
+                      fp (loop [k (+ delta p) fp fp]
+                           (if (< delta k)
+                             (recur (dec k) (fp-fn fp k))
+                             fp))]
+                  (if-not (= n (first (get (fp-fn fp delta) delta)))
+                    (recur (inc p))
+                    (persistent! fp))))
+
+        edits (-> fp (get delta) second rest)]
+    #_(loop [parts (partition-by identity edits)
+           x     0
+           y     0
+           s     []]
+      (println parts)
+      (if-let [[op & ops] (first parts)]
+        (let [n (inc (count ops))]
+          (case op
+            :- (recur (rest parts)
+                      x y
+                      (conj s [:- x n]))
+            :+ (recur (rest parts)
+                      (+ x n) (+ y n)
+                      (conj s [:+ y (subvec b y (+ y n))]))
+            (recur (rest parts)
+                   (+ x op) (+ y op) ; op is the number of items to skip
+                   s)))
+        s))
+    fp))
 
 (defn- diff-set [script path a b]
   )
