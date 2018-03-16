@@ -87,60 +87,32 @@
    nil
    b))
 
-(def a (vec (seq "acbdeacbed")))
-(def b (vec (seq "acebdabbabed")))
-[1 :+ 2 :- 1 :- 1 :+ :+ :+ 3] [2 :+ 2 :- 1 :- :+ :+ :+ 3]
-
-(diff-vec nil nil a b)
-
-(def a (vec (seq "bd")))
-(def b (vec (seq "abcde")))
-[:+ :+ 1 :+ 1] [:+ 1 :+ 1 :+]
-
-;; (diff-vec nil nil a b)
-
-(def a (vec (seq "abc")))
-(def b (vec (seq "abd")))
-[1 :- :+ 1] [2 :- :+]
-;; (diff-vec nil nil a b)
-
-(def a (vec (seq "a")))
-(def b (vec (seq "ab")))
-[:+ 1] [1 :+]
-
-(def a (vec (seq "a")))
-(def b (vec (seq "eab")))
-[:+ :+ 1] [:+ 1 :+]
-
-(defn- diff-vec
+(defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
   Information Processing Letters, 35:6, p317-23.'"
-  [script path a b]
-  (let [m     (count a)
-        n     (count b)
-        delta (- n m)
+  [a b n m]
+  (let [delta (- n m)
         fp    (transient {})
-        snake (fn [k y]
-                (loop [x (- y k) y y]
-                  (let [x' (inc x) y' (inc y)]
-                    (if (and (< x m)
-                             (< y n)
-                             (= (get a x') (get b y')))
-                      (recur x' y')
-                      y))))
+        snake (fn [k x]
+                (loop [x x y (- x k)]
+                  (if (and (< x n)
+                           (< y m)
+                           (= (get a x) (get b y)))
+                    (recur (inc x) (inc y))
+                    x)))
         fp-fn (fn [fp k]
-                (let [[d-k-1 v-k-1] (get fp (dec k) [-1 []])
-                      d-k-1         (inc d-k-1)
-                      [d-k+1 v-k+1] (get fp (inc k) [-1 []])
-                      y             (max d-k-1 d-k+1)
-                      sk            (snake k y)
-                      v             (let [es (if (> d-k+1 d-k-1)
-                                               (conj v-k+1 :-)
-                                               (conj v-k-1 :+))]
-                                      (if (> sk y)
-                                        (conj es (- sk y))
-                                        es))]
-                  (assoc! fp k [sk v])))
+                (let [[dk-1 vk-1] (get fp (dec k) [-1 []])
+                      dk-1        (inc dk-1)
+                      [dk+1 vk+1] (get fp (inc k) [-1 []])
+                      x           (max dk-1 dk+1)
+                      sk          (snake k x)
+                      ops         (let [es (if (> dk-1 dk+1)
+                                             (conj vk-1 :-)
+                                             (conj vk+1 :+))]
+                                    (if (> sk x)
+                                      (conj es (- sk x))
+                                      es))]
+                  (assoc! fp k [sk ops])))
         fp    (loop [p 0]
                 (let [fp (loop [k (* -1 p) fp fp]
                            (if (< k delta)
@@ -152,28 +124,20 @@
                              fp))]
                   (if-not (= n (first (get (fp-fn fp delta) delta)))
                     (recur (inc p))
-                    (persistent! fp))))
+                    (persistent! fp))))]
+    (-> fp (get delta) second next vec)))
 
-        edits (-> fp (get delta) second rest)]
-    #_(loop [parts (partition-by identity edits)
-           x     0
-           y     0
-           s     []]
-      (println parts)
-      (if-let [[op & ops] (first parts)]
-        (let [n (inc (count ops))]
-          (case op
-            :- (recur (rest parts)
-                      x y
-                      (conj s [:- x n]))
-            :+ (recur (rest parts)
-                      (+ x n) (+ y n)
-                      (conj s [:+ y (subvec b y (+ y n))]))
-            (recur (rest parts)
-                   (+ x op) (+ y op) ; op is the number of items to skip
-                   s)))
-        s))
-    fp))
+(defn- swap-ops [edits] (mapv (fn [op] (case op :+ :- :- :+ op)) edits))
+
+(defn- vec-edits [a b]
+  (let [n (count a)
+        m (count b)]
+    (if (< n m)
+      (swap-ops (vec-edits* b a m n))
+      (vec-edits* a b n m))))
+
+(defn- diff-vec [script path a b]
+  )
 
 (defn- diff-set [script path a b]
   )
@@ -257,4 +221,43 @@
   (def l ["a" "b" "c"])
   [[[] ::+ ["a" "b" "c"]]]
 
+  (def a (vec (seq "acebdabbabed")))
+  (def b (vec (seq "acbdeacbed")))
+  [2 :- 2 :+ 1 :+ 1 :- :- :- 2]
+  (vec-edits a b)
+
+  (def a (vec (seq "abcde")))
+  (def b (vec (seq "bd")))
+  (:- 1 :- 1 :-)
+  (vec-edits a b)
+
+  (def a (vec (seq "abc")))
+  (def b (vec (seq "abd")))
+  (2 :- :+)
+  (vec-edits a b)
+
+  (def a (vec (seq "ab")))
+  (def b (vec (seq "abc")))
+  [2 :+]
+  (vec-edits a b)
+
+  (def a (vec (seq "a")))
+  (def b (vec (seq "ba")))
+  [:+ 1]
+  (vec-edits a b)
+
+  (def a (vec (seq "bbabc")))
+  (def b (vec (seq "ac")))
+  [:- :- 1 :- 1]
+  (vec-edits a b)
+
+  (def a (vec (seq "bbabdc")))
+  (def b (vec (seq "abc")))
+  [:- :- 2 :- 1]
+  (vec-edits a b)
+
+  (def a (vec (seq "bbabde")))
+  (def b (vec (seq "abc")))
+  [:- :- 2 :- :- :+]
+  (vec-edits a b)
   )
