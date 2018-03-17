@@ -2,7 +2,7 @@
   (:require [clojure.set :as set])
   (:import [clojure.lang Seqable PersistentVector IPersistentCollection]))
 
-;; (set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 
 (defprotocol IEdit
   (add-data [this path value])
@@ -95,11 +95,13 @@
         fp    (transient {})
         snake (fn [k x]
                 (loop [x x y (- x k)]
-                  (if (and (< x n)
-                           (< y m)
-                           (= (get a x) (get b y)))
-                    (recur (inc x) (inc y))
-                    x)))
+                  (let [ax (get a x) by (get b y)]
+                    (if (and (< x n)
+                             (< y m)
+                             (= (type ax) (type by))
+                             (= ax by))
+                      (recur (inc x) (inc y))
+                      x))))
         fp-fn (fn [fp k]
                 (let [[dk-1 vk-1] (get fp (dec k) [-1 []])
                       dk-1        (inc dk-1)
@@ -125,16 +127,36 @@
                   (if-not (= n (first (get (fp-fn fp delta) delta)))
                     (recur (inc p))
                     (persistent! fp))))]
-    (-> fp (get delta) second next vec)))
+    (-> fp (get delta) second next)))
 
-(defn- swap-ops [edits] (mapv (fn [op] (case op :+ :- :- :+ op)) edits))
+(defn- swap-ops [edits] (map (fn [op] (case op :+ :- :- :+ op)) edits))
+
+(defn min+plus->replace
+  "turn any consecutive `:-` `:+` into a `:r`"
+  [coll]
+  (letfn [(split [coll]
+            (let [[f l] (split-with
+                         (fn [[f l]] (not (and (= f :-) (= l :+))))
+                         coll)]
+              (if (seq l)
+                (concat f [[:r]] (split (nnext l)))
+                f)))]
+    (->> (partition 2 1 coll)
+         split
+         (map first)
+         vec
+         ((fn [v]
+            (let [l (last coll)]
+              (if (and (= :r (last v)) (= :+ l))
+               v
+               (conj v l))))))))
 
 (defn- vec-edits [a b]
   (let [n (count a)
         m (count b)]
-    (if (< n m)
-      (swap-ops (vec-edits* b a m n))
-      (vec-edits* a b n m))))
+    (min+plus->replace (if (< n m)
+                         (swap-ops (vec-edits* b a m n))
+                         (vec-edits* a b n m)))))
 
 (defn- diff-vec [script path a b]
   )
