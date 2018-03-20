@@ -159,7 +159,18 @@
                          (vec-edits* a b n m)))))
 
 (defn- diff-vec [script path a b]
-  )
+  (reduce
+   (fn [[ia ib] op]
+     (case op
+       :- (do (diff* script (conj path ia) (get a ia) nil)
+              [ia ib])
+       :+ (do (diff* script (conj path ia) nil (get b ib))
+              [(inc ia) (inc ib)])
+       :r (do (diff* script (conj path ia) (get a ia) (get b ib))
+              [(inc ia) (inc ib)])
+       [(+ ia op) (+ ib op)]))
+   [0 0]
+   (vec-edits a b)))
 
 (defn- diff-set [script path a b]
   )
@@ -247,6 +258,7 @@
   (def b (vec (seq "acbdeacbed")))
   [2 :- 2 :+ 1 :+ 1 :- :- :- 2]
   (vec-edits a b)
+  (get-edits (diff a b))
 
   (def a (vec (seq "abcde")))
   (def b (vec (seq "bd")))
