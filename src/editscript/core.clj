@@ -72,6 +72,7 @@
 (declare diff*)
 
 (defn- diff-map [script path a b]
+  (println "diff-map")
   (reduce-kv
    (fn [_ ka va]
      (let [path' (conj path ka)]
@@ -138,9 +139,7 @@
   {:pre [(vector? v)]}
   (let [n (count v)]
     (loop [r [] i -1 j 0 k 1]
-      (let [ei (get v i)
-            ej (get v j)
-            ek (get v k)]
+      (let [ei (get v i) ej (get v j) ek (get v k)]
        (cond
          (and (= ej :-)
               (= ek :+)
@@ -148,29 +147,29 @@
          (>= j n)           r
          :else              (recur (conj r ej) (inc i) (inc j) (inc k)))))))
 
+(defn show [x] (println x) x)
+
 (defn- vec-edits [a b]
   (let [n (count a)
         m (count b)
         v (if (< n m)
             (swap-ops (vec-edits* b a m n))
             (vec-edits* a b n m))]
-    (-> v vec min+plus->replace)))
-
-(defn show [x] (println x) x)
+    (-> v vec min+plus->replace show)))
 
 (defn- diff-vec [script path a b]
   (reduce
-   (fn [[ia ib] op]
+   (fn [[ia ia' ib] op]
      (case op
-       :- (do (diff* script (conj path ia)  (get a ia) nil)
-              [ia ib])
-       :+ (do (diff* script (conj path ia) nil (get b ib))
-              [(inc ia) (inc ib)])
-       :r (do (diff* script (conj path ia) (get a ia) (get b ib))
-              [(inc ia) (inc ib)])
-       [(+ ia op) (+ ib op)]))
-   [0 0]
-   (show (vec-edits a b))))
+       :- (do (diff* script (conj path ia') (get a ia) nil)
+              [(inc ia) ia ib])
+       :+ (do (diff* script (conj path ia') nil (get b ib))
+              [ia (inc ia) (inc ib)])
+       :r (do (diff* script (conj path ia') (get a ia) (get b ib))
+              [(inc ia) (inc ia) (inc ib)])
+       [(+ ia op) (+ ia op) (+ ib op)]))
+   [0 0 0]
+   (vec-edits a b)))
 
 (defn- diff-set [script path a b]
   )
@@ -179,8 +178,8 @@
   )
 
 (defn diff* [script path a b]
-  (let [ta (get-type a)
-        tb (get-type b)]
+  (println (str "diff* " a " - " b) )
+  (let [ta (get-type a) tb (get-type b)]
     (case ta
       :nil (add-data script path b)
       :map (case tb
@@ -201,7 +200,8 @@
              (replace-data script path b))
       :val (case tb
              :nil (delete-data script path)
-             (replace-data script path b)))))
+             (when (not= a b)
+               (replace-data script path b))))))
 
 (defn diff
   "Create an EditScript that represents the difference between `b` and `a`,
@@ -221,11 +221,7 @@
 
   (def a {:a {:o 4} :b 'b})
   (def b {:a {:o 3} :b 'c :c 42})
-  [[[:e] ::+ 5]
-   [[:f] ::+ 6]
-   [[:a] ::-]
-   [[:c :d] ::+ 2]
-   [[:b] ::+ 'c]]
+
   (get-edits (diff a b))
 
   (def c [3 'c {:a 3} 4])
@@ -243,8 +239,7 @@
   [[] ::+ {:a 42}]
   (get-edits (diff g h))
 
-  (def i ["abc" 24 23 {:a 42}])
-  (def i [24 23 {:a 42} 1 3])
+  (def i ["abc" 24 23 {:a 42} 1 3])
   (def j [24 23 {:a 42 :b 24} 1 3])
   (get-edits (diff i j))
 
