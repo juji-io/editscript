@@ -2,7 +2,7 @@
   (:require [clojure.set :as set])
   (:import [clojure.lang Seqable PersistentVector IPersistentCollection]))
 
-(set! *warn-on-reflection* true)
+;; (set! *warn-on-reflection* true)
 
 (defprotocol IEdit
   (add-data [this path value])
@@ -35,7 +35,7 @@
   (replace-data [this path value]
     (locking this
       (set! reps-num (inc reps-num))
-      (set! edits (conj edits [path ::-] [path ::+ value]))))
+      (set! edits (conj edits [path ::r]))))
 
   IEditScript
   (get-edits [this] edits)
@@ -129,40 +129,40 @@
                     (persistent! fp))))]
     (-> fp (get delta) second next)))
 
-(defn- swap-ops [edits] (map (fn [op] (case op :+ :- :- :+ op)) edits))
+(defn- swap-ops [edits] (vec (map (fn [op] (case op :+ :- :- :+ op)) edits)))
 
 (defn min+plus->replace
-  "turn any consecutive `:-` `:+` into a `:r`"
-  [coll]
-  (letfn [(split [coll]
-            (let [[f l] (split-with
-                         (fn [[f l]] (not (and (= f :-) (= l :+))))
-                         coll)]
-              (if (seq l)
-                (concat f [[:r]] (split (nnext l)))
-                f)))]
-    (->> (partition 2 1 coll)
-         split
-         (map first)
-         vec
-         ((fn [v]
-            (let [l (last coll)]
-              (if (and (= :r (last v)) (= :+ l))
-               v
-               (conj v l))))))))
+  "Turn isolated consecutive `:-` `:+` into a `:r`,
+  do not convert if there's `:-` in front, as it is ambiguous"
+  [v]
+  {:pre [(vector? v)]}
+  (let [n (count v)]
+    (loop [r [] i -1 j 0 k 1]
+      (let [ei (get v i)
+            ej (get v j)
+            ek (get v k)]
+       (cond
+         (and (= ej :-)
+              (= ek :+)
+              (not= ei :-)) (recur (conj r :r) (+ i 2) (+ j 2) (+ k 2))
+         (>= j n)           r
+         :else              (recur (conj r ej) (inc i) (inc j) (inc k)))))))
 
 (defn- vec-edits [a b]
   (let [n (count a)
-        m (count b)]
-    (min+plus->replace (if (< n m)
-                         (swap-ops (vec-edits* b a m n))
-                         (vec-edits* a b n m)))))
+        m (count b)
+        v (if (< n m)
+            (swap-ops (vec-edits* b a m n))
+            (vec-edits* a b n m))]
+    (-> v vec min+plus->replace)))
+
+(defn show [x] (println x) x)
 
 (defn- diff-vec [script path a b]
   (reduce
    (fn [[ia ib] op]
      (case op
-       :- (do (diff* script (conj path ia) (get a ia) nil)
+       :- (do (diff* script (conj path ia)  (get a ia) nil)
               [ia ib])
        :+ (do (diff* script (conj path ia) nil (get b ib))
               [(inc ia) (inc ib)])
@@ -170,7 +170,7 @@
               [(inc ia) (inc ib)])
        [(+ ia op) (+ ib op)]))
    [0 0]
-   (vec-edits a b)))
+   (show (vec-edits a b))))
 
 (defn- diff-set [script path a b]
   )
@@ -232,23 +232,21 @@
   (def d [3 'c {:b 3} 4])
   [[[2 :a] ::-]
    [[2 :b] ::+ 3]]
+  (get-edits (diff c d))
 
-  (def e nil)
-  (def f {:a 42})
-  [[] ::+ {:a 42}]
-  (diff e f)
+  (def e {:a 42})
+  (def f {:a 42 :b 43})
+  (get-edits (diff e f))
 
   (def g "abc")
   (def h {:a 42})
   [[] ::+ {:a 42}]
+  (get-edits (diff g h))
 
-  (def i ["abc" 24 {:a 42}])
-  (def j [{:a 42 :b 24} 1 3])
-  [[[0] ::-]
-   [[0] ::-]
-   [[0 :b] ::+ 24]
-   [[1] ::+ 1]
-   [[2] ::+ 3]]
+  (def i ["abc" 24 23 {:a 42}])
+  (def i [24 23 {:a 42} 1 3])
+  (def j [24 23 {:a 42 :b 24} 1 3])
+  (get-edits (diff i j))
 
   (def k {:a 42 :b ["a" "b"]})
   (def l ["a" "b" "c"])
