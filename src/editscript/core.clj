@@ -162,12 +162,12 @@
    (fn [[ia ia' ib] op]
      (case op
        :- (do (diff* script (conj path ia') (get a ia) nil)
-              [(inc ia) ia ib])
+              [(inc ia) ia' ib])
        :+ (do (diff* script (conj path ia') nil (get b ib))
-              [ia (inc ia) (inc ib)])
+              [ia (inc ia') (inc ib)])
        :r (do (diff* script (conj path ia') (get a ia) (get b ib))
-              [(inc ia) (inc ia) (inc ib)])
-       [(+ ia op) (+ ia op) (+ ib op)]))
+              [(inc ia) (inc ia') (inc ib)])
+       [(+ ia op) (+ ia' op) (+ ib op)]))
    [0 0 0]
    (vec-edits a b)))
 
@@ -236,7 +236,6 @@
 
   (def g "abc")
   (def h {:a 42})
-  [[] ::+ {:a 42}]
   (get-edits (diff g h))
 
   (def i ["abc" 24 23 {:a 42} 1 3])
