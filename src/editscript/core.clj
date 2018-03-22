@@ -137,14 +137,14 @@
   [v]
   {:pre [(vector? v)]}
   (let [n (count v)]
-    (loop [r [] i -1 j 0 k 1]
+    (loop [r (transient []) i -1 j 0 k 1]
       (let [ei (get v i) ej (get v j) ek (get v k)]
        (cond
          (and (= ej :-)
               (= ek :+)
-              (not= ei :-)) (recur (conj r :r) (+ i 2) (+ j 2) (+ k 2))
-         (>= j n)           r
-         :else              (recur (conj r ej) (inc i) (inc j) (inc k)))))))
+              (not= ei :-)) (recur (conj! r :r) (+ i 2) (+ j 2) (+ k 2))
+         (>= j n)           (persistent! r)
+         :else              (recur (conj! r ej) (inc i) (inc j) (inc k)))))))
 
 (defn show [x] (println x) x)
 
@@ -158,16 +158,16 @@
 
 (defn- diff-vec [script path a b]
   (reduce
-   (fn [[ia ia' ib] op]
+   (fn [{:keys [ia ia' ib] :as m} op]
      (case op
        :- (do (diff* script (conj path ia') (get a ia) nil)
-              [(inc ia) ia' ib])
+              (assoc! m :ia (inc ia)))
        :+ (do (diff* script (conj path ia') nil (get b ib))
-              [ia (inc ia') (inc ib)])
+              (assoc! m :ia' (inc ia') :ib (inc ib)))
        :r (do (diff* script (conj path ia') (get a ia) (get b ib))
-              [(inc ia) (inc ia') (inc ib)])
-       [(+ ia op) (+ ia' op) (+ ib op)]))
-   [0 0 0]
+              (assoc! m :ia (inc ia) :ia' (inc ia') :ib (inc ib)))
+       (assoc! m :ia (+ ia op) :ia' (+ ia' op) :ib (+ ib op))))
+   (transient {:ia 0 :ia' 0 :ib 0})
    (vec-edits a b)))
 
 (defn- diff-set [script path a b]
@@ -177,7 +177,7 @@
     (diff* script (conj path vb) nil vb)))
 
 (defn- diff-lst [script path a b]
-  )
+  (diff-vec script path (vec a) (vec b)))
 
 (defn diff* [script path a b]
   (println (str "diff* " a " - " b) )
@@ -240,8 +240,8 @@
   (def h {:a 42})
   (get-edits (diff g h))
 
-  (def i ["abc" 24 23 {:a 42} 1 3])
-  (def j [24 23 {:a 42 :b 24} 1 3])
+  (def i ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}])
+  (def j [24 23 {:a [2 3]} 1 3])
   (get-edits (diff i j))
 
   (def k {:a 42 :b ["a" "b"]})
@@ -267,6 +267,7 @@
   (def b (vec (seq "abd")))
   (2 :- :+)
   (vec-edits a b)
+  (get-edits (diff a b))
 
   (def a (vec (seq "ab")))
   (def b (vec (seq "abc")))
@@ -294,6 +295,6 @@
   (vec-edits a b)
 
   (def a #{:a :b :c})
-  (def b #{:b c})
+  (def b #{:b :c})
   (get-edits (diff a b))
   )
