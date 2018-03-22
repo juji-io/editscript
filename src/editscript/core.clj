@@ -72,7 +72,6 @@
 (declare diff*)
 
 (defn- diff-map [script path a b]
-  (println "diff-map")
   (reduce-kv
    (fn [_ ka va]
      (let [path' (conj path ka)]
@@ -172,7 +171,10 @@
    (vec-edits a b)))
 
 (defn- diff-set [script path a b]
-  )
+  (doseq [va (set/difference a b)]
+    (diff* script (conj path va) va nil))
+  (doseq [vb (set/difference b a)]
+    (diff* script (conj path vb) nil vb)))
 
 (defn- diff-lst [script path a b]
   )
@@ -245,17 +247,21 @@
   (def k {:a 42 :b ["a" "b"]})
   (def l ["a" "b" "c"])
   [[[] ::+ ["a" "b" "c"]]]
+  (get-edits (diff k l))
 
   (def a (vec (seq "acebdabbabed")))
   (def b (vec (seq "acbdeacbed")))
   [2 :- 2 :+ 1 :+ 1 :- :- :- 2]
-  (vec-edits a b)
+  (get-edits (diff a b))
+
+  (def a (vec (seq "acbdeacbed")))
+  (def b (vec (seq "acebdabbabed")))
   (get-edits (diff a b))
 
   (def a (vec (seq "abcde")))
   (def b (vec (seq "bd")))
   (:- 1 :- 1 :-)
-  (vec-edits a b)
+  (get-edits (diff a b))
 
   (def a (vec (seq "abc")))
   (def b (vec (seq "abd")))
@@ -286,4 +292,8 @@
   (def b (vec (seq "abc")))
   [:- :- 2 :- :- :+]
   (vec-edits a b)
+
+  (def a #{:a :b :c})
+  (def b #{:b c})
+  (get-edits (diff a b))
   )
