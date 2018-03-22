@@ -180,7 +180,6 @@
   (diff-vec script path (vec a) (vec b)))
 
 (defn diff* [script path a b]
-  (println (str "diff* " a " - " b) )
   (let [ta (get-type a) tb (get-type b)]
     (case ta
       :nil (add-data script path b)
@@ -215,9 +214,47 @@
       (diff* script path a b)
       script)))
 
+(defn- vget [x p]
+  (case (get-type x)
+    (:map :vec :set) (get x p)
+    :lst             (nth x p)))
+
+(defn- vdelete [x p]
+  (case (get-type x)
+    :map (dissoc x p)
+    :vec (vec (concat (subvec x 0 p) (subvec x (inc p))))
+    :set (set/difference x #{p})
+    :lst (->> (split-at p x)
+              (#(concat (first %) (next (last %))))
+              (apply list))))
+
+(defn- vadd [x p v]
+  )
+
+(defn- vreplace [x p v]
+  )
+
+(defn- valter [x p o v]
+  (case o
+    ::- (vdelete x p)
+    ::+ (vadd x p v)
+    ::r (vreplace x p v)))
+
+(defn patch* [old [path op value]]
+  (letfn [(up [x p o v]
+            (let [[f & r] p]
+              (if r
+                (valter x f ::r (up (vget x f) r o v))
+                (valter x f o v))))]
+    (up old path op value)))
+
 (defn patch
-  "Apply the editscript `es` on `a` to produce `b`"
-  [a es])
+  "Apply the editscript `script` on `a` to produce `b`"
+  [a script]
+  (reduce
+   #(patch* %1 %2)
+   a
+   (get-edits script)))
 
 (comment
 
@@ -225,6 +262,7 @@
   (def b {:a {:o 3} :b 'c :c 42})
 
   (get-edits (diff a b))
+  (edit-distance (diff a b))
 
   (def c [3 'c {:a 3} 4])
   (def d [3 'c {:b 3} 4])
@@ -241,7 +279,7 @@
   (get-edits (diff g h))
 
   (def i ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}])
-  (def j [24 23 {:a [2 3]} 1 3])
+  (def j [24 23 {:a [2 3]} 1 3 #{1 2 3}])
   (get-edits (diff i j))
 
   (def k {:a 42 :b ["a" "b"]})
