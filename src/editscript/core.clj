@@ -229,10 +229,22 @@
               (apply list))))
 
 (defn- vadd [x p v]
-  )
+  (case (get-type x)
+    :map (assoc x p v)
+    :vec (vec (concat (conj (subvec x 0 p) v) (subvec x p)))
+    :set (conj x v)
+    :lst (->> (split-at p x)
+              (#(concat (first %) (conj (last %) v)))
+              (apply list))))
 
 (defn- vreplace [x p v]
-  )
+  (case (get-type x)
+    :map (assoc x p v)
+    :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc p))))
+    :set (-> x (set/difference #{p}) (conj v))
+    :lst (->> (split-at p x)
+              (#(concat (first %) (conj (next (last %)) v)))
+              (apply list))))
 
 (defn- valter [x p o v]
   (case o
@@ -258,6 +270,11 @@
 
 (comment
 
+  (def a [1 3 5])
+  (def b [1 2 3 4 5])
+  (get-edits (diff a b))
+  (patch a (diff a b))
+
   (def a {:a {:o 4} :b 'b})
   (def b {:a {:o 3} :b 'c :c 42})
 
@@ -281,6 +298,7 @@
   (def i ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}])
   (def j [24 23 {:a [2 3]} 1 3 #{1 2 3}])
   (get-edits (diff i j))
+  (patch i (diff i j))
 
   (def k {:a 42 :b ["a" "b"]})
   (def l ["a" "b" "c"])
