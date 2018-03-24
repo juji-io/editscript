@@ -2,7 +2,7 @@
   (:require [clojure.set :as set])
   (:import [clojure.lang Seqable PersistentVector IPersistentCollection]))
 
-;; (set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 
 (defprotocol IEdit
   (add-data [this path value])
@@ -66,8 +66,6 @@
     (set? v)    :set
     (list? v)   :lst
     :else       :val))
-
-(defn path? [p] (and (vector? p) (::path (meta p))))
 
 (declare diff*)
 
@@ -148,7 +146,7 @@
 
 (defn show [x] (println x) x)
 
-(defn- vec-edits [a b]
+(defn vec-edits [a b]
   (let [n (count a)
         m (count b)
         v (if (< n m)
@@ -267,90 +265,3 @@
    #(patch* %1 %2)
    a
    (get-edits script)))
-
-(comment
-
-  (def a [1 3 5])
-  (def b [1 2 3 4 5])
-  (get-edits (diff a b))
-  (patch a (diff a b))
-
-  (def a {:a {:o 4} :b 'b})
-  (def b {:a {:o 3} :b 'c :c 42})
-
-  (get-edits (diff a b))
-  (edit-distance (diff a b))
-
-  (def c [3 'c {:a 3} 4])
-  (def d [3 'c {:b 3} 4])
-  [[[2 :a] ::-]
-   [[2 :b] ::+ 3]]
-  (get-edits (diff c d))
-
-  (def e {:a 42})
-  (def f {:a 42 :b 43})
-  (get-edits (diff e f))
-
-  (def g "abc")
-  (def h {:a 42})
-  (get-edits (diff g h))
-
-  (def i ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}])
-  (def j [24 23 {:a [2 3]} 1 3 #{1 2 3}])
-  (get-edits (diff i j))
-  (patch i (diff i j))
-
-  (def k {:a 42 :b ["a" "b"]})
-  (def l ["a" "b" "c"])
-  [[[] ::+ ["a" "b" "c"]]]
-  (get-edits (diff k l))
-
-  (def a (vec (seq "acebdabbabed")))
-  (def b (vec (seq "acbdeacbed")))
-  [2 :- 2 :+ 1 :+ 1 :- :- :- 2]
-  (get-edits (diff a b))
-
-  (def a (vec (seq "acbdeacbed")))
-  (def b (vec (seq "acebdabbabed")))
-  (get-edits (diff a b))
-
-  (def a (vec (seq "abcde")))
-  (def b (vec (seq "bd")))
-  (:- 1 :- 1 :-)
-  (get-edits (diff a b))
-
-  (def a (vec (seq "abc")))
-  (def b (vec (seq "abd")))
-  (2 :- :+)
-  (vec-edits a b)
-  (get-edits (diff a b))
-
-  (def a (vec (seq "ab")))
-  (def b (vec (seq "abc")))
-  [2 :+]
-  (vec-edits a b)
-
-  (def a (vec (seq "a")))
-  (def b (vec (seq "ba")))
-  [:+ 1]
-  (vec-edits a b)
-
-  (def a (vec (seq "bbabc")))
-  (def b (vec (seq "ac")))
-  [:- :- 1 :- 1]
-  (vec-edits a b)
-
-  (def a (vec (seq "bbabdc")))
-  (def b (vec (seq "abc")))
-  [:- :- 2 :- 1]
-  (vec-edits a b)
-
-  (def a (vec (seq "bbabde")))
-  (def b (vec (seq "abc")))
-  [:- :- 2 :- :- :+]
-  (vec-edits a b)
-
-  (def a #{:a :b :c})
-  (def b #{:b :c})
-  (get-edits (diff a b))
-  )
