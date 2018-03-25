@@ -35,7 +35,7 @@
   (replace-data [this path value]
     (locking this
       (set! reps-num (inc reps-num))
-      (set! edits (conj edits [path ::r]))))
+      (set! edits (conj edits [path ::r value]))))
 
   IEditScript
   (get-edits [this] edits)
@@ -236,6 +236,7 @@
               (apply list))))
 
 (defn- vreplace [x p v]
+  (println (str "replacing " x " at " p " with " v))
   (case (get-type x)
     :map (assoc x p v)
     :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc p))))
