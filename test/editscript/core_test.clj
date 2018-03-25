@@ -24,7 +24,7 @@
     (let [a {:a {:o 4} :b 'b}
           b {:a {:o 3} :b 'c :c 42}
 
-          c [3 'c {:a 3} 4]
+          c [nil 3 'c {:a 3} 4]
           d [3 'c {:b 3} 4]
 
           e ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}]
@@ -34,7 +34,8 @@
               [[:b] :editscript.core/r]
               [[:c] :editscript.core/+ 42]] ))
       (is (= (get-edits (diff c d))
-             [[[2 :a] :editscript.core/-]
+             [[[0] :editscript.core/-]
+              [[2 :a] :editscript.core/-]
               [[2 :b] :editscript.core/+ 3]]))
       (is (= (get-edits (diff e f))
              [[[0] :editscript.core/-]

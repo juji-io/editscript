@@ -60,11 +60,12 @@
 
 (defn get-type [v]
   (cond
-    (nil? v)    :nil
+    (= ::nil v) :nil
     (map? v)    :map
     (vector? v) :vec
     (set? v)    :set
     (list? v)   :lst
+    (nil? v)    :val
     :else       :val))
 
 (declare diff*)
@@ -75,13 +76,13 @@
      (let [path' (conj path ka)]
        (if-some [vb (get b ka)]
         (diff* script path' va vb)
-        (diff* script path' va nil))))
+        (diff* script path' va ::nil))))
    nil
    a)
   (reduce-kv
    (fn [_ kb vb]
      (when-not (contains? a kb)
-       (diff* script (conj path kb) nil vb)))
+       (diff* script (conj path kb) ::nil vb)))
    nil
    b))
 
@@ -144,23 +145,21 @@
          (>= j n)           (persistent! r)
          :else              (recur (conj! r ej) (inc i) (inc j) (inc k)))))))
 
-(defn show [x] (println x) x)
-
 (defn vec-edits [a b]
   (let [n (count a)
         m (count b)
         v (if (< n m)
             (swap-ops (vec-edits* b a m n))
             (vec-edits* a b n m))]
-    (-> v vec min+plus->replace show)))
+    (-> v vec min+plus->replace)))
 
 (defn- diff-vec [script path a b]
   (reduce
    (fn [{:keys [ia ia' ib] :as m} op]
      (case op
-       :- (do (diff* script (conj path ia') (get a ia) nil)
+       :- (do (diff* script (conj path ia') (get a ia) ::nil)
               (assoc! m :ia (inc ia)))
-       :+ (do (diff* script (conj path ia') nil (get b ib))
+       :+ (do (diff* script (conj path ia') ::nil (get b ib))
               (assoc! m :ia' (inc ia') :ib (inc ib)))
        :r (do (diff* script (conj path ia') (get a ia) (get b ib))
               (assoc! m :ia (inc ia) :ia' (inc ia') :ib (inc ib)))
@@ -170,9 +169,9 @@
 
 (defn- diff-set [script path a b]
   (doseq [va (set/difference a b)]
-    (diff* script (conj path va) va nil))
+    (diff* script (conj path va) va ::nil))
   (doseq [vb (set/difference b a)]
-    (diff* script (conj path vb) nil vb)))
+    (diff* script (conj path vb) ::nil vb)))
 
 (defn- diff-lst [script path a b]
   (diff-vec script path (vec a) (vec b)))
@@ -180,7 +179,8 @@
 (defn diff* [script path a b]
   (let [ta (get-type a) tb (get-type b)]
     (case ta
-      :nil (add-data script path b)
+      :nil (when-not (= tb :nil)
+             (add-data script path b))
       :map (case tb
              :nil (delete-data script path)
              :map (diff-map script path a b)
@@ -199,7 +199,7 @@
              (replace-data script path b))
       :val (case tb
              :nil (delete-data script path)
-             (when (not= a b)
+             (when-not (= a b)
                (replace-data script path b))))))
 
 (defn diff

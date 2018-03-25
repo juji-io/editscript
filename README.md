@@ -23,6 +23,10 @@ A minimal example:
 ;; compute the editscript between a and b
 (def d (diff a b))
 
+;; get the edit distance
+(edit-distance d)
+;;==> 3
+
 ;; print the editscript
 (get-edits d)
 ;;==>
