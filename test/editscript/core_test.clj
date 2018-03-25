@@ -25,14 +25,15 @@
     (let [a {:a {:o 4} :b 'b}
           b {:a {:o 3} :b 'c :c 42}
           b-a (diff a b)
-
+          a-b (diff b a)
           c [nil 3 'c {:a 3} 4]
           d [3 'c {:b 3} 4]
           d-c (diff c d)
-
+          c-d (diff d c)
           e ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}]
           f [24 23 {:a [2 3]} 1 3 #{1 2 3}]
-          f-e (diff e f)]
+          f-e (diff e f)
+          e-f (diff f e)]
       (is (= (get-edits b-a)
              [[[:a :o] :editscript.core/r 3]
               [[:b] :editscript.core/r 'c]
@@ -45,8 +46,11 @@
              [[[0] :editscript.core/-]
               [[2 :a 0] :editscript.core/-]
               [[5 3] :editscript.core/+ 3]]))
+      (is (= a (patch b a-b)))
       (is (= b (patch a b-a)))
+      (is (= c (patch d c-d)))
       (is (= d (patch c d-c)))
+      (is (= e (patch f e-f)))
       (is (= f (patch e f-e))))))
 
 (def compound (fn [inner-gen]
