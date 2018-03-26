@@ -1,13 +1,18 @@
 (ns editscript.core-test
   (:require [clojure.test :refer :all]
             [editscript.core :refer :all]
-            [clojure.test.check.generators :as gen]))
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.clojure-test :as test]
+            [clojure.test.check.properties :as prop]))
 
 (deftest vec-edits-test
-  (testing "Wu 1990 vector edit example"
+  (testing "Wu 1990 vector edit example and more"
     (let [a (vec (seq "acbdeacbed"))
-          b (vec (seq "acebdabbabed"))]
-      (is (= (vec-edits a b) [2 :+ 2 :- 1 :- 1 :+ :+ :+ 2])))))
+          b (vec (seq "acebdabbabed"))
+          c [0 0]
+          d [1 -1 -1 nil -1 1 -1 -1 -1]]
+      (is (= (vec-edits a b) [2 :+ 2 :- 1 :- 1 :+ :+ :+ 2]))
+      (is (= (vec-edits c d) [:+ :+ :+ :+ :+ :+ :+ :+ :+ :- :-])))))
 
 (deftest min+plus->replace-test
   (testing "Replacement of consecutive :- :+ with :r"
@@ -59,8 +64,23 @@
                              (gen/set inner-gen)
                              (gen/map inner-gen inner-gen)])))
 
-(def scalars (gen/one-of [gen/int gen/string-alpha-numeric]))
+(def scalars (gen/frequency [[19 (gen/one-of [gen/int
+                                              gen/double
+                                              gen/string])]
+                             [1 (gen/return nil)]]))
 
-(def data (gen/recursive-gen compound scalars))
+(test/defspec end-2-end-generative-test 1000
+  (prop/for-all [a (gen/recursive-gen compound scalars)
+                 b (gen/recursive-gen compound scalars)]
+                (= b (patch a (diff a b)))))
 
-(last (gen/sample data 200))
+(comment
+
+  (def a {nil 0})
+  (def b {nil 1})
+
+  (def d (diff a b))
+  (get-edits d)
+
+  (patch a d)
+  )

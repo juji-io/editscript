@@ -91,7 +91,6 @@
   Information Processing Letters, 35:6, p317-23.'"
   [a b n m]
   (let [delta (- n m)
-        fp    (transient {})
         snake (fn [k x]
                 (loop [x x y (- x k)]
                   (let [ax (get a x) by (get b y)]
@@ -114,19 +113,24 @@
                                       (conj es (- sk x))
                                       es))]
                   (assoc! fp k [sk ops])))
-        fp    (loop [p 0]
-                (let [fp (loop [k (* -1 p) fp fp]
-                           (if (< k delta)
-                             (recur (inc k) (fp-fn fp k))
-                             fp))
-                      fp (loop [k (+ delta p) fp fp]
-                           (if (< delta k)
-                             (recur (dec k) (fp-fn fp k))
-                             fp))]
-                  (if-not (= n (first (get (fp-fn fp delta) delta)))
-                    (recur (inc p))
-                    (persistent! fp))))]
-    (-> fp (get delta) second next)))
+        step    (fn [[fp p]]
+                  (let [p (inc p)
+                        fp (transient fp)
+                        fp (loop [k (* -1 p) fp fp]
+                             (if (< k delta)
+                               (recur (inc k) (fp-fn fp k))
+                               fp))
+                        fp (loop [k (+ delta p) fp fp]
+                             (if (< delta k)
+                               (recur (dec k) (fp-fn fp k))
+                               fp))
+                        fp (persistent! (fp-fn fp delta))]
+                    [fp p]))
+        [fp _] (->> [{} -1]
+                    (iterate step)
+                    (drop-while (fn [[fp _]] (not= n (first (get fp delta)))))
+                    first)]
+    (-> fp (get delta) second rest)))
 
 (defn- swap-ops [edits] (vec (map (fn [op] (case op :+ :- :- :+ op)) edits)))
 
@@ -203,14 +207,13 @@
                (replace-data script path b))))))
 
 (defn diff
-  "Create an EditScript that represents the difference between `b` and `a`,
-  return nil if `a` and `b` are identical"
+  "Create an EditScript that represents the difference between `b` and `a`"
   [a b]
-  (when-not (identical? a b)
-    (let [script (->EditScript a [] 0 0 0)
-          path   ^::path []]
-      (diff* script path a b)
-      script)))
+  (let [path   ^::path []
+        script (->EditScript a path 0 0 0)]
+    (when-not (identical? a b)
+      (diff* script path a b))
+    script))
 
 (defn- vget [x p]
   (case (get-type x)
@@ -236,13 +239,15 @@
               (apply list))))
 
 (defn- vreplace [x p v]
-  (case (get-type x)
-    :map (assoc x p v)
-    :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc p))))
-    :set (-> x (set/difference #{p}) (conj v))
-    :lst (->> (split-at p x)
-              (#(concat (first %) (conj (next (last %)) v)))
-              (apply list))))
+  (if p
+    (case (get-type x)
+      :map (assoc x p v)
+      :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc p))))
+      :set (-> x (set/difference #{p}) (conj v))
+      :lst (->> (split-at p x)
+                (#(concat (first %) (conj (rest (last %)) v)))
+                (apply list)))
+    v))
 
 (defn- valter [x p o v]
   (case o
