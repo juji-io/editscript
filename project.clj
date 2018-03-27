@@ -1,4 +1,4 @@
-(defproject editscript "0.1.0-SNAPSHOT"
+(defproject editscript "0.1.0"
   :description "A differ for Clojure data structure"
   :url "https://github.com/juji-io/editscript"
   :license {:name "Eclipse Public License"
