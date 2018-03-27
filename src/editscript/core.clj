@@ -60,11 +60,11 @@
 
 (defn get-type [v]
   (cond
-    (= ::nil v) :nil
     (map? v)    :map
     (vector? v) :vec
     (set? v)    :set
     (list? v)   :lst
+    (= ::nil v) :nil
     (nil? v)    :val
     :else       :val))
 
@@ -85,8 +85,6 @@
        (diff* script (conj path kb) ::nil vb)))
    nil
    b))
-
-(defn show [x] (println x) x)
 
 (defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
@@ -221,7 +219,7 @@
 (defn- vdelete [x p]
   (case (get-type x)
     ;;NB, there is a special case where dissoc has no effect:
-    ;;if p is ##NaN, then p cannot be found in map, for (= ##NaN ##NaN) is false!
+    ;;if p is ##NaN, then p cannot be found in x, for (= ##NaN ##NaN) is false!
     :map (dissoc x p)
     :vec (vec (concat (subvec x 0 p) (subvec x (inc p))))
     :set (set/difference x #{p})

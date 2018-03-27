@@ -87,7 +87,7 @@
                              [1 (gen/return nil)]]))
 
 (test/defspec end-2-end-generative-test
-  1000000
+  100000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
                 (= b (patch a (diff a b)))))
