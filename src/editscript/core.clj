@@ -74,8 +74,8 @@
   (reduce-kv
    (fn [_ ka va]
      (let [path' (conj path ka)]
-       (if-some [vb (get b ka)]
-        (diff* script path' va vb)
+       (if (contains? b ka)
+        (diff* script path' va (get b ka))
         (diff* script path' va ::nil))))
    nil
    a)
@@ -85,6 +85,8 @@
        (diff* script (conj path kb) ::nil vb)))
    nil
    b))
+
+(defn show [x] (println x) x)
 
 (defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
@@ -113,23 +115,19 @@
                                       (conj es (- sk x))
                                       es))]
                   (assoc! fp k [sk ops])))
-        step    (fn [[fp p]]
-                  (let [p (inc p)
-                        fp (transient fp)
-                        fp (loop [k (* -1 p) fp fp]
-                             (if (< k delta)
-                               (recur (inc k) (fp-fn fp k))
-                               fp))
-                        fp (loop [k (+ delta p) fp fp]
-                             (if (< delta k)
-                               (recur (dec k) (fp-fn fp k))
-                               fp))
-                        fp (persistent! (fp-fn fp delta))]
-                    [fp p]))
-        [fp _] (->> [{} -1]
-                    (iterate step)
-                    (drop-while (fn [[fp _]] (not= n (first (get fp delta)))))
-                    first)]
+        fp    (loop [p 0 fp (transient {})]
+                (let [fp (loop [k (* -1 p) fp fp]
+                           (if (< k delta)
+                             (recur (inc k) (fp-fn fp k))
+                             fp))
+                      fp (loop [k (+ delta p) fp fp]
+                           (if (< delta k)
+                             (recur (dec k) (fp-fn fp k))
+                             fp))
+                      fp (fp-fn fp delta)]
+                  (if-not (= n (first (get fp delta)))
+                    (recur (inc p) fp)
+                    (persistent! fp))))]
     (-> fp (get delta) second rest)))
 
 (defn- swap-ops [edits] (vec (map (fn [op] (case op :+ :- :- :+ op)) edits)))
@@ -183,8 +181,7 @@
 (defn diff* [script path a b]
   (let [ta (get-type a) tb (get-type b)]
     (case ta
-      :nil (when-not (= tb :nil)
-             (add-data script path b))
+      :nil (add-data script path b)
       :map (case tb
              :nil (delete-data script path)
              :map (diff-map script path a b)
@@ -220,8 +217,11 @@
     (:map :vec :set) (get x p)
     :lst             (nth x p)))
 
+
 (defn- vdelete [x p]
   (case (get-type x)
+    ;;NB, there is a special case where dissoc has no effect:
+    ;;if p is ##NaN, then p cannot be found in map, for (= ##NaN ##NaN) is false!
     :map (dissoc x p)
     :vec (vec (concat (subvec x 0 p) (subvec x (inc p))))
     :set (set/difference x #{p})
@@ -239,15 +239,13 @@
               (apply list))))
 
 (defn- vreplace [x p v]
-  (if p
-    (case (get-type x)
-      :map (assoc x p v)
-      :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc p))))
-      :set (-> x (set/difference #{p}) (conj v))
-      :lst (->> (split-at p x)
-                (#(concat (first %) (conj (rest (last %)) v)))
-                (apply list)))
-    v))
+  (case (get-type x)
+    :map (assoc x p v)
+    :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc p))))
+    :set (-> x (set/difference #{p}) (conj v))
+    :lst (->> (split-at p x)
+              (#(concat (first %) (conj (rest (last %)) v)))
+              (apply list))))
 
 (defn- valter [x p o v]
   (case o
@@ -260,7 +258,9 @@
             (let [[f & r] p]
               (if r
                 (valter x f ::r (up (vget x f) r o v))
-                (valter x f o v))))]
+                (if (seq p)
+                  (valter x f o v)
+                  v))))]
     (up old path op value)))
 
 (defn patch

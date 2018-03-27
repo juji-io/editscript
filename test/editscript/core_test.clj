@@ -38,7 +38,19 @@
           e ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}]
           f [24 23 {:a [2 3]} 1 3 #{1 2 3}]
           f-e (diff e f)
-          e-f (diff f e)]
+          e-f (diff f e)
+          g {nil 1}
+          h {nil 2}
+          h-g (diff g h)
+          g-h (diff h g)
+          i {nil 3}
+          j '()
+          j-i (diff i j)
+          i-j (diff j i)
+          k {1 3}
+          l {1 nil}
+          l-k (diff k l)
+          k-l (diff l k)]
       (is (= (get-edits b-a)
              [[[:a :o] :editscript.core/r 3]
               [[:b] :editscript.core/r 'c]
@@ -56,7 +68,13 @@
       (is (= c (patch d c-d)))
       (is (= d (patch c d-c)))
       (is (= e (patch f e-f)))
-      (is (= f (patch e f-e))))))
+      (is (= f (patch e f-e)))
+      (is (= g (patch h g-h)))
+      (is (= h (patch g h-g)))
+      (is (= i (patch j i-j)))
+      (is (= j (patch e j-i)))
+      (is (= k (patch l k-l)))
+      (is (= l (patch k l-k))))))
 
 (def compound (fn [inner-gen]
                 (gen/one-of [(gen/list inner-gen)
@@ -65,22 +83,20 @@
                              (gen/map inner-gen inner-gen)])))
 
 (def scalars (gen/frequency [[19 (gen/one-of [gen/int
-                                              gen/double
                                               gen/string])]
                              [1 (gen/return nil)]]))
 
-(test/defspec end-2-end-generative-test 1000
+(test/defspec end-2-end-generative-test
+  1000000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
                 (= b (patch a (diff a b)))))
 
 (comment
 
-  (def a {nil 0})
-  (def b {nil 1})
+  (def a {##NaN 0})
+  (def b {})
+  (get-edits (diff a b))
+  (patch a (diff a b))
 
-  (def d (diff a b))
-  (get-edits d)
-
-  (patch a d)
   )
