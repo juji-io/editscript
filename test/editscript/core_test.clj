@@ -87,16 +87,7 @@
                              [1 (gen/return nil)]]))
 
 (test/defspec end-2-end-generative-test
-  100000
+  10000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
                 (= b (patch a (diff a b)))))
-
-(comment
-
-  (def a {##NaN 0})
-  (def b {})
-  (get-edits (diff a b))
-  (patch a (diff a b))
-
-  )

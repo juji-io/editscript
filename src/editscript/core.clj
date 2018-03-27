@@ -58,16 +58,6 @@
   (equiv [this o]
     (.equiv edits o)))
 
-(defn get-type [v]
-  (cond
-    (map? v)    :map
-    (vector? v) :vec
-    (set? v)    :set
-    (list? v)   :lst
-    (= ::nil v) :nil
-    (nil? v)    :val
-    :else       :val))
-
 (declare diff*)
 
 (defn- diff-map [script path a b]
@@ -176,6 +166,16 @@
 (defn- diff-lst [script path a b]
   (diff-vec script path (vec a) (vec b)))
 
+(defn get-type [v]
+  (cond
+    (map? v)    :map
+    (vector? v) :vec
+    (set? v)    :set
+    (list? v)   :lst
+    (= ::nil v) :nil
+    (nil? v)    :val
+    :else       :val))
+
 (defn diff* [script path a b]
   (let [ta (get-type a) tb (get-type b)]
     (case ta
@@ -214,7 +214,6 @@
   (case (get-type x)
     (:map :vec :set) (get x p)
     :lst             (nth x p)))
-
 
 (defn- vdelete [x p]
   (case (get-type x)
