@@ -27,6 +27,8 @@ Here is a minimal example:
 
 ;; compute the editscript between a and b
 (def d (diff a b))
+
+d
 ;;==>
 ;;  [[[0] :editscript.core/-]
 ;;   [[2 :a 0] :editscript.core/-]
@@ -60,7 +62,7 @@ For addition and replacement operation, the third element is the value of new da
 
 For sequence comparison, we implement:
 
-> Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm, Information Processing Letters, 35:6, p317-23.'
+> Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm, Information Processing Letters, 35:6, p317-23.
 
 This is the same algorithm implemented in
 [diffit](https://github.com/friemen/diffit). Using their benchmark (see

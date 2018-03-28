@@ -16,8 +16,7 @@
   (get-dels-num [this] "Report the number of deletions")
   (get-reps-num [this] "Report the number of replacements"))
 
-(deftype EditScript [original
-                     ^:volatile-mutable ^PersistentVector edits
+(deftype EditScript [^:volatile-mutable ^PersistentVector edits
                      ^:volatile-mutable ^long adds-num
                      ^:volatile-mutable ^long dels-num
                      ^:volatile-mutable ^long reps-num]
@@ -46,17 +45,7 @@
 
   Seqable
   (seq [this]
-    (.seq edits))
-
-  IPersistentCollection
-  (count [this]
-    (.count edits))
-  (cons [this o]
-    (.cons edits o))
-  (empty [this]
-    (EditScript. original [] 0 0 0))
-  (equiv [this o]
-    (.equiv edits o)))
+    (.seq edits)))
 
 (defmethod print-method EditScript [x ^java.io.Writer writer]
   (print-method (get-edits x) writer))
@@ -207,9 +196,8 @@
 (defn diff
   "Create an EditScript that represents the difference between `b` and `a`"
   [a b]
-  (let [path   ^::path []
-        script (->EditScript a path 0 0 0)]
-    (diff* script path a b)
+  (let [script (->EditScript [] 0 0 0)]
+    (diff* script [] a b)
     script))
 
 (defn- vget [x p]
