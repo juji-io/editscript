@@ -269,10 +269,3 @@
    #(patch* %1 %2)
    a
    (get-edits script)))
-
-(def a [2 3 {:a 4} 6])
-(def b [2 {:a 5} 6])
-
-(get-edits (diff a b))
-(get-edits (diff a b))
-[[[1] :editscript.core/-] [[1] :editscript.core/-] [[1] :editscript.core/+ {:a 4}]]

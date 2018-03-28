@@ -116,6 +116,30 @@
   (def bs (vec (rand-alter 80 10 10 as)))
 
   (c/bench (diff as bs))
+  ;; ==>
+  ;; Evaluation count : 1260 in 60 samples of 21 calls.
+  ;; Execution time mean : 50.319675 ms
+  ;; Execution time std-deviation : 896.197158 µs
+  ;; Execution time lower quantile : 49.152154 ms ( 2.5%)
+  ;; Execution time upper quantile : 52.479851 ms (97.5%)
+  ;; Overhead used : 10.184272 ns
+
+  ;; Found 5 outliers in 60 samples (8.3333 %)
+	;; low-severe	 4 (6.6667 %)
+	;; low-mild	 1 (1.6667 %)
+  ;; Variance from outliers : 7.7632 % Variance is slightly inflated by outliers
+
   (c/bench (diffit.vec/diff as bs))
+  ;; ==>
+  ;; Evaluation count : 1200 in 60 samples of 20 calls.
+  ;; Execution time mean : 51.102351 ms
+  ;; Execution time std-deviation : 759.814820 µs
+  ;; Execution time lower quantile : 50.090719 ms ( 2.5%)
+  ;; Execution time upper quantile : 52.280115 ms (97.5%)
+  ;; Overhead used : 10.184272 ns
+
+  ;; Found 1 outliers in 60 samples (1.6667 %)
+	;; low-severe	 1 (1.6667 %)
+  ;; Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
 
   )
