@@ -1,4 +1,4 @@
-(defproject juji/editscript "0.1.0"
+(defproject juji/editscript "0.1.1"
   :description "A differ for Clojure data structure"
   :url "https://github.com/juji-io/editscript"
   :lein-release {:deploy-via :clojars}
