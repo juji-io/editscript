@@ -1,6 +1,9 @@
 (ns editscript.core-test
   (:require [clojure.test :refer :all]
             [editscript.core :refer :all]
+            ;; for benchmark
+            ;; [criterium.core :as c]
+            ;; [diffit.vec]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.clojure-test :as test]
             [clojure.test.check.properties :as prop]))
@@ -91,3 +94,28 @@
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
                 (= b (patch a (diff a b)))))
+
+(comment
+
+  ;; benchmark from https://github.com/friemen/diffit
+
+  (defn rand-alter
+    [pass-prob remove-prob add-prob xs]
+    (let [ops (vec (concat (repeat pass-prob :=)
+                           (repeat remove-prob :-)
+                           (repeat add-prob :+)))]
+      (reduce (fn [xs x]
+                (case (rand-nth ops)
+                  :+ (conj xs x "-")
+                  :- xs
+                  := (conj xs x)))
+              []
+              xs)))
+
+  (def as (vec (range 2000)))
+  (def bs (vec (rand-alter 80 10 10 as)))
+
+  (c/bench (diff as bs))
+  (c/bench (diffit.vec/diff as bs))
+
+  )

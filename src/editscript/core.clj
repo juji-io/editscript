@@ -58,6 +58,9 @@
   (equiv [this o]
     (.equiv edits o)))
 
+(defmethod print-method EditScript [x ^java.io.Writer writer]
+  (print-method (get-edits x) writer))
+
 (declare diff*)
 
 (defn- diff-map [script path a b]
@@ -177,26 +180,26 @@
     :else       :val))
 
 (defn diff* [script path a b]
-  (let [ta (get-type a) tb (get-type b)]
-    (case ta
+  (when-not (identical? a b)
+    (case (get-type a)
       :nil (add-data script path b)
-      :map (case tb
+      :map (case (get-type b)
              :nil (delete-data script path)
              :map (diff-map script path a b)
              (replace-data script path b))
-      :vec (case tb
+      :vec (case (get-type b)
              :nil (delete-data script path)
              :vec (diff-vec script path a b)
              (replace-data script path b))
-      :set (case tb
+      :set (case (get-type b)
              :nil (delete-data script path)
              :set (diff-set script path a b)
              (replace-data script path b))
-      :lst (case tb
+      :lst (case (get-type b)
              :nil (delete-data script path)
              :lst (diff-lst script path a b)
              (replace-data script path b))
-      :val (case tb
+      :val (case (get-type b)
              :nil (delete-data script path)
              (when-not (= a b)
                (replace-data script path b))))))
@@ -206,8 +209,7 @@
   [a b]
   (let [path   ^::path []
         script (->EditScript a path 0 0 0)]
-    (when-not (identical? a b)
-      (diff* script path a b))
+    (diff* script path a b)
     script))
 
 (defn- vget [x p]
@@ -267,3 +269,10 @@
    #(patch* %1 %2)
    a
    (get-edits script)))
+
+(def a [2 3 {:a 4} 6])
+(def b [2 {:a 5} 6])
+
+(get-edits (diff a b))
+(get-edits (diff a b))
+[[[1] :editscript.core/-] [[1] :editscript.core/-] [[1] :editscript.core/+ {:a 4}]]
