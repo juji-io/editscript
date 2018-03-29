@@ -1,6 +1,7 @@
 (ns editscript.core-test
   (:require [clojure.test :refer :all]
             [editscript.core :refer :all]
+            [editscript.diff.base :refer :all]
             ;; for benchmark
             ;; [criterium.core :as c]
             ;; [diffit.vec]
