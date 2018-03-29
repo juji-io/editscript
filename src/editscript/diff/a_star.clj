@@ -9,13 +9,21 @@
   (Math/abs (- (diag cur) (diag goal))))
 
 (defn vec-a* [a b]
-  (let [goal [(count a) (count b)]
+  (let [gx   (count a)
+        gy   (count b)
+        goal [gx gy]
         dist (fn [[x y] [x' y']]
                (if (and (= (get a x) (get b y))
                         (= 1 (- x' x))
                         (= 1 (- y' y)))
                  0
-                 1))]
+                 1))
+        ops  (fn [[x y]]
+               (cond-> []
+                 (and (< x gx)
+                      (< y gy)) (conj [(inc x) (inc y)])
+                 (< x gx)       (conj [(inc x) y])
+                 (< y gy)       (conj [x (inc y)])))]
     (loop [open   (p/priority-map [0 0] (heuristic [0 0] goal))
            closed #{}
            came   {}
@@ -42,11 +50,9 @@
                     :closed (conj closed cur)
                     :came   came
                     :g      g}
-                   [[cx (inc cy)]
-                    [(inc cx) cy]
-                    [(inc cx) (inc cy)]])]
+                   (ops cur))]
               (recur open closed came g))))))))
 
-(def a (vec (seq "a")))
-(def b (vec (seq "ab")))
+(def a (vec (seq "acbdeacbed")))
+(def b (vec (seq "acebdabbabed")))
 (vec-a* a b)
