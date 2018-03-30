@@ -1,36 +1,69 @@
 (ns editscript.diff.a-star
   (:require [clojure.set :as set]
             [clojure.data.priority-map :as p]
-            [editscript.core :refer :all]))
+            [editscript.core :refer :all])
+  (:import [clojure.lang PersistentVector]))
 
-(set! *warn-on-reflection* true)
+;; (set! *warn-on-reflection* true)
 
-(defrecord Node [path type size order value])
+(defprotocol INode
+  (get-path [this] "Get the path to the node, path is a vector")
+  (get-value [this] "Get the actual data")
+  (get-children [this] "Get the children nodes")
+  (add-child [this node] "Add a child node")
+  (get-size [this] "Get the size of subtree, used to estimate cost")
+  (set-size [this s] "Set size of subtree"))
 
-(defn- index-map [nodes i path data]
-  (let [n  (count data)
-        i' (+ i n)]
-    (vswap! nodes conj (->Node path :map n i' data))
+(deftype Node [path
+               value
+               ^:volatile-mutable ^PersistentVector children
+               ^:volatile-mutable ^long size]
+  INode
+  (get-path [this] path)
+  (get-value [this] value)
+  (get-children [this] children)
+  (add-child [this node] (set! children (conj children node)))
+  (get-size [this] size)
+  (set-size [this s] (set! size (long s))))
+
+(defmethod print-method Node [x ^java.io.Writer writer]
+  (print-method {:path     (get-path x)
+                 :value    (get-value x)
+                 :children (count (get-children x))
+                 :size     (get-size x)}
+                writer))
+
+(declare index*)
+
+(defn- index-associative [nodes path data parent]
+  (let [node (->Node path data [] 1)]
+    (vswap! nodes conj node)
+    (add-child parent node)
     (reduce-kv
      (fn [_ k v]
-       (index* nodes i' (conj path k) v))
+       (index* nodes (conj path k) v node))
      nil
-     data)))
+     data)
+    (set-size node
+              (+ (get-size node)
+                 (apply + (map get-size (get-children node)))))))
 
-(defn- index* [nodes i path data]
-  (println "data is " data)
+(defn- index* [nodes path data parent]
   (case (get-type data)
-    :map (index-map nodes i path data)
-    :val (vswap! nodes conj (->Node path :val 1 (inc i) data))
-    ))
+    (:map :vec) (index-associative nodes path data parent)
+    :val        (let [node (->Node path data nil 1)]
+                  (add-child parent node)
+                  (vswap! nodes conj node))))
 
 (defn- index
-  "Traverse data as a tree to build a vector of Node"
+  "Traverse data to build a tree of Nodes on the side, and put these nodes
+  into pre-walk order in a vector"
   [data]
-  (let [nodes (volatile! [])]
-    (index* nodes 0 [] data)
-    nodes))
-(index {:a 3})
+  (let [nodes (volatile! [])
+        root  (->Node [] :root [] 0)]
+    (index* nodes [] data root)
+    @nodes))
+(index [{:a 1} {:b 2}])
 
 (defn- diag [[x y]] (- y x))
 
