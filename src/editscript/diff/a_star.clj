@@ -4,7 +4,7 @@
             [editscript.core :refer :all])
   (:import [clojure.lang PersistentVector]))
 
-;; (set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 
 (defprotocol INode
   (get-path [this] "Get the path to the node, path is a vector")
@@ -12,7 +12,7 @@
   (get-children [this] "Get the children nodes")
   (add-child [this node] "Add a child node")
   (get-size [this] "Get the size of subtree, used to estimate cost")
-  (set-size [this s] "Set size of subtree"))
+  (set-size [this s] "Set the size of subtree"))
 
 (deftype Node [path
                value
@@ -56,14 +56,13 @@
                   (vswap! nodes conj node))))
 
 (defn- index
-  "Traverse data to build a tree of Nodes on the side, and put these nodes
-  into pre-walk order in a vector"
+  "Traverse data to build an indexing vector of Nodes in pre-order,
+  and compute size of their subtrees for cost estimation"
   [data]
   (let [nodes (volatile! [])
         root  (->Node [] :root [] 0)]
     (index* nodes [] data root)
     @nodes))
-(index [{:a 1} {:b 2}])
 
 (defn- diag [[x y]] (- y x))
 
@@ -76,26 +75,45 @@
       (recur prev (conj ops op))
       (vec ops))))
 
-(defn A* [a b]
+(defn- ops [a b gx gy [x y]]
+  (cond-> []
+    (and (< x gx) (< y gy)) (conj :r)
+    (< x gx)                (conj :-)
+    (< y gy)                (conj :+)))
+
+(defn- cost [a b [x y] [x' y']]
+  (if (and (= (get a x) (get b y))
+           (= 1 (- x' x))
+           (= 1 (- y' y)))
+    0
+    1))
+
+(defn- dest [a b [x y] op]
+  (case op
+    :+ [x (inc y)]
+    :- [(inc x) y]
+    :r [(inc x) (inc y)]))
+
+(defn- explore [a b cur goal {:keys [open closed came g] :as m} op]
+  (let [neighbor (dest a b cur op)]
+    (if (closed neighbor)
+      m
+      (let [tmp-g (+ (get g cur Long/MAX_VALUE)
+                     (cost a b cur neighbor))]
+        (if (>= tmp-g (get g neighbor Long/MAX_VALUE))
+          (assoc m :open (assoc open neighbor Long/MAX_VALUE))
+          (assoc m
+                 :came (assoc came neighbor [cur op])
+                 :g (assoc g neighbor tmp-g)
+                 :open (assoc open neighbor
+                              (+ tmp-g (heuristic cur goal) ))))))))
+
+(defn A*
+  "The algorithm works on the indices of input data"
+  [script a b]
   (let [gx   (count a)
         gy   (count b)
-        goal [gx gy]
-        dist (fn [[x y] [x' y']]
-               (if (and (= (get a x) (get b y))
-                        (= 1 (- x' x))
-                        (= 1 (- y' y)))
-                 0
-                 1))
-        ops  (fn [[x y]]
-               (cond-> []
-                 (and (< x gx) (< y gy)) (conj :r)
-                 (< x gx)                (conj :-)
-                 (< y gy)                (conj :+)))
-        dest (fn [[x y] op]
-               (case op
-                 :+ [x (inc y)]
-                 :- [(inc x) y]
-                 :r [(inc x) (inc y)]))]
+        goal [gx gy]]
     (loop [open   (p/priority-map [0 0] (heuristic [0 0] goal))
            closed #{}
            came   {}
@@ -107,27 +125,24 @@
             (trace came cur)
             (let [{:keys [open closed came g]}
                   (reduce
-                   (fn [{:keys [open closed came g] :as m} op]
-                     (let [neighbor (dest cur op)]
-                       (if (closed neighbor)
-                         m
-                         (let [tmp-g (+ (get g cur Long/MAX_VALUE) (dist cur neighbor))]
-                           (if (>= tmp-g (get g neighbor Long/MAX_VALUE))
-                             (assoc m :open (assoc open neighbor Long/MAX_VALUE))
-                             (assoc m
-                                    :came (assoc came neighbor [cur op])
-                                    :g (assoc g neighbor tmp-g)
-                                    :open (assoc open neighbor
-                                                 (+ tmp-g (heuristic cur goal) ))))))))
+                   (partial explore a b cur goal)
                    {:open   (pop open)
                     :closed (conj closed cur)
                     :came   came
                     :g      g}
-                   (ops cur))]
+                   (ops a b gx gy cur))]
               (recur open closed came g))))))))
+
+(defn diff
+  "Create an EditScript that represents the minimal difference between `b` and `a`"
+  [a b]
+  (let [script (->EditScript [] 0 0 0)]
+    (when-not (identical? a b)
+      (A* script (index a) (index b)))
+    script))
 
 (def a (vec (seq "a")))
 (def b (vec (seq "ac")))
 (def a (vec (seq "acbdeacbed")))
 (def b (vec (seq "acebdabbabed")))
-(A* a b)
+(A* nil a b)

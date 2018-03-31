@@ -136,7 +136,8 @@
                (replace-data script path b))))))
 
 (defn diff
-  "Create an EditScript that represents the difference between `b` and `a`"
+  "Create an EditScript that represents the difference between `b` and `a`
+  This algorithm is fast, but it does not guarantee the EditScript is minimal"
   [a b]
   (let [script (->EditScript [] 0 0 0)]
     (diff* script [] a b)
