@@ -67,7 +67,7 @@
 (defn- diag [[x y]] (- y x))
 
 (defn- heuristic [cur goal]
-  (Math/abs (- ^long (diag cur) ^long (diag goal))))
+  (Math/abs (- ^long (diag goal) ^long (diag cur))))
 
 (defn- trace [came cur]
   (loop [c cur ops '()]
@@ -75,63 +75,52 @@
       (recur prev (conj ops op))
       (vec ops))))
 
-(defn- ops [a b gx gy [x y]]
-  (cond-> []
-    (and (< x gx) (< y gy)) (conj :r)
-    (< x gx)                (conj :-)
-    (< y gy)                (conj :+)))
+(defn- explore [a b cur goal
+                {:keys [open closed came g] :as m}
+                {:keys [op cost neighbor]}]
+  (if (closed neighbor)
+    m
+    (let [gc    (get g cur Long/MAX_VALUE)
+          tmp-g (if (= gc Long/MAX_VALUE) gc (+ gc cost))]
+      (if (>= tmp-g (get g neighbor Long/MAX_VALUE))
+        (assoc! m :open (assoc open neighbor Long/MAX_VALUE))
+        (assoc! m
+                :came (assoc! came neighbor [cur op])
+                :g (assoc! g neighbor tmp-g)
+                :open (assoc open neighbor (+ tmp-g (heuristic cur goal))))))))
 
-(defn- cost [a b [x y] [x' y']]
-  (if (and (= (get a x) (get b y))
-           (= 1 (- x' x))
-           (= 1 (- y' y)))
-    0
-    1))
-
-(defn- dest [a b [x y] op]
-  (case op
-    :+ [x (inc y)]
-    :- [(inc x) y]
-    :r [(inc x) (inc y)]))
-
-(defn- explore [a b cur goal {:keys [open closed came g] :as m} op]
-  (let [neighbor (dest a b cur op)]
-    (if (closed neighbor)
-      m
-      (let [tmp-g (+ (get g cur Long/MAX_VALUE)
-                     (cost a b cur neighbor))]
-        (if (>= tmp-g (get g neighbor Long/MAX_VALUE))
-          (assoc m :open (assoc open neighbor Long/MAX_VALUE))
-          (assoc m
-                 :came (assoc came neighbor [cur op])
-                 :g (assoc g neighbor tmp-g)
-                 :open (assoc open neighbor
-                              (+ tmp-g (heuristic cur goal) ))))))))
+(defn- frontier [a b gx gy [x y]]
+  (let [va (get a x)
+        vb (get b y)]
+    (if (= va vb)
+      [{:op := :cost 0 :neighbor [(inc x) (inc y)]}]
+      (cond-> []
+        (< x gx)       (conj {:op :- :cost 1 :neighbor [(inc x) y]})
+        (and (< x gx)
+             (< y gy)) (conj {:op :r :cost 2 :neighbor [(inc x) (inc y)]})
+        (< y gy)       (conj {:op :+ :cost 2 :neighbor [x (inc y)]})))))
 
 (defn A*
-  "The algorithm works on the indices of input data"
+  "A* algorithm, works on the indices of input data"
   [script a b]
   (let [gx   (count a)
         gy   (count b)
         goal [gx gy]]
-    (loop [open   (p/priority-map [0 0] (heuristic [0 0] goal))
-           closed #{}
-           came   {}
-           g      {[0 0] 0}]
+    (loop [{:keys [open closed came g] :as m}
+           (transient
+            {:open   (p/priority-map [0 0] (heuristic [0 0] goal))
+             :closed (transient #{})
+             :came   (transient {})
+             :g      (transient {[0 0] 0})})]
       (if (empty? open)
         "failed"
         (let [[cx cy :as cur] (key (peek open))]
           (if (= cur goal)
-            (trace came cur)
-            (let [{:keys [open closed came g]}
-                  (reduce
-                   (partial explore a b cur goal)
-                   {:open   (pop open)
-                    :closed (conj closed cur)
-                    :came   came
-                    :g      g}
-                   (ops a b gx gy cur))]
-              (recur open closed came g))))))))
+            (trace (persistent! came) cur)
+            (recur (reduce
+                    (partial explore a b cur goal)
+                    (assoc! m :open (pop open) :closed (conj! closed cur))
+                    (frontier a b gx gy cur)))))))))
 
 (defn diff
   "Create an EditScript that represents the minimal difference between `b` and `a`"
@@ -141,8 +130,16 @@
       (A* script (index a) (index b)))
     script))
 
-(def a (vec (seq "a")))
-(def b (vec (seq "ac")))
-(def a (vec (seq "acbdeacbed")))
-(def b (vec (seq "acebdabbabed")))
-(A* nil a b)
+(comment
+
+  (def a [{:a 1 :b 2} {:c 2} [4 5 6]])
+  (index a)
+
+  (def a (vec (seq "acbdeacbed")))
+  (def b (vec (seq "acebdabbabed")))
+  (A* nil a b)
+
+  (def a (vec (seq "abc")))
+  (def b (vec (seq "bc")))
+  (A* nil a b)
+  )

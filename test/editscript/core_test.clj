@@ -3,8 +3,8 @@
             [editscript.core :refer :all]
             [editscript.diff.base :refer :all]
             ;; for benchmark
-            ;; [criterium.core :as c]
-            ;; [diffit.vec]
+            [criterium.core :as c]
+            [diffit.vec]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.clojure-test :as test]
             [clojure.test.check.properties :as prop]))
@@ -113,8 +113,9 @@
               []
               xs)))
 
-  (def as (vec (range 2000)))
+  (def as (vec (range 100)))
   (def bs (vec (rand-alter 80 10 10 as)))
+  (c/bench (editscript.diff.a-star/A* nil as bs))
 
   (c/bench (diff as bs))
   ;; ==>
