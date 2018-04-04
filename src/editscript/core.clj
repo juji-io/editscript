@@ -47,10 +47,12 @@
   (seq [this]
     (.seq edits)))
 
-(defmethod print-method EditScript [x ^java.io.Writer writer]
+(defmethod print-method EditScript
+  [x ^java.io.Writer writer]
   (print-method (get-edits x) writer))
 
-(defn get-type [v]
+(defn get-type
+  [v]
   (cond
     (map? v)    :map
     (vector? v) :vec
@@ -59,12 +61,14 @@
     (= ::nil v) :nil
     :else       :val))
 
-(defn- vget [x p]
+(defn- vget
+  [x p]
   (case (get-type x)
     (:map :vec :set) (get x p)
     :lst             (nth x p)))
 
-(defn- vdelete [x p]
+(defn- vdelete
+  [x p]
   (case (get-type x)
     ;;NB, there is a special case where dissoc has no effect:
     ;;if p is ##NaN, then p cannot be found in x, for (= ##NaN ##NaN) is false!
@@ -75,7 +79,8 @@
               (#(concat (first %) (next (last %))))
               (apply list))))
 
-(defn- vadd [x p v]
+(defn- vadd
+  [x p v]
   (case (get-type x)
     :map (assoc x p v)
     :vec (vec (concat (conj (subvec x 0 p) v) (subvec x p)))
@@ -84,7 +89,8 @@
               (#(concat (first %) (conj (last %) v)))
               (apply list))))
 
-(defn- vreplace [x p v]
+(defn- vreplace
+  [x p v]
   (case (get-type x)
     :map (assoc x p v)
     :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc p))))
@@ -93,13 +99,15 @@
               (#(concat (first %) (conj (rest (last %)) v)))
               (apply list))))
 
-(defn- valter [x p o v]
+(defn- valter
+  [x p o v]
   (case o
     ::- (vdelete x p)
     ::+ (vadd x p v)
     ::r (vreplace x p v)))
 
-(defn patch* [old [path op value]]
+(defn patch*
+  [old [path op value]]
   (letfn [(up [x p o v]
             (let [[f & r] p]
               (if r

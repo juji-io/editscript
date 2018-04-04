@@ -52,18 +52,18 @@
        (index* nodes (conj path k) v node))
      nil
      data)
-    (vswap! nodes conj node)
     (doto node
       (set-order (count @nodes))
       (set-size (+ (get-size node)
-                   (reduce + (map get-size (vals (get-children node)))))))))
+                   (reduce + (map get-size (vals (get-children node)))))))
+    (vswap! nodes conj node)))
 
 (defn- index-value
   [nodes path data parent]
   (let [node (->Node path data 0 nil 1)]
                   (add-child parent node)
-                  (vswap! nodes conj node)
-                  (set-order node (count @nodes))))
+                  (set-order node (count @nodes))
+                  (vswap! nodes conj node)))
 
 (defn- index*
   [nodes path data parent]
@@ -80,19 +80,32 @@
     @nodes))
 
 (defprotocol IState
-  (global [this] "The location in the global state matrix")
-  (local [this] "The location in the local state matrix")
-  (local? [this] "Is this state local?"))
+  (operator [this])
+  (cost [this])
+  (neighbor [this]))
+
+(deftype State [op co nb]
+  IState
+  (operator [_] op)
+  (cost [_] co)
+  (neighbor [_] nb))
+
+(defmethod print-method State
+  [x ^java.io.Writer writer]
+  (print-method {:op (operator x)
+                 :co (cost x)
+                 :nb (neighbor x)}
+                writer))
 
 (defn- heuristic
   "An optimistic (never over-estimate) estimate of cost to reach goal when at (x y).
 
-  For positive goal differential (delta), the optimal editscript length is deletion
+  For positive goal differential (delta), the optimal number of edits is deletion
   dependent, equals to 2p+delta, where p is number of deletions. Optimistically
   assuming no new deletion will be needed after (x, y), the cost works out to
   be delta-(y-x). The same logic applies to negative delta.
 
-  However, because addition/replacement requires new value to be present in
+  Because addition/replacement requires new value to be present in
   editscript, whereas deletion does not, we assign unit cost 2 to
   addition/replacement, 1 to deletion."
   [[x y] [gx gy]]
@@ -102,59 +115,62 @@
       cost
       (* 2 cost))))
 
-(defn- trace [came cur]
-  (println (str "explored: " (count came)))
+(defn- trace
+  [came cur]
+  ;; (println (str "explored: " (count came)))
   (loop [c cur ops '()]
     (if-let [[prev op] (came c)]
       (recur prev (conj ops op))
       (vec ops))))
 
-(defn- explore [a b cur goal
-                {:keys [open closed came g] :as m}
-                {:keys [op co nb]}]
-  (if (closed nb)
-    m
-    (let [gc    (get g cur Long/MAX_VALUE)
-          tmp-g (if (= gc Long/MAX_VALUE) gc (+ gc co))]
-      (if (>= tmp-g (get g nb Long/MAX_VALUE))
-        (assoc! m :open (assoc open nb Long/MAX_VALUE))
-        (assoc! m
-                :came (assoc! came nb [cur op])
-                :g (assoc! g nb tmp-g)
-                :open (assoc open nb (+ tmp-g (heuristic nb goal))))))))
+(defn- explore
+  [a b cur goal {:keys [open closed came g] :as m} state]
+  (let [co (cost state)
+        op (operator state)
+        nb (neighbor state)]
+    (if (closed nb)
+     m
+     (let [gc    (get g cur Long/MAX_VALUE)
+           tmp-g (if (= gc Long/MAX_VALUE) gc (+ gc co))]
+       (if (>= tmp-g (get g nb Long/MAX_VALUE))
+         (assoc! m :open (assoc open nb Long/MAX_VALUE))
+         (assoc! m
+                 :came (assoc! came nb [cur op])
+                 :g (assoc! g nb tmp-g)
+                 :open (assoc open nb (+ tmp-g (heuristic nb goal)))))))))
 
-(defn- frontier [a b gx gy [x y]]
+(defn- frontier
+  [a b [x y] [gx gy]]
   (let [va (get a x)
         vb (get b y)]
     (if (= va vb)
-      [{:op := :co 0 :nb [(inc x) (inc y)]}]
+      [(->State := 0 [(inc x) (inc y)])]
       (cond-> []
-        (< x gx)       (conj {:op :- :co 1 :nb [(inc x) y]})
+        (< x gx)       (conj (->State :- 1 [(inc x) y]))
         (and (< x gx)
-             (< y gy)) (conj {:op :r :co 2 :nb [(inc x) (inc y)]})
-        (< y gy)       (conj {:op :+ :co 2 :nb [x (inc y)]})))))
+             (< y gy)) (conj (->State :r 2 [(inc x) (inc y)]))
+        (< y gy)       (conj (->State :+ 2 [x (inc y)]))))))
 
 (defn A*
   "A* algorithm, works on the indices of input data"
   [script a b]
-  (let [gx   (count a)
-        gy   (count b)
-        goal [gx gy]]
+  (let [goal [(count a) (count b)]
+        init [0 0]]
     (loop [{:keys [open closed came g] :as m}
            (transient
-            {:open   (p/priority-map [0 0] (heuristic [0 0] goal))
+            {:open   (p/priority-map init (heuristic init goal))
              :closed (transient #{})
              :came   (transient {})
-             :g      (transient {[0 0] 0})})]
+             :g      (transient {init 0})})]
       (if (empty? open)
         "failed"
-        (let [[cx cy :as cur] (key (peek open))]
+        (let [cur (key (peek open))]
           (if (= cur goal)
             (trace (persistent! came) cur)
             (recur (reduce
                     (partial explore a b cur goal)
                     (assoc! m :open (pop open) :closed (conj! closed cur))
-                    (frontier a b gx gy cur)))))))))
+                    (frontier a b cur goal)))))))))
 
 (defn diff
   "Create an EditScript that represents the minimal difference between `b` and `a`"
@@ -166,8 +182,8 @@
 
 (comment
 
-  (def a [{:a 1 :b 2} {:c 2} [4 5 6]])
-  (def b [:b {:a 1} {:c 3} [5 7]])
+  (def a [[:s :t] [:u]])
+  (def b [[:s] :t :s])
   (index a)
   (index b)
 

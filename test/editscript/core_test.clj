@@ -116,7 +116,7 @@
   (def as (vec (range 100)))
   (def bs (vec (rand-alter 80 10 10 as)))
   (c/bench (editscript.diff.a-star/A* nil as bs))
-  (vec-edits as bs (count as))
+  (c/bench (vec-edits as bs))
 
   (c/bench (diff as bs))
   ;; ==>
