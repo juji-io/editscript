@@ -267,24 +267,24 @@
   ([ai bi]
    (A* ai bi {}))
   ([ai bi {:keys [local?]}]
-   (let [goal [(count ai) (count bi)]
+   (let [goal [(dec (count ai)) (dec (count bi))]
          init [0 0]]
-     (loop [[open closed came g :as state]
-            (->State local?
-                     (p/priority-map init (heuristic init goal))
-                     (transient #{})
-                     (transient {})
-                     {init 0})]
-       (println "g is" (apply sorted-map (mapcat identity g)))
-       (if (empty? open)
-         "failed"
-         (let [[cur cost] (peek open)]
-           (if (= cur goal)
-             {:cur cur :cost cost :came came}
-             (recur (reduce
-                     (partial explore ai bi cur goal)
-                     (initialize state cur)
-                     (frontier ai bi cur goal state))))))))))
+     (loop [state (->State local?
+                           (p/priority-map init (heuristic init goal))
+                           (transient #{})
+                           (transient {})
+                           {init 0})]
+       (let [[_ open closed came g] (get-state state)]
+         (println "g is" (apply sorted-map (mapcat identity g)))
+         (if (empty? open)
+           "failed"
+           (let [[cur cost] (peek open)]
+             (if (= cur goal)
+               {:cur cur :cost cost :came came}
+               (recur (reduce
+                       (partial explore ai bi cur goal)
+                       (initialize state cur)
+                       (frontier ai bi cur goal state)))))))))))
 
 (defn- write-script
   [steps script]
