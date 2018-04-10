@@ -26,15 +26,15 @@
   (add-data [this path value]
     (locking this
       (set! adds-num (inc adds-num))
-      (set! edits (conj edits [path ::+ value]))))
+      (set! edits (conj edits [path :+ value]))))
   (delete-data [this path]
     (locking this
       (set! dels-num (inc dels-num))
-      (set! edits (conj edits [path ::-]))))
+      (set! edits (conj edits [path :-]))))
   (replace-data [this path value]
     (locking this
       (set! reps-num (inc reps-num))
-      (set! edits (conj edits [path ::r value]))))
+      (set! edits (conj edits [path :r value]))))
 
   IEditScript
   (get-edits [this] edits)
@@ -102,16 +102,16 @@
 (defn- valter
   [x p o v]
   (case o
-    ::- (vdelete x p)
-    ::+ (vadd x p v)
-    ::r (vreplace x p v)))
+    :- (vdelete x p)
+    :+ (vadd x p v)
+    :r (vreplace x p v)))
 
 (defn patch*
   [old [path op value]]
   (letfn [(up [x p o v]
             (let [[f & r] p]
               (if r
-                (valter x f ::r (up (vget x f) r o v))
+                (valter x f :r (up (vget x f) r o v))
                 (if (seq p)
                   (valter x f o v)
                   v))))]

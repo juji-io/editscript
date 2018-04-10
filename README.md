@@ -5,9 +5,9 @@ structures as an "editscript", which represents the minimal modification
 necessary to transform one to another.
 
 Currently, the library can diff and patch any nested Clojure data structures
-consisting of regular maps, vectors, lists, sets and primitive values.
-
-Hopefully this little tool could be useful to further enhance the Clojure's unique
+consisting of regular maps, vectors, lists, sets and primitive values. I have
+not found an equivalent library so I implemented my own. Hopefully this little
+tool could be useful to further enhance the Clojure's unique
 strength of [Data-Oriented Programming](https://livebook.manning.com/#!/book/the-joy-of-clojure-second-edition/chapter-14/1).
 
 ## Usage
@@ -30,9 +30,9 @@ Here is a minimal example:
 
 d
 ;;==>
-;;  [[[0] :editscript.core/-]
-;;   [[2 :a 0] :editscript.core/-]
-;;   [[5 3] :editscript.core/+ 3]]
+;;  [[[0] :-]
+;;   [[2 :a 0] :-]
+;;   [[5 3] :+ 3]]
 
 ;; get the edit distance
 (edit-distance d)
@@ -53,35 +53,73 @@ structures (map and vector), whereas the editscript works for map, vector, list
 and set alike.
 
 The second element of an edit is a keyword representing the edit operation,
-which is one of `:editscript.core/-` (deletion), `:editscript.core/+` (addition),
-and `:editscript.core/r `(replacement).
+which is one of `:-` (deletion), `:+` (addition), and `:r `(replacement).
 
 For addition and replacement operation, the third element is the value of new data.
 
-## Prior work
+## Diffing Algorithms
 
-For sequence comparison, we implement:
+The library currently implements two differing algorithms. The default algorithm
+produces diffs that are optimal in the number of transformations and the
+resulting script size. A quick and dirty algorithm is also provided, which does not
+guarantee minimal results but is very fast.
+
+### Optimizing diffing
+
+This algorithm is inspired by the following work:
+
+> Shin-Yee Lu, 1979, A Tree-to-tree distance and its application to cluster
+> analysis. IEEE Transactions on Pattern Analysis and Machine Intelligence. Vol.
+> PAMI-1 No.2. p219-224
+
+> EIICHI Tanaka, 1995, A note on a tree-to-tree editing problem. International
+> Journal of Pattern Recognition and Artificial Intelligence. p167-172
+
+Unlike many other tree differing algorithms, our algorithm is structure preserving,
+a notion formally defined in the above two papers. Roughly speaking, the edit
+distance is defined on sub-trees rather than nodes, such that the ancestor-descendant
+relationship and tree traversal order are preserved, and nodes in the original tree does
+not split or merge. These properties are useful for diffing Clojure's immutable
+data structures because we want to leverage its structure sharing and use
+`identical?` reference check to speedup comparison.
+
+The two papers describe diffing algorithms with O(|a||b|) time and space
+complexity. Inspired by this blog post:
+
+> Tristan Hume, 2017, Designing a tree diff algorithm using dynamic programming and A*
+> http://thume.ca/2017/06/17/tree-diffing/
+
+I designed an A* algorithm to achieve some speedup over that bound. Instead of
+searching the whole transformation matrix, we typically search a portion
+of it along the diagonal. Currently, we are using a naive heuristic, future work
+may improve it to deliver faster differing.
+
+### Quick and dirty diffing
+
+This algorithm simply does an one pass comparison of two trees so it is very
+fast.
+
+For sequence (vector and list) comparison, we implement:
 
 > Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm, Information Processing Letters, 35:6, p317-23.
 
-This is the same algorithm implemented in
+This is a sequence diffing algorithm with O(NP) time complexity, where P is the number of deletions if `b` is longer than `a`.  The same sequence diffing algorithm is
+also implemented in
 [diffit](https://github.com/friemen/diffit). Using their benchmark (see
-commented code in editscript.core-test), our implementation has almost
-identical performance as theirs.
+commented code in editscript.core-test), our implementation has almost identical
+performance. Keep in mind that our algorithm handles nested Clojure data structures.
 
-Of course, our library also deals with arbitrary nested composition of maps, lists,
-vectors and sets, for which we have not found an equivalent library.
-
-## Caveat
-
-In special cases where consecutive deletions involving a nested element occur in
-a sequence, we do not guarantee that the generated editscript is minimal.
-
-For example, `a` is `[2 3 {:a 4} 6]`, `b` is `[2 {:a 5} 6]`, `(diff a b)` will
-generate `[[[1] :editscript.core/-] [[1] :editscript.core/-] [[1] :editscript.core/+ {:a 5}]]`, instead of the minimal `[[[1] :editscript.core/-] [[1 :a] :editscript.core/r 5] ]`. The reason is that it would be expensive to
-resolve the ambiguity of which deletion (`3` or `{:a 4}`) could be a candidate
-for replacement (i.e. to drill down), so we currently only drill down the
-unambiguous cases. We may change this in the future.
+The quick and dirty algorithm does not always produce optimizing results. For
+instances, when consecutive deletions involving a nested element occur in a
+sequence, the generated editscript is not minimal. For example, `a` is `[2 3 {:a
+4} 6]`, `b` is `[2 {:a 5} 6]`, this algorithm will generate `[[[1] :-] [[1] :-]
+[[1] :+ {:a 5}]]`, instead of the minimal `[[[1] :-] [[1 :a] :r 5] ]`. The
+reason is that there is ambiguity in which deletion (`3` or `{:a 4}`) needed to
+be drilled down. This algorithm currently only
+drills down in one unambiguous case, where `:-` is immediately followed by `:+`
+and there's no `:-` before them. More such cases may be added.
+However, adding more cases would not cover all the situations. An optimizing
+algorithm is needed if minimal diffs are desired.
 
 ## License
 

@@ -4,7 +4,7 @@
             [editscript.core :refer :all])
   (:import [clojure.lang PersistentTreeMap]))
 
-;; (set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 
 (defprotocol INode
   (get-path [this] "Get the path to the node from root, a vector")
@@ -80,17 +80,17 @@
     @nodes))
 
 (defn- heuristic
-  "An optimistic estimate of cost to reach goal when at (x y).
-  For sequences, with positive goal differential (delta), the optimal number of
+  "An optimistic estimate of the cost to reach goal when at (x y).
+  For sequences with positive goal differential (delta), the optimal number of
   edits is deletion dependent, equals to 2p+delta, where p is number of deletions.
   Optimistically assuming no new deletion will be needed after (x, y), the cost
   estimate is delta-(y-x). The same logic applies to negative delta.
   For nested structure, multiple edits may be merged into one.
   Also, because addition/replacement requires new value to be present in
-  editscript, whereas deletion does not, we assign estimate differently. "
+  editscript, whereas deletion does not, we assign estimate differently."
   [[x y] [gx gy]]
   (let [delta (- gy gx)
-        cost  (Math/abs (- delta (- y x)))]
+        cost  (Math/abs (- ^long delta (- ^long y ^long x)))]
     (if (< delta 0)
       (if (= cost 0) 0 1)
       (inc cost))))
@@ -168,7 +168,8 @@
 
 (defn- children-nodes [node] (-> node get-children vals vec))
 
-(defn- trace-local [ai' bi' came' cur]
+(defn- trace-local
+  [ai' bi' came' cur]
   )
 
 (defn- restart-replace-cost
@@ -236,24 +237,25 @@
         y+1     (inc y)]
     (cond-> []
       (and (< x gx)
-           local)       (conj (->Step :- cur [x+1 y]))
+           local)          (conj (->Step :- cur [x+1 y]))
       (and (< x gx)
-           (not local)) (conj (->Step :- (if (< g- gc) cur- cur) [x+1 y]))
-      (and (< x gx)
-           (< y gy)
-           (= va vb))   (conj (->Step := cur [x+1 y+1]))
+           (not local))    (conj (->Step :- (if (< g- gc) cur- cur) [x+1 y]))
       (and (< x gx)
            (< y gy)
-           (not= va vb)
-           local)       (conj (->Step :r cur [x+1 y+1]))
+           (or (identical? va vb)
+               (= va vb))) (conj (->Step := cur [x+1 y+1]))
       (and (< x gx)
            (< y gy)
            (not= va vb)
-           (not local)) (conj (->Step :r (if (< gr gc) curr cur) [x+1 y+1]))
+           local)          (conj (->Step :r cur [x+1 y+1]))
+      (and (< x gx)
+           (< y gy)
+           (not= va vb)
+           (not local))    (conj (->Step :r (if (< gr gc) curr cur) [x+1 y+1]))
       (and (< y gy)
-           local)       (conj (->Step :+ cur [x y+1]))
+           local)          (conj (->Step :+ cur [x y+1]))
       (and (< y gy)
-           (not local)) (conj (->Step :+ (if (< g+ gc) cur+ cur) [x y+1])))))
+           (not local))    (conj (->Step :+ (if (< g+ gc) cur+ cur) [x y+1])))))
 
 (defn- initialize
   [state cur]
@@ -323,22 +325,37 @@
   (def a [:a [:s :t] [:u]])
   (def b [[:s :u] :t :s])
   (diff a b)
+ [[[0] :-] [[1 1] :editscript.core/r :u] [[1] :editscript.core/r [:s :u]] [[2 0] :editscript.core/-] [[2] :editscript.core/r :t] [[] :editscript.core/+ :s]]
+  (def a [:a [:s :t] :u])
+  (def b [[:b] [:s :t :u]])
+  [[[0] :+ :b] [[0] :editscript.core/r [:b]] [[1] :editscript.core/+ :u] [[1] :editscript.core/r [:s :t :u]] [[2] :editscript.core/-]]
+  (def a [[:s :t] [:u]])
+  (def b [[:s] :t :s])
+  [[[0 1] :-] [[0] :editscript.core/r [:s]] [[1 0] :editscript.core/-] [[1] :editscript.core/r :t] [[] :editscript.core/+ :s]]
+  (diff a b)
   (A* (index a) (index b))
   (index a)
   (index b)
 
   (def a (vec (seq "acbdeacbed")))
   (def b (vec (seq "acebdabbabed")))
+  [[[2] :+ \e] [[4] :editscript.core/-] [[6] :editscript.core/r \b] [[8] :editscript.core/+ \a] [[8] :editscript.core/+ \b]]
   (diff a b)
 
   (def a (vec (seq "ab")))
   (def b (vec (seq "bc")))
+  [[[0] :-] [[] :editscript.core/+ \c]]
+
+  (def a (vec (seq "abd")))
+  (def b (vec (seq "bc")))
+  [[[0] :-] [[2] :editscript.core/r \c]]
+  (diff a b)
   (index a)
   (index b)
 
-  [[[0] :editscript.core/-] [[] :editscript.core/+ \c]]
-  [[[0] :editscript.core/-] [[2] :editscript.core/r \c]]
+  [[[0] :-] [[] :editscript.core/+ \c]]
+  [[[0] :-] [[2] :editscript.core/r \c]]
   (diff a b)
-  [[[0] :editscript.core/-] [[1] :editscript.core/+ \c]]
-  [[[0] :editscript.core/-] [[1] :editscript.core/r \c]]
+  [[[0] :-] [[1] :editscript.core/+ \c]]
+  [[[0] :-] [[1] :editscript.core/r \c]]
   (editscript.diff.base/diff a b))

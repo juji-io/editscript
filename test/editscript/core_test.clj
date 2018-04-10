@@ -1,7 +1,7 @@
 (ns editscript.core-test
   (:require [clojure.test :refer :all]
             [editscript.core :refer :all]
-            [editscript.diff.base :refer :all]
+            [editscript.diff.quick :refer :all]
             ;; for benchmark
             [criterium.core :as c]
             [diffit.vec]
@@ -56,17 +56,17 @@
           l-k (diff k l)
           k-l (diff l k)]
       (is (= (get-edits b-a)
-             [[[:a :o] :editscript.core/r 3]
-              [[:b] :editscript.core/r 'c]
-              [[:c] :editscript.core/+ 42]] ))
+             [[[:a :o] :r 3]
+              [[:b] :r 'c]
+              [[:c] :+ 42]] ))
       (is (= (get-edits d-c)
-             [[[0] :editscript.core/-]
-              [[2 :a] :editscript.core/-]
-              [[2 :b] :editscript.core/+ 3]]))
+             [[[0] :-]
+              [[2 :a] :-]
+              [[2 :b] :+ 3]]))
       (is (= (get-edits f-e)
-             [[[0] :editscript.core/-]
-              [[2 :a 0] :editscript.core/-]
-              [[5 3] :editscript.core/+ 3]]))
+             [[[0] :-]
+              [[2 :a 0] :-]
+              [[5 3] :+ 3]]))
       (is (= a (patch b a-b)))
       (is (= b (patch a b-a)))
       (is (= c (patch d c-d)))

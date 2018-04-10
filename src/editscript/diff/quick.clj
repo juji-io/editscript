@@ -1,4 +1,4 @@
-(ns editscript.diff.base
+(ns editscript.diff.quick
   (:require [clojure.set :as set]
             [editscript.core :refer :all]))
 
