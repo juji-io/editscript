@@ -118,7 +118,8 @@
     (up old path op value)))
 
 (defn patch
-  "Apply the editscript `script` on `a` to produce `b`"
+  "Apply the editscript `script` on `a` to produce `b`, assuming the
+  script is the results of diffing `a` and `b`"
   [a script]
   (reduce
    #(patch* %1 %2)
@@ -129,6 +130,8 @@
 
   (def a [1 {:a 1} {:b 2} {:c 3}])
   (def b [{:a 1} {:b 3} {:c 4}])
-  (editscript.diff.base/diff a b)
+  (editscript.diff.quick/diff a b)
+
+  (patch [:a :b] (->EditScript [[[2] :+ :c]] 1 0 0))
 
   )

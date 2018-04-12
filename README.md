@@ -62,11 +62,12 @@ For addition and replacement operation, the third element is the value of new da
 The library currently implements two differing algorithms. The default algorithm
 produces diffs that are optimal in the number of transformations and the
 resulting script size. A quick and dirty algorithm is also provided, which does not
-guarantee minimal results but is very fast.
+guarantee optimal results but is very fast.
 
 ### Optimizing diffing
 
-This algorithm is inspired by the following work:
+This algorithm aims to achieve optimal diffing in term of minimal size of resulting
+editscript. It is inspired by the following papers:
 
 > Shin-Yee Lu, 1979, A Tree-to-tree distance and its application to cluster
 > analysis. IEEE Transactions on Pattern Analysis and Machine Intelligence. Vol.
@@ -80,19 +81,14 @@ a notion formally defined in the above two papers. Roughly speaking, the edit
 distance is defined on sub-trees rather than nodes, such that the ancestor-descendant
 relationship and tree traversal order are preserved, and nodes in the original tree does
 not split or merge. These properties are useful for diffing Clojure's immutable
-data structures because we want to leverage its structure sharing and use
+data structures because we want to leverage structure sharing and use
 `identical?` reference check to speedup comparison.
 
-The two papers describe diffing algorithms with O(|a||b|) time and space
-complexity. Inspired by this blog post:
-
-> Tristan Hume, 2017, Designing a tree diff algorithm using dynamic programming and A*
-> http://thume.ca/2017/06/17/tree-diffing/
-
-I designed an A* algorithm to achieve some speedup over that bound. Instead of
-searching the whole transformation matrix, we typically search a portion
-of it along the diagonal. Currently, we are using a naive heuristic, future work
-may improve it to deliver faster differing.
+The two papers above describe diffing algorithms with O(|a||b|) time and space
+complexity. I designed an A* based algorithm to achieve some speedup over that
+bound. Instead of searching the whole transformation matrix, we will typically search
+a portion of it along the diagonal. Currently, we are using a naive heuristic,
+future work may improve it to obtain faster differing.
 
 ### Quick and dirty diffing
 

@@ -41,6 +41,8 @@
                  :size     (get-size x)}
                 writer))
 
+(defn- value+size [node] ((juxt get-value get-size) node))
+
 (declare index*)
 
 (defn- index-associative
@@ -91,18 +93,16 @@
   [[x y] [gx gy]]
   (let [delta (- gy gx)
         cost  (Math/abs (- ^long delta (- ^long y ^long x)))]
-    (if (< delta 0)
-      (if (= cost 0) 0 1)
-      (inc cost))))
-
-(defn- value+size [node] ((juxt get-value get-size) node))
+    (if (= cost 0)
+      0
+      (if (< delta 0)
+        1
+        (inc cost)))))
 
 (defprotocol IStep
   (operator [this] "Operator to try")
   (current [this] "Actual start location of the step")
-  (neighbor [this] "Destination of the step")
-  ;; (trail [this] "Local breakdown of the step")
-  )
+  (neighbor [this] "Destination of the step"))
 
 (deftype Step [op cu nb]
   IStep
@@ -125,8 +125,6 @@
   (local? [this] "Is this local search?")
   (get-open [this] "Get the open priority queue")
   (set-open [this open] "Set the open priority queue")
-  (get-closed [this] "Get the closed set")
-  (set-closed [this closed] "Set the closed set")
   (get-came [this] "Get the succession map")
   (set-came [this came] "Set the succession map")
   (get-g [this] "Get the g cost map")
@@ -134,15 +132,12 @@
 
 (deftype State [local
                 ^:volatile-mutable open
-                ^:volatile-mutable closed
                 ^:volatile-mutable came
                 ^:volatile-mutable g]
   IState
   (local? [_] local)
   (get-open [_] open)
   (set-open [this o] (set! open o) this)
-  (get-closed [_] closed)
-  (set-closed [this c] (set! closed c) this)
   (get-came [_] came)
   (set-came [this c] (set! came c) this)
   (get-g [_] g)
@@ -150,7 +145,7 @@
 
 (defn- get-state
   [state]
-  ((juxt local? get-open get-closed get-came get-g) state))
+  ((juxt local? get-open get-came get-g) state))
 
 (defn- access-g
   [g cur]
@@ -163,121 +158,112 @@
   (let [x     (get-order na)
         y     (get-order nb)
         start (fn [node order] (- order (-> node get-size dec)))]
+    (println "child-replacement of" na "and" nb)
     (- (access-g global [x y])
        (access-g global [(start na x) (start nb y)]))))
 
 (defn- children-nodes [node] (-> node get-children vals vec))
 
-(defn- trace-local
-  [ai' bi' came' cur]
-  )
-
 (defn- restart-replace-cost
   [na nb]
-  (let [ai                      (conj (children-nodes na) na)
-        bi                      (conj (children-nodes nb) nb)
-        {:keys [cost cur came]} (A* ai bi {:local? true})]
+  (let [ai             (conj (children-nodes na) na)
+        bi             (conj (children-nodes nb) nb)
+        {:keys [cost]} (A* ai bi {:local? true})]
+    (println "restart-replace-cost for" na "and" nb "is" cost)
     cost))
 
 (defn- compute-cost [ai bi [x y :as cur] state step]
-  (let [[local? open closed came g] (get-state state)
-        [op [x' y' :as cu] nb]      (get-step step)
-        na                          (ai x')
-        nb                          (bi y')
-        sb                          (get-size nb)
-        gc                          (access-g g cu)]
-    (if (= gc Long/MAX_VALUE)
-      gc
-      (+ gc (case op
-              := 0
-              :- 1
-              :+ (inc sb)
-              :r (cond
-                   local?     (child-replace-cost g na nb)
-                   (= cur cu) (inc sb)
-                   :else      (restart-replace-cost na nb)))))))
+  (let [[local? _ came g] (get-state state) [op cu nb] (get-step step)
+        na                (ai x)            nb         (bi y)
+        sa                (get-size na)     sb         (get-size nb)
+        sb+1              (inc sb)
+        gc'               (access-g g cu)   gc         (access-g g cur)]
+    (if (= gc' Long/MAX_VALUE)
+      gc'
+      (case op
+        := gc'
+        :- (cond
+             local?     (inc gc)
+             (= cur cu) (inc gc)
+             :else      (inc gc'))
+        :+ (cond
+             local?     (+ gc sb+1)
+             (= cur cu) (+ gc sb+1)
+             :else      (+ gc' sb+1))
+        :r (cond
+             local?     (+ gc (child-replace-cost g na nb))
+             (= cur cu) (+ gc sb+1)
+             :else      (+ gc' (if (or (= sa 1) (= sb 1))
+                                 sb+1
+                                 (min (restart-replace-cost na nb)
+                                      sb+1))))))))
+
+(defn- adjust-link
+  [local came nb [x y :as cur] [x' y' :as cu] op]
+  (assoc came nb [cur op])
+  #_(let [x-x' (- x x')
+        y-y' (- y y')]
+    (if (or local
+           (= cur cu)
+           (= op :r)
+           (and (> x x') (= y y') (= op :-))
+           (and (> y y') (= x x') (= op :+)))
+     (assoc came nb [cur op])
+     (assoc came nb [cu op]))))
 
 (defn- explore
   [ai bi cur goal state step]
-  (let [[local? open closed came g] (get-state state)
+  (let [[local? open came g] (get-state state)
         [op cu nb]               (get-step step)]
-    (if (closed nb)
-      state
-      (let [tmp-g (compute-cost ai bi cur state step)]
-        (if (>= tmp-g (access-g g nb))
-          (if (open nb)
-            state
-            (set-open state (assoc open nb Long/MAX_VALUE)))
-          (doto state
-            #_(set-came state
-                        (transient (merge (persistent! came)
-                                          (trace-local ai' bi' came' cur))))
-            (set-open (assoc open nb (+ tmp-g (heuristic nb goal))))
-            (set-came (assoc! came nb [cur op]))
-            (set-g (assoc g nb tmp-g))))))))
+    (let [tmp-g (compute-cost ai bi cur state step)]
+      (if (>= tmp-g (access-g g nb))
+        (if (open nb)
+          state
+          (set-open state (assoc open nb Long/MAX_VALUE)))
+        (doto state
+          (set-open (assoc open nb (+ tmp-g (heuristic nb goal))))
+          (set-came (adjust-link local? came nb cur cu op))
+          (set-g (assoc g nb tmp-g)))))))
 
 (defn- frontier
   [ai bi [x y :as cur] [gx gy] state]
   (let [local   (local? state)
-        na      (get ai x)
-        nb      (get bi y)
-        [va sa] (value+size na)
-        [vb sb] (value+size nb)
-        x'      (- x (dec sa))
-        y'      (- y (dec sb))
-        cur-    [x' y]
-        cur+    [x y']
-        curr    [x' y']
-        g       (get-g state)
-        gc      (access-g g cur)
-        g-      (access-g g cur-)
-        g+      (access-g g cur+)
-        gr      (access-g g curr)
-        x+1     (inc x)
-        y+1     (inc y)]
+        na      (get ai x)      nb      (get bi y)
+        [va sa] (value+size na) [vb sb] (value+size nb)
+        x'      (- x (dec sa))  y'      (- y (dec sb))
+        cur-    [x' y]          cur+    [x y']
+        curr    [x' y']         a=b     (= va vb)
+        x+1     (inc x)         y+1     (inc y)
+        x<gx    (< x gx)        y<gy    (< y gy)]
     (cond-> []
-      (and (< x gx)
-           local)          (conj (->Step :- cur [x+1 y]))
-      (and (< x gx)
-           (not local))    (conj (->Step :- (if (< g- gc) cur- cur) [x+1 y]))
-      (and (< x gx)
-           (< y gy)
+      x<gx            (conj (->Step :- (if local cur cur-) [x+1 y]))
+      (and x<gx y<gy
            (or (identical? va vb)
-               (= va vb))) (conj (->Step := cur [x+1 y+1]))
-      (and (< x gx)
-           (< y gy)
-           (not= va vb)
-           local)          (conj (->Step :r cur [x+1 y+1]))
-      (and (< x gx)
-           (< y gy)
-           (not= va vb)
-           (not local))    (conj (->Step :r (if (< gr gc) curr cur) [x+1 y+1]))
-      (and (< y gy)
-           local)          (conj (->Step :+ cur [x y+1]))
-      (and (< y gy)
-           (not local))    (conj (->Step :+ (if (< g+ gc) cur+ cur) [x y+1])))))
-
-(defn- initialize
-  [state cur]
-  (let [[_ open closed _ _] (get-state state)]
-    (doto state
-      (set-open (pop open))
-      (set-closed (conj! closed cur)))))
+               a=b))  (conj (->Step := cur [x+1 y+1]))
+      (and x<gx y<gy
+           (not a=b)) (conj (->Step :r (if local cur curr) [x+1 y+1]))
+      y<gy            (conj (->Step :+ (if local cur cur+) [x y+1])))))
 
 (defn- A*
   "A* algorithm, works on the indices of input data"
   ([ai bi]
    (A* ai bi {}))
   ([ai bi {:keys [local?]}]
+   (println "ai is" ai)
+   (println "bi is" bi)
    (let [goal [(dec (count ai)) (dec (count bi))]
          init [0 0]]
+     (if local?
+       (println "local goal is" goal)
+       (println "goal is" goal))
      (loop [state (->State local?
                            (p/priority-map init (heuristic init goal))
-                           (transient #{})
-                           (transient {})
+                           {}
                            {init 0})]
-       (let [[_ open closed came g] (get-state state)]
-         (println "g is" (apply sorted-map (mapcat identity g)))
+       (let [[_ open came g] (get-state state)]
+         (if local?
+           (println "local g is" (apply sorted-map (mapcat identity g)))
+           (println "g is" (apply sorted-map (mapcat identity g))))
          (if (empty? open)
            "failed"
            (let [[cur cost] (peek open)]
@@ -285,7 +271,7 @@
                {:cur cur :cost cost :came came}
                (recur (reduce
                        (partial explore ai bi cur goal)
-                       (initialize state cur)
+                       (set-open state (pop open))
                        (frontier ai bi cur goal state)))))))))))
 
 (defn- write-script
@@ -317,7 +303,8 @@
       (let [ai                 (index a)
             bi                 (index b)
             {:keys [cur came]} (A* ai bi)]
-        (trace ai bi (persistent! came) cur script)))
+        (println "came is" (apply sorted-map (mapcat identity came)))
+        (trace ai bi came cur script)))
     script))
 
 (comment
@@ -325,37 +312,41 @@
   (def a [:a [:s :t] [:u]])
   (def b [[:s :u] :t :s])
   (diff a b)
- [[[0] :-] [[1 1] :editscript.core/r :u] [[1] :editscript.core/r [:s :u]] [[2 0] :editscript.core/-] [[2] :editscript.core/r :t] [[] :editscript.core/+ :s]]
+  [[[0] :-] [[1 1] :r :u] [[1] :r [:s :u]] [[2 0] :-] [[2] :r :t] [[] :+ :s]]
   (def a [:a [:s :t] :u])
   (def b [[:b] [:s :t :u]])
-  [[[0] :+ :b] [[0] :editscript.core/r [:b]] [[1] :editscript.core/+ :u] [[1] :editscript.core/r [:s :t :u]] [[2] :editscript.core/-]]
+  (diff a b)
+  [[[0] :+ :b] [[0] :r [:b]] [[1] :+ :u] [[1] :r [:s :t :u]] [[2] :-]]
   (def a [[:s :t] [:u]])
   (def b [[:s] :t :s])
-  [[[0 1] :-] [[0] :editscript.core/r [:s]] [[1 0] :editscript.core/-] [[1] :editscript.core/r :t] [[] :editscript.core/+ :s]]
   (diff a b)
-  (A* (index a) (index b))
-  (index a)
-  (index b)
-
-  (def a (vec (seq "acbdeacbed")))
-  (def b (vec (seq "acebdabbabed")))
-  [[[2] :+ \e] [[4] :editscript.core/-] [[6] :editscript.core/r \b] [[8] :editscript.core/+ \a] [[8] :editscript.core/+ \b]]
-  (diff a b)
+  [[[0 1] :-] [[0] :r [:s]] [[1 0] :-] [[1] :r :t] [[] :+ :s]]
+  [[[0 1] :-] [[0] :r [:s]] [[1 0] :r :t] [[1] :r :s]]
 
   (def a (vec (seq "ab")))
   (def b (vec (seq "bc")))
-  [[[0] :-] [[] :editscript.core/+ \c]]
+  [[[0] :-] [[] :+ \c]]
 
   (def a (vec (seq "abd")))
   (def b (vec (seq "bc")))
-  [[[0] :-] [[2] :editscript.core/r \c]]
+  [[[0] :-] [[2] :r \c]]
   (diff a b)
-  (index a)
-  (index b)
 
-  [[[0] :-] [[] :editscript.core/+ \c]]
-  [[[0] :-] [[2] :editscript.core/r \c]]
+  (def a [[:a :b] :c [:d]])
+  (def b [:c [:d] [:a :b]])
+  [[[0] :-] [[] :+ [:a :b]]]
   (diff a b)
-  [[[0] :-] [[1] :editscript.core/+ \c]]
-  [[[0] :-] [[1] :editscript.core/r \c]]
-  (editscript.diff.base/diff a b))
+
+  (def a [[:a [:b :c] :d] :e :f])
+  (def b [:b :c [:e] :f :g])
+  [[[0] :r :b] [[1] :r :c] [[2] :+ [:e]] [[] :+ :g]]
+  (diff a b)
+
+  (def a [[:u]])
+  (def b [:t :s])
+  (diff a b)
+
+  (editscript.diff.base/diff a b)
+
+
+  )
