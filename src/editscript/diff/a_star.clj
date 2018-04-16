@@ -77,27 +77,9 @@
   compute path, sizes of sub-trees, etc."
   [data]
   (let [nodes (volatile! [])
-        head (->Node [] ::head -1 (sorted-map) 0)]
-    (index* nodes [] data head)
+        dummy (->Node [] ::dummy 0 (sorted-map) 0)]
+    (index* nodes [] data dummy)
     @nodes))
-
-(defn- heuristic
-  "An optimistic estimate of the cost to reach goal when at (x y).
-  For sequences with positive goal differential (delta), the optimal number of
-  edits is deletion dependent, equals to 2p+delta, where p is number of deletions.
-  Optimistically assuming no new deletion will be needed after (x, y), the cost
-  estimate is delta-(y-x). The same logic applies to negative delta.
-  For nested structure, multiple edits may be merged into one.
-  Also, because addition/replacement requires new value to be present in
-  editscript, whereas deletion does not, we assign estimate differently."
-  [[x y] [gx gy]]
-  (let [delta (- gy gx)
-        cost  (Math/abs (- ^long delta (- ^long y ^long x)))]
-    (if (= cost 0)
-      0
-      (if (< delta 0)
-        1
-        (inc cost)))))
 
 (defprotocol IStep
   (operator [this] "Operator to try")
@@ -130,12 +112,10 @@
   (get-g [this] "Get the g cost map")
   (set-g [this g] "Set the g cost map"))
 
-(deftype State [global
-                ^:volatile-mutable open
+(deftype State [^:volatile-mutable open
                 ^:volatile-mutable came
                 ^:volatile-mutable g]
   IState
-  (get-global [_] global)
   (get-open [_] open)
   (set-open [this o] (set! open o) this)
   (get-came [_] came)
@@ -145,7 +125,7 @@
 
 (defn- get-state
   [state]
-  ((juxt get-global get-open get-came get-g) state))
+  ((juxt get-open get-came get-g) state))
 
 (defn- access-g
   [g cur]
@@ -153,29 +133,8 @@
 
 (declare A*)
 
-(defn- child-replace-cost
-  [global na nb]
-  (let [sa (get-size na) sb (get-size nb)
-        r  (if (= sa sb 1)
-             (if (= (get-value na) (get-value nb)) 0 2)
-             (let [x  (get-order na) y  (get-order nb)
-                   x' (- x (dec sa)) y' (- y (dec sb))]
-               (- (access-g global [x y]) (access-g global [x' y']))))]
-    (println "child-replacement cost of" na "with" nb "is" r)
-    r))
-
-(defn- children-nodes [node] (-> node get-children vals vec))
-
-(defn- restart-replace-cost
-  [g na nb]
-  (let [ai             (conj (children-nodes na) na)
-        bi             (conj (children-nodes nb) nb)
-        {:keys [cost]} (A* ai bi g)]
-    (println "restart-replace-cost for" na "and" nb "is" cost)
-    cost))
-
 (defn- compute-cost [ai bi state step]
-  (let [[global _ came g]    (get-state state)
+  (let [[_ came g]           (get-state state)
         [op [x y :as cu] nb] (get-step step)
         na                   (ai x)         nb (bi y)
         sa                   (get-size na)  sb (get-size nb)
@@ -185,32 +144,35 @@
       gc
       (case op
         := gc
-        :- (if global
-             (inc gc)
-             (let [r (access-g g [x' y])]
-               (if (= r Long/MAX_VALUE)
-                 r
-                 (inc r))))
-        :+ (if global
-             (+ gc sb+1)
-             (let [r (access-g g [x y'])]
-               (if (= r Long/MAX_VALUE)
-                 r
-                 (+ r sb+1))))
-        :r (if global
-             (+ gc (child-replace-cost global na nb))
-             (let [r (access-g g [x' y'])]
-               (if (= r Long/MAX_VALUE)
-                 r
-                 (+ r (if (or (= sa 1) (= sb 1))
-                        sb+1
-                        (min (restart-replace-cost g na nb)
-                             sb+1))))))))))
+        :- (inc gc)
+        :+ (+ gc sb+1)
+        :r (+ gc (if (or (= sa 1) (= sb 1))
+                   sb+1
+                   (min (restart-replace-cost g na nb)
+                        sb+1)))))))
+
+(defn- heuristic
+  "An optimistic estimate of the cost to reach goal when at (x y).
+  For sequences with positive goal differential (delta), the optimal number of
+  edits is deletion dependent, equals to 2p+delta, where p is number of deletions.
+  Optimistically assuming no new deletion will be needed after (x, y), the cost
+  estimate is delta-(y-x). The same logic applies to negative delta.
+  For nested structure, multiple edits may be merged into one.
+  Also, because addition/replacement requires new value to be present in
+  editscript, whereas deletion does not, we assign estimate differently."
+  [[x y] [gx gy]]
+  (let [delta (- gy gx)
+        cost  (Math/abs (- ^long delta (- ^long y ^long x)))]
+    (if (= cost 0)
+      0
+      (if (< delta 0)
+        1
+        (inc cost)))))
 
 (defn- explore
   [ai bi goal state step]
-  (let [[_ open came g] (get-state state)
-        [op cu nb]      (get-step step)]
+  (let [[open came g] (get-state state)
+        [op cu nb]    (get-step step)]
     (let [tmp-g (compute-cost ai bi state step)]
       (if (>= tmp-g (access-g g nb))
         (if (open nb)
@@ -234,35 +196,35 @@
       x<gx                      (conj (->Step :- cur [x+1 y]))
       y<gy                      (conj (->Step :+ cur [x y+1])))))
 
+(defn- children-nodes [node] (-> node get-children vals vec))
+
 (defn- A*
   "A* algorithm, works on the indices of input data"
-  ([ai bi]
-   (A* ai bi nil))
-  ([ai bi global]
-   (println "ai is" ai)
-   (println "bi is" bi)
-   (let [goal [(dec (count ai)) (dec (count bi))]
-         init [0 0]]
-     (if global
-       (println "local goal is" goal)
-       (println "goal is" goal))
-     (loop [state (->State global
-                           (p/priority-map init (heuristic init goal))
-                           {}
-                           {init 0})]
-       (let [[_ open came g] (get-state state)]
-         (if global
-           (println "local g is" (apply sorted-map (mapcat identity g)))
-           (println "g is" (apply sorted-map (mapcat identity g))))
-         (if (empty? open)
-           "failed"
-           (let [[cur cost] (peek open)]
-             (if (= cur goal)
-               {:cur cur :cost cost :came came}
-               (recur (reduce
-                       (partial explore ai bi goal)
-                       (set-open state (pop open))
-                       (frontier ai bi cur goal)))))))))))
+  [ai bi prev came]
+  (println "ai is" ai)
+  (println "bi is" bi)
+  (let [ra (last ai)     rb (last bi)
+        sa (get-size ra) sb (get-size rb)]
+    (if (or (= sa 1) (= sb 1))
+      {:cost (inc sb) :came (assoc came ra [prev :r])}
+      (let [ca   (children-nodes ra)
+            cb   (children-nodes rb)
+            goal [(dec (count ca)) (dec (count cb))]
+            init [0 0]]
+        (loop [state (->State (p/priority-map init (heuristic init goal))
+                              (assoc came (first ca) [prev :r])
+                              {init 0})]
+          (let [[open came' g] (get-state state)]
+           (println "g is" (apply sorted-map (mapcat identity g)))
+           (if (empty? open)
+             "failed"
+             (let [[cur cost] (peek open)]
+               (if (= cur goal)
+                 {:cost cost :came (merge came came')}
+                 (recur (reduce
+                         (partial explore ai bi goal)
+                         (set-open state (pop open))
+                         (frontier ai bi cur goal))))))))))))
 
 (defn- write-script
   [steps script]
@@ -351,5 +313,8 @@
 
   (editscript.diff.base/diff a b)
 
+  (def a :a)
+
+  (children-nodes (last (index a)))
 
   )
