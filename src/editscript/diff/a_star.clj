@@ -133,23 +133,43 @@
 
 (declare A*)
 
-(defn- compute-cost [ai bi state step]
-  (let [[_ came g]           (get-state state)
-        [op [x y :as cu] nb] (get-step step)
-        na                   (ai x)         nb (bi y)
-        sa                   (get-size na)  sb (get-size nb)
-        x'                   (- x (dec sa)) y' (- y (dec sb))
-        sb+1                 (inc sb)       gc (access-g g cu)]
+(defprotocol IResult
+  (cost [this] "The edit cost")
+  (came [this] "Where do we come from"))
+
+(deftype Result [co ca]
+  IResult
+  (cost [_] co)
+  (came [_] ca))
+
+(defmethod print-method Result
+  [x ^java.io.Writer writer]
+  (print-method {:cost (cost x)
+                 :came (came x)}
+                writer))
+
+(defn- get-result
+  [result]
+  ((juxt cost came) result))
+
+(defn- compute-cost
+  [ai bi came g [x y :as current] [x' y' :as neighbor] op]
+  (let [na   (ai x)        nb (bi y)
+        sa   (get-size na) sb (get-size nb)
+        sb+1 (inc sb)      gc (access-g g current)
+        came' (assoc came [(ai x') (bi y')] [[na nb] op])]
     (if (= gc Long/MAX_VALUE)
-      gc
+      (->Result gc came')
       (case op
-        := gc
-        :- (inc gc)
-        :+ (+ gc sb+1)
-        :r (+ gc (if (or (= sa 1) (= sb 1))
-                   sb+1
-                   (min (restart-replace-cost g na nb)
-                        sb+1)))))))
+        := (->Result gc came')
+        :- (->Result (inc gc) came')
+        :+ (->Result (+ gc sb+1) came')
+        :r (if (or (= sa 1) (= sb 1))
+             (->Result (+ gc sb+1) came')
+             (let [[cost' came''] (get-result (A* na nb [na nb] came))]
+               (if (< sb+1 cost')
+                 (->Result (+ gc sb+1) came')
+                 (->Result (+ gc cost') came''))))))))
 
 (defn- heuristic
   "An optimistic estimate of the cost to reach goal when at (x y).
@@ -172,22 +192,23 @@
 (defn- explore
   [ai bi goal state step]
   (let [[open came g] (get-state state)
-        [op cu nb]    (get-step step)]
-    (let [tmp-g (compute-cost ai bi state step)]
-      (if (>= tmp-g (access-g g nb))
-        (if (open nb)
-          state
-          (set-open state (assoc open nb Long/MAX_VALUE)))
-        (doto state
-          (set-open (assoc open nb (+ tmp-g (heuristic nb goal))))
-          (set-came (assoc came nb [cu op]))
-          (set-g (assoc g nb tmp-g)))))))
+        [op cu nb]    (get-step step)
+        [tmp-g came'] (get-result (compute-cost ai bi came g cu nb op))]
+    (if (>= tmp-g (access-g g nb))
+      (if (open nb)
+        state
+        (set-open state (assoc open nb Long/MAX_VALUE)))
+      (doto state
+        (set-open (assoc open nb (+ tmp-g (heuristic nb goal))))
+        (set-came came')
+        (set-g (assoc g nb tmp-g))))))
 
 (defn- frontier
   [ai bi [x y :as cur] [gx gy]]
   (let [na   (get ai x)     nb   (get bi y)
         va   (get-value na) vb   (get-value nb)
-        a=b  (or (identical? va vb) (= va vb))
+        a=b  (or (identical? va vb)
+                 (and (= (type va) (type vb)) (= va vb)))
         x+1  (inc x)        y+1  (inc y)
         x<gx (< x gx)       y<gy (< y gy)]
     (cond-> []
@@ -196,55 +217,66 @@
       x<gx                      (conj (->Step :- cur [x+1 y]))
       y<gy                      (conj (->Step :+ cur [x y+1])))))
 
-(defn- children-nodes [node] (-> node get-children vals vec))
-
-(defn- A*
-  "A* algorithm, works on the indices of input data"
+(defn- A**
   [ai bi prev came]
   (println "ai is" ai)
   (println "bi is" bi)
-  (let [ra (last ai)     rb (last bi)
-        sa (get-size ra) sb (get-size rb)]
-    (if (or (= sa 1) (= sb 1))
-      {:cost (inc sb) :came (assoc came ra [prev :r])}
-      (let [ca   (children-nodes ra)
-            cb   (children-nodes rb)
-            goal [(dec (count ca)) (dec (count cb))]
-            init [0 0]]
-        (loop [state (->State (p/priority-map init (heuristic init goal))
-                              (assoc came (first ca) [prev :r])
-                              {init 0})]
-          (let [[open came' g] (get-state state)]
-           (println "g is" (apply sorted-map (mapcat identity g)))
-           (if (empty? open)
-             "failed"
-             (let [[cur cost] (peek open)]
-               (if (= cur goal)
-                 {:cost cost :came (merge came came')}
-                 (recur (reduce
-                         (partial explore ai bi goal)
-                         (set-open state (pop open))
-                         (frontier ai bi cur goal))))))))))))
+  (let [goal [(dec (count ai)) (dec (count bi))]
+        init [0 0]]
+    ;; (println "goal is" goal)
+    (loop [state (->State (p/priority-map init (heuristic init goal))
+                          (assoc came [(first ai) (first bi)] [prev :r])
+                          {init 0})]
+      (let [[open came' g] (get-state state)]
+        (if (empty? open)
+          "failed"
+          (let [[cur cost] (peek open)]
+            (if (= cur goal)
+              (->Result cost came')
+              (recur (reduce
+                      (partial explore ai bi goal)
+                      (set-open state (pop open))
+                      (frontier ai bi cur goal))))))))))
+
+(defn- children-nodes [node] (-> node get-children vals vec))
+
+(defn- A*
+  ([ra rb]
+   (A* ra rb nil {}))
+  ([ra rb prev came]
+   (let [sa (get-size ra) sb (get-size rb)]
+     (if (or (= sa 1) (= sb 1))
+       (if (= (get-value ra) (get-value rb))
+         (->Result 0 (assoc came [ra rb] [prev :=]))
+         (->Result (inc sb) (assoc came [ra rb] [prev :r])))
+       (A** (conj (children-nodes ra) ra)
+            (conj (children-nodes rb) rb)
+            prev came)))))
 
 (defn- write-script
   [steps script]
-  (doseq [[o a b] steps]
-    (let [path  (get-path a)
-          value (get-value b)]
-      (case o
-        :- (delete-data script path)
-        :r (replace-data script path value)
-        :+ (add-data script path value)
-        nil))))
+  (let []
+    (doseq [[o a b] steps]
+      (let [path  (get-path a)
+            value (get-value b)]
+        (case o
+          :- (delete-data script path)
+          :r (replace-data script path value)
+          :+ (add-data script path value)
+          nil)))))
 
 (defn- trace
-  ([ai bi came cur]
-   (loop [c cur steps '()]
-     (if-let [[[x y :as prev] op] (came c)]
-       (recur prev (conj steps [op (ai x) (bi y)]))
-       steps)))
-  ([ai bi came cur script]
-   (-> (trace ai bi came cur)
+  ([came cur]
+   (loop [[na' nb' :as c] cur steps '()]
+     (let [[[na nb :as prev] op] (came c)
+           steps                 (conj steps [op na nb])]
+       (if prev
+         (recur prev steps)
+         (if (= (count steps) 1)
+           [[:r na' nb']]
+           (rest steps))))))
+  ([came cur script]
+   (-> (trace came cur)
        (write-script script))))
 
 (defn diff
@@ -252,11 +284,17 @@
   [a b]
   (let [script (->EditScript [] 0 0 0)]
     (when-not (identical? a b)
-      (let [ai                 (index a)
-            bi                 (index b)
-            {:keys [cur came]} (A* ai bi)]
-        (println "came is" (apply sorted-map (mapcat identity came)))
-        (trace ai bi came cur script)))
+      (let [ra          (last (index a))
+            rb          (last (index b))
+            [cost came] (get-result (A* ra rb))]
+        (println "cost is" cost)
+        (println "came is"
+                 (apply sorted-map (mapcat (fn [[k [prev op]]]
+                                             [(mapv get-order k)
+                                              [(mapv get-order prev) op]])
+                                           came)))
+        (println "explored" (count came))
+        (trace came [ra rb] script)))
     script))
 
 (comment
@@ -274,11 +312,6 @@
   (diff a b)
   [[[0 1] :-] [[0] :r [:s]] [[1 0] :-] [[1] :r :t] [[] :+ :s]]
   [[[0 1] :-] [[0] :r [:s]] [[1 0] :r :t] [[1] :r :s]]
-
-  (def a (vec (seq "ab")))
-  (def b (vec (seq "bc")))
-  (diff a b)
-  [[[0] :-] [[] :+ \c]]
 
   (def a (vec (seq "abd")))
   (def b (vec (seq "bc")))
@@ -313,7 +346,14 @@
 
   (editscript.diff.base/diff a b)
 
-  (def a :a)
+  (def a 3)
+  (def b 7)
+  (diff a b)
+
+  (def a (vec (seq "ab")))
+  (def b (vec (seq "bc")))
+  (diff a b)
+  [[[0] :-] [[] :+ \c]]
 
   (children-nodes (last (index a)))
 
