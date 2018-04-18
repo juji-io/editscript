@@ -2,6 +2,8 @@
   (:require [clojure.set :as set]
             [editscript.core :refer :all]))
 
+(set! *unchecked-math* :warn-on-boxed)
+
 (declare diff*)
 
 (defn- diff-map [script path a b]
