@@ -5,7 +5,7 @@
   (:import [clojure.lang PersistentTreeMap]))
 
 ;; (set! *warn-on-reflection* true)
-(set! *unchecked-math* :warn-on-boxed)
+;; (set! *unchecked-math* :warn-on-boxed)
 
 (defprotocol INode
   (get-path [this] "Get the path to the node from root, a vector")
@@ -82,7 +82,7 @@
 
 (defprotocol IStep
   (operator [this] "Operator to try")
-  (current [this] "Actual start location of the step")
+  (current [this] "Start location of the step")
   (neighbor [this] "Destination of the step"))
 
 (deftype Step [op cu nb]
@@ -103,14 +103,19 @@
   ((juxt operator current neighbor) step))
 
 (defprotocol IState
+  (get-came [this] "Get the local succession map")
+  (set-came [this came] "Set the local succession map")
   (get-open [this] "Get the open priority queue")
   (set-open [this open] "Set the open priority queue")
   (get-g [this] "Get the g cost map")
   (set-g [this g] "Set the g cost map"))
 
-(deftype State [^:volatile-mutable open
+(deftype State [^:volatile-mutable came
+                ^:volatile-mutable open
                 ^:volatile-mutable g]
   IState
+  (get-came [_] came)
+  (set-came [this c] (set! came c) this)
   (get-open [_] open)
   (set-open [this o] (set! open o) this)
   (get-g [_] g)
@@ -118,7 +123,7 @@
 
 (defn- get-state
   [state]
-  ((juxt get-open get-g) state))
+  ((juxt get-came get-open get-g) state))
 
 (defn- access-g
   [g cur]
@@ -128,22 +133,22 @@
 
 (defn- compute-cost
   [ai bi came g [x y :as current] [x' y'] op]
-  (let [na    (ai x)
-        nb    (bi y)
-        sa    (get-size na)
-        sb    (get-size nb)
-        sb+1  (inc sb)
-        gc    (access-g g current)]
-    (if (= gc Long/MAX_VALUE)
-      gc
-      (case op
-        := gc
-        :- (inc gc)
-        :+ (+ gc sb+1)
-        :r (if (or (= sa 1) (= sb 1))
-             (+ gc sb+1)
-             (min (A* na nb came)
-                  sb+1))))))
+  (let [na   (ai x)
+        nb   (bi y)
+        sa   (get-size na)
+        sb   (get-size nb)
+        sb+1 (inc sb)
+        gc   (access-g g current)]
+    (+ gc (if (= gc Long/MAX_VALUE)
+            0
+            (case op
+              := 0
+              :- 1
+              :+ sb+1
+              :r (if (or (= sa 1) (= sb 1))
+                   sb+1
+                   (min (A* na nb came)
+                        sb+1)))))))
 
 (defn- heuristic
   "An optimistic estimate of the cost to reach goal when at (x y).
@@ -165,17 +170,17 @@
 
 (defn- explore
   [ai bi came goal state step]
-  (let [[open g]                         (get-state state)
+  (let [[came' open g]                   (get-state state)
         [op [x y :as cu] [x' y' :as nb]] (get-step step)
         tmp-g                            (compute-cost ai bi came g cu nb op)]
     (if (>= tmp-g (access-g g nb))
       (if (open nb)
         state
         (set-open state (assoc open nb Long/MAX_VALUE)))
-      (do (vswap! came assoc [(ai x') (bi y')] [[(ai x) (bi y)] op])
-          (doto state
-            (set-open (assoc open nb (+ tmp-g (heuristic nb goal))))
-            (set-g (assoc g nb tmp-g)))))))
+      (doto state
+        (set-came (assoc came' [(ai x') (bi y')] [[(ai x) (bi y)] op]))
+        (set-open (assoc open nb (+ tmp-g (heuristic nb goal))))
+        (set-g (assoc g nb tmp-g))))))
 
 (defn- values=?
   [va vb]
@@ -193,12 +198,11 @@
         y+1  (inc y)
         x<gx (< x gx)
         y<gy (< y gy)]
-    (if (and x<gx y<gy a=b)
-      [(->Step := cur [x+1 y+1])]
-      (cond-> []
-       (and x<gx y<gy (not a=b)) (conj (->Step :r cur [x+1 y+1]))
-       x<gx                      (conj (->Step :- cur [x+1 y]))
-       y<gy                      (conj (->Step :+ cur [x y+1]))))))
+    (cond-> []
+      (and x<gx y<gy a=b)       (conj (->Step := cur [x+1 y+1]))
+      (and x<gx y<gy (not a=b)) (conj (->Step :r cur [x+1 y+1]))
+      x<gx                      (conj (->Step :- cur [x+1 y]))
+      y<gy                      (conj (->Step :+ cur [x y+1])))))
 
 (defn- children-nodes
   [node]
@@ -206,21 +210,30 @@
 
 (defn- A*
   [ra rb came]
-  (let [ai   (conj (children-nodes ra) ra)
-        bi   (conj (children-nodes rb) rb)
-        goal [(dec (count ai)) (dec (count bi))]
-        init [0 0]]
-    (loop [state (->State (p/priority-map init (heuristic init goal)) {init 0})]
-      (let [[open g] (get-state state)]
-        (if (empty? open)
-          "A* fails to find a solution"
-          (let [[cur cost] (peek open)]
-            (if (= cur goal)
-              cost
-              (recur (reduce
-                      (partial explore ai bi came goal)
-                      (set-open state (pop open))
-                      (frontier ai bi cur goal))))))))))
+  (if (= (get-size ra) (get-size rb) 1)
+    (do (vswap! came assoc [ra rb] {})
+        (if (values=? (get-value ra) (get-value rb))
+          0
+          2))
+    (let [ai  (conj (children-nodes ra) ra)
+          bi   (conj (children-nodes rb) rb)
+          goal [(dec (count ai)) (dec (count bi))]
+          init [0 0]]
+      (loop [state (->State {}
+                            (p/priority-map init (heuristic init goal))
+                            {init 0})]
+        (let [[came' open g] (get-state state)]
+          (if (empty? open)
+            "A* fails to find a solution"
+            (let [[cur cost] (peek open)]
+              (if (= cur goal)
+                (do
+                  (vswap! came assoc [ra rb] came')
+                  cost)
+                (recur (reduce
+                        (partial explore ai bi came goal)
+                        (set-open state (pop open))
+                        (frontier ai bi cur goal)))))))))))
 
 (defn- convert-path [trie path]
   path
@@ -248,16 +261,23 @@
    (volatile! {})
    steps))
 
+(defn- trace*
+  [came cur steps]
+  ;; (println "steps:" @steps)
+  (if-let [m (came cur)]
+    (loop [v (m cur)]
+      (if v
+        (let [[[na nb :as prev] op] v]
+          (if (came prev)
+            (trace* came prev steps)
+            (vswap! steps conj [op na nb]))
+          (recur (m prev)))
+        steps))
+    steps))
+
 (defn- trace
   ([came cur]
-   (loop [[na' nb' :as c] cur steps '()]
-     (let [[[na nb :as prev] op] (@came c)
-           steps                 (conj steps [op na nb])]
-       (if prev
-         (recur prev steps)
-         (if (= (count steps) 1)
-           [[:r na' nb']]
-           (rest steps))))))
+   @(trace* came cur (volatile! '())))
   ([came cur script]
    (-> (trace came cur)
        (write-script script))))
@@ -267,18 +287,18 @@
   [a b]
   (let [script (->EditScript [] 0 0 0)]
     (when-not (identical? a b)
-      (let [roota       (last (index a))
-            rootb       (last (index b))
-            came (volatile! {})
-            cost (A* roota rootb came)]
+      (let [roota (last (index a))
+            rootb (last (index b))
+            came  (volatile! {})
+            cost  (A* roota rootb came)]
         (println "cost is" cost)
-        (println "came is"
-                 (apply sorted-map (mapcat (fn [[k [prev op]]]
-                                             [(mapv get-order k)
-                                              [(mapv get-order prev) op]])
-                                           @came)))
-        (println "explored" (count @came))
-        (trace came [roota rootb] script)))
+        (println "came is" (map (fn [[k v]]
+                                  {(map get-order k)
+                                   (mapcat (fn [[k [p o]]]
+                                             {(map get-order k)
+                                              [(map get-order p) o]}) v)}) @came))
+        (println "explored" (reduce + (map count (vals @came))))
+        (trace @came [roota rootb] script)))
     script))
 
 (comment
