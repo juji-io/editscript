@@ -7,6 +7,8 @@
 ;; (set! *warn-on-reflection* true)
 ;; (set! *unchecked-math* :warn-on-boxed)
 
+;; indexing
+
 (defprotocol INode
   (get-path [this] "Get the path to the node from root, a vector")
   (get-value [this] "Get the actual data")
@@ -80,6 +82,8 @@
     (index* nodes [] data dummy)
     @nodes))
 
+;; diffing
+
 (defprotocol IStep
   (operator [this] "Operator to try")
   (current [this] "Start location of the step")
@@ -129,7 +133,7 @@
   [g cur]
   (get g cur Long/MAX_VALUE))
 
-(declare A*)
+(declare diff*)
 
 (defn- compute-cost
   [ai bi came g [x y :as current] [x' y'] op]
@@ -147,7 +151,7 @@
               (:a :i) sb+1
               :r      (if (or (= sa 1) (= sb 1))
                         sb+1
-                        (min (A* na nb came)
+                        (min (diff* na nb came)
                              sb+1)))))))
 
 (defn- heuristic
@@ -185,7 +189,7 @@
 (defn- values=?
   [va vb]
   (or (identical? va vb)
-      (and (= (type va) (type vb)) (= va vb))))
+      (and (= (get-type va) (get-type vb) :val) (= va vb))))
 
 (defn- frontier
   [ai bi [x y :as cur] [gx gy]]
@@ -200,7 +204,7 @@
         x<gx (< x gx)
         y<gy (< y gy)]
     (if (and x<gx y<gy a=b)
-      [(conj (->Step := cur [x+1 y+1]))]
+      [(->Step := cur [x+1 y+1])]
       (cond-> []
         (and x<gx y<gy) (conj (->Step :r cur [x+1 y+1])) ; replace
         x<gx            (conj (->Step :- cur [x+1 y]))   ; delete
@@ -213,31 +217,40 @@
 
 (defn- A*
   [ra rb came]
-  (if (= (get-size ra) (get-size rb) 1)
+  (let [ca   (children-nodes ra)
+        cb   (children-nodes rb)
+        ai   (conj ca ra)
+        bi   (conj cb rb)
+        goal [(count ca) (count cb)]
+        init [0 0]]
+    (loop [state (->State {}
+                          (p/priority-map init (heuristic init goal))
+                          {init 0})]
+      (let [[came' open g] (get-state state)]
+        (if (empty? open)
+          (throw (ex-info "A* fails to find a solution" {:ra ra :rb rb}))
+          (let [[cur cost] (peek open)]
+            (if (= cur goal)
+              (let [end [ra rb]]
+                (vswap! came assoc end came')
+                cost)
+              (recur (reduce
+                      (partial explore ai bi came goal)
+                      (set-open state (pop open))
+                      (frontier ai bi cur goal))))))))))
+
+(defn- diff*
+  [ra rb came]
+  (cond
+    (= (get-size ra) (get-size rb) 1)
     (do (vswap! came assoc [ra rb] {})
         (if (values=? (get-value ra) (get-value rb))
           0
           2))
-    (let [ai   (conj (children-nodes ra) ra)
-          bi   (conj (children-nodes rb) rb)
-          goal [(dec (count ai)) (dec (count bi))]
-          init [0 0]]
-      (loop [state (->State {}
-                            (p/priority-map init (heuristic init goal))
-                            {init 0})]
-        (let [[came' open g] (get-state state)]
-          (if (empty? open)
-            (throw (ex-info "A* fails to find a solution" {:ra ra :rb rb}))
-            (let [[cur cost] (peek open)]
-              (if (= cur goal)
-                (let [end [ra rb]]
-                  (vswap! came assoc end came')
-                  ;; (vswap! came assoc end (adjust-append came' end))
-                  cost)
-                (recur (reduce
-                        (partial explore ai bi came goal)
-                        (set-open state (pop open))
-                        (frontier ai bi cur goal)))))))))))
+    :else
+    (A* ra rb came)))
+
+;; generating editscript
 
 (defn- adjust-delete-insert
   [trie op path]
@@ -249,16 +262,13 @@
         (recur (conj newp (if (int? k) (+ k d) k))
                (conj prev k)
                ks))
-      (let [l    (last newp)
-            p    (-> newp butlast vec)
-            seen (conj p ::delta)
+      (let [seen (conj (if (seq newp) (pop newp) newp) ::delta)
             d    (get-in @trie seen 0)]
         (vswap! trie assoc-in seen (case op :- (dec d) :i (inc d) d))
         newp))))
 
 (defn- adjust-append
   [trie op node path]
-  ;; path
   (if (= op :a)
     (conj path (+ (-> node get-children count)
                   (get-in @trie (conj path ::delta) 0)))
@@ -266,7 +276,6 @@
 
 (defn- convert-path
   [trie op node path]
-  ;; path
   (->> path
        (adjust-delete-insert trie op)
        (adjust-append trie op node)))
@@ -316,23 +325,25 @@
       (let [roota (last (index a))
             rootb (last (index b))
             came  (volatile! {})
-            cost  (A* roota rootb came)]
-        ;; (println "cost is" cost)
-        ;; (println "came is" (map (fn [[k v]]
-        ;;                           {(map get-order k)
-        ;;                            (mapcat (fn [[k [p o]]]
-        ;;                                      {(map get-order k)
-        ;;                                       [(map get-order p) o]}) v)}) @came))
-        ;; (println "explored" (reduce + (map count (vals @came))))
+            cost  (diff* roota rootb came)]
+        (println "cost is" cost)
+        (println "came is" (map (fn [[k v]]
+                                  {(map get-order k)
+                                   (mapcat (fn [[k [p o]]]
+                                             {(map get-order k)
+                                              [(map get-order p) o]}) v)})
+                                @came))
+        (println "explored" (reduce + (map count (vals @came))))
         (trace @came [roota rootb] script)))
     script))
 
 (comment
 
-  (def a 1)
-  (index a)
-  (def b 2)
-  [[[] :r 2]]
+  (def a {:a {:o 4} :b 'b})
+  (def b {:a {:o 3} :b 'c :c 42})
+  [[[:a :o] :r 3] [[:b] :+ c] [[:b] :r 42]]
+  (diff a b)
+  (diff a b)
   (patch a (diff a b))
 
   )

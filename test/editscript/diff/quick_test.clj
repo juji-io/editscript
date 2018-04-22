@@ -27,7 +27,7 @@
     (is (= (min+plus->replace [:-]) [:-]))))
 
 (deftest diff-patch-test
-  (testing "Differing and patching some nested data structures"
+  (testing "Diffing and patching some nested data structures"
     (let [a {:a {:o 4} :b 'b}
           b {:a {:o 3} :b 'c :c 42}
           b-a (diff a b)

@@ -2,7 +2,7 @@
   (:require [clojure.set :as set]
             [editscript.core :refer :all]))
 
-(set! *unchecked-math* :warn-on-boxed)
+;; (set! *unchecked-math* :warn-on-boxed)
 
 (declare diff*)
 
@@ -12,13 +12,13 @@
      (let [path' (conj path ka)]
        (if (contains? b ka)
         (diff* script path' va (get b ka))
-        (diff* script path' va :editscript.core/nil))))
+        (diff* script path' va (nada)))))
    nil
    a)
   (reduce-kv
    (fn [_ kb vb]
      (when-not (contains? a kb)
-       (diff* script (conj path kb) :editscript.core/nil vb)))
+       (diff* script (conj path kb) (nada) vb)))
    nil
    b))
 
@@ -93,9 +93,9 @@
   (reduce
    (fn [{:keys [ia ia' ib] :as m} op]
      (case op
-       :- (do (diff* script (conj path ia') (get a ia) :editscript.core/nil)
+       :- (do (diff* script (conj path ia') (get a ia) (nada))
               (assoc! m :ia (inc ia)))
-       :+ (do (diff* script (conj path ia') :editscript.core/nil (get b ib))
+       :+ (do (diff* script (conj path ia') (nada) (get b ib))
               (assoc! m :ia' (inc ia') :ib (inc ib)))
        :r (do (diff* script (conj path ia') (get a ia) (get b ib))
               (assoc! m :ia (inc ia) :ia' (inc ia') :ib (inc ib)))
@@ -105,33 +105,28 @@
 
 (defn- diff-set [script path a b]
   (doseq [va (set/difference a b)]
-    (diff* script (conj path va) va :editscript.core/nil))
+    (diff* script (conj path va) va (nada)))
   (doseq [vb (set/difference b a)]
-    (diff* script (conj path vb) :editscript.core/nil vb)))
+    (diff* script (conj path vb) (nada) vb)))
 
 (defn- diff-lst [script path a b]
   (diff-vec script path (vec a) (vec b)))
+
+(defmacro coll-case
+  [a b script path type diff-fn]
+  `(case (get-type ~b)
+     :nil  (delete-data ~script ~path)
+     ~type (~diff-fn ~script ~path ~a ~b)
+     (replace-data ~script ~path ~b)))
 
 (defn diff* [script path a b]
   (when-not (identical? a b)
     (case (get-type a)
       :nil (add-data script path b)
-      :map (case (get-type b)
-             :nil (delete-data script path)
-             :map (diff-map script path a b)
-             (replace-data script path b))
-      :vec (case (get-type b)
-             :nil (delete-data script path)
-             :vec (diff-vec script path a b)
-             (replace-data script path b))
-      :set (case (get-type b)
-             :nil (delete-data script path)
-             :set (diff-set script path a b)
-             (replace-data script path b))
-      :lst (case (get-type b)
-             :nil (delete-data script path)
-             :lst (diff-lst script path a b)
-             (replace-data script path b))
+      :map (coll-case a b script path :map #'diff-map)
+      :vec (coll-case a b script path :vec #'diff-vec)
+      :set (coll-case a b script path :set #'diff-set)
+      :lst (coll-case a b script path :lst #'diff-lst)
       :val (case (get-type b)
              :nil (delete-data script path)
              (when-not (= a b)

@@ -7,8 +7,6 @@
 
 (deftest vec-diff-test
   (testing "Testing A* with some nested vector data"
-    (is (= (get-edits (diff 1 2))
-           [[[] :r 2]]))
     (is (= (get-edits (diff (vec (seq "ab"))
                             (vec (seq "bc"))))
            [[[0] :-] [[1] :+ \c]]))
@@ -45,3 +43,11 @@
     (is (= (get-edits (diff [:a [:b [:c [:d :e] :f]]]
                             [:a [:b :c :d] :e]))
            [[[1 1] :+ :c] [[1 2] :r :d] [[2] :+ :e]]))))
+
+(deftest mix-diff-test
+  (testing "Testing A* with some mixed data structures"
+    (is (= (get-edits (diff 1 2))
+           [[[] :r 2]]))
+    #_(is (= (get-edits (diff {:a {:o 4} :b 'b}
+                            {:a {:o 3} :b 'c :c 42}))
+           ))))

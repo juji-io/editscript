@@ -1,6 +1,7 @@
 (ns editscript.core
   (:require [clojure.set :as set])
-  (:import [clojure.lang Seqable PersistentVector]))
+  (:import [clojure.lang Seqable PersistentVector
+            IPersistentList IPersistentMap IPersistentSet IPersistentVector]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,15 +52,32 @@
   [x ^java.io.Writer writer]
   (print-method (get-edits x) writer))
 
-(defn get-type
-  [v]
-  (cond
-    (map? v)    :map
-    (vector? v) :vec
-    (set? v)    :set
-    (list? v)   :lst
-    (= ::nil v) :nil
-    :else       :val))
+(defprotocol IType
+  (get-type [this]))
+
+(defn nada
+  []
+  (reify IType
+    (get-type [_] :nil)))
+
+(extend-protocol IType
+  IPersistentList
+  (get-type [_] :lst)
+
+  IPersistentMap
+  (get-type [_] :map)
+
+  IPersistentVector
+  (get-type [_] :vec)
+
+  IPersistentSet
+  (get-type [_] :set)
+
+  nil
+  (get-type [_] :val)
+
+  Object
+  (get-type [_] :val))
 
 (defn- vget
   [x p]
