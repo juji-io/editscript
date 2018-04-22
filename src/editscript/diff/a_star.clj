@@ -142,13 +142,13 @@
     (+ gc (if (= gc Long/MAX_VALUE)
             0
             (case op
-              := 0
-              :- 1
-              :+ sb+1
-              :r (if (or (= sa 1) (= sb 1))
-                   sb+1
-                   (min (A* na nb came)
-                        sb+1)))))))
+              :=      0
+              :-      1
+              (:a :i) sb+1
+              :r      (if (or (= sa 1) (= sb 1))
+                        sb+1
+                        (min (A* na nb came)
+                             sb+1)))))))
 
 (defn- heuristic
   "An optimistic estimate of the cost to reach goal when at (x y).
@@ -196,13 +196,16 @@
         a=b  (values=? va vb)
         x+1  (inc x)
         y+1  (inc y)
+        x=gx (= x gx)
         x<gx (< x gx)
         y<gy (< y gy)]
-    (cond-> []
-      (and x<gx y<gy a=b)       (conj (->Step := cur [x+1 y+1]))
-      (and x<gx y<gy (not a=b)) (conj (->Step :r cur [x+1 y+1]))
-      x<gx                      (conj (->Step :- cur [x+1 y]))
-      y<gy                      (conj (->Step :+ cur [x y+1])))))
+    (if (and x<gx y<gy a=b)
+      [(conj (->Step := cur [x+1 y+1]))]
+      (cond-> []
+        (and x<gx y<gy) (conj (->Step :r cur [x+1 y+1])) ; replace
+        x<gx            (conj (->Step :- cur [x+1 y]))   ; delete
+        (and x=gx y<gy) (conj (->Step :a cur [x y+1]))   ; append at the end
+        (and x<gx y<gy) (conj (->Step :i cur [x y+1])))))) ; insert in front
 
 (defn- children-nodes
   [node]
@@ -215,7 +218,7 @@
         (if (values=? (get-value ra) (get-value rb))
           0
           2))
-    (let [ai  (conj (children-nodes ra) ra)
+    (let [ai   (conj (children-nodes ra) ra)
           bi   (conj (children-nodes rb) rb)
           goal [(dec (count ai)) (dec (count bi))]
           init [0 0]]
@@ -224,38 +227,60 @@
                             {init 0})]
         (let [[came' open g] (get-state state)]
           (if (empty? open)
-            "A* fails to find a solution"
+            (throw (ex-info "A* fails to find a solution" {:ra ra :rb rb}))
             (let [[cur cost] (peek open)]
               (if (= cur goal)
-                (do
-                  (vswap! came assoc [ra rb] came')
+                (let [end [ra rb]]
+                  (vswap! came assoc end came')
+                  ;; (vswap! came assoc end (adjust-append came' end))
                   cost)
                 (recur (reduce
                         (partial explore ai bi came goal)
                         (set-open state (pop open))
                         (frontier ai bi cur goal)))))))))))
 
-(defn- convert-path [trie path]
-  path
-  )
+(defn- adjust-delete-insert
+  [trie op path]
+  (loop [newp     []
+         prev     []
+         [k & ks] path]
+    (if k
+      (let [d (get-in @trie (conj prev ::delta) 0)]
+        (recur (conj newp (if (int? k) (+ k d) k))
+               (conj prev k)
+               ks))
+      (let [l    (last newp)
+            p    (-> newp butlast vec)
+            seen (conj p ::delta)
+            d    (get-in @trie seen 0)]
+        (vswap! trie assoc-in seen (case op :- (dec d) :i (inc d) d))
+        newp))))
 
-(defn- update-path [trie path arg2]
-  )
+(defn- adjust-append
+  [trie op node path]
+  ;; path
+  (if (= op :a)
+    (conj path (+ (-> node get-children count)
+                  (get-in @trie (conj path ::delta) 0)))
+    path))
+
+(defn- convert-path
+  [trie op node path]
+  ;; path
+  (->> path
+       (adjust-delete-insert trie op)
+       (adjust-append trie op node)))
 
 (defn- write-script
   [steps script]
   (reduce
    (fn [trie [op na nb]]
-     (let [path (get-path na)
-           path' (convert-path trie path)
+     (let [path  (convert-path trie op na (get-path na))
            value (get-value nb)]
        (case op
-         :- (do (delete-data script path')
-                (update-path trie path :-))
-         :r (do (replace-data script path' value)
-                (update-path trie path :r))
-         :+ (do (add-data script path value)
-                (update-path trie path :+))
+         :-      (delete-data script path)
+         :r      (replace-data script path value)
+         (:a :i) (add-data script path value)
          nil)
        trie))
    (volatile! {})
@@ -263,7 +288,6 @@
 
 (defn- trace*
   [came cur steps]
-  ;; (println "steps:" @steps)
   (if-let [m (came cur)]
     (loop [v (m cur)]
       (if v
@@ -276,8 +300,10 @@
     steps))
 
 (defn- trace
-  ([came cur]
-   @(trace* came cur (volatile! '())))
+  ([came [ra rb :as cur]]
+   (if (seq (came cur))
+     @(trace* came cur (volatile! '()))
+     [[:r ra rb]]))
   ([came cur script]
    (-> (trace came cur)
        (write-script script))))
@@ -291,80 +317,22 @@
             rootb (last (index b))
             came  (volatile! {})
             cost  (A* roota rootb came)]
-        (println "cost is" cost)
-        (println "came is" (map (fn [[k v]]
-                                  {(map get-order k)
-                                   (mapcat (fn [[k [p o]]]
-                                             {(map get-order k)
-                                              [(map get-order p) o]}) v)}) @came))
-        (println "explored" (reduce + (map count (vals @came))))
+        ;; (println "cost is" cost)
+        ;; (println "came is" (map (fn [[k v]]
+        ;;                           {(map get-order k)
+        ;;                            (mapcat (fn [[k [p o]]]
+        ;;                                      {(map get-order k)
+        ;;                                       [(map get-order p) o]}) v)}) @came))
+        ;; (println "explored" (reduce + (map count (vals @came))))
         (trace @came [roota rootb] script)))
     script))
 
 (comment
 
-  (def a [:a [:b [:c [:d :e] :f]]])
-  (def b [:a [:b :c :d] :e])
-  (diff a b)
-
-
-  (def a [:a [:s :t] [:u]])
-  (def b [[:s :u] :t :s])
-  (diff a b)
-  [[[0] :-] [[1 1] :r :u] [[1] :r [:s :u]] [[2 0] :-] [[2] :r :t] [[] :+ :s]]
-
-  (def a [:a [:s :t] :u])
-  (def b [[:b] [:s :t :u]])
-  (diff a b)
-
-  (def a [[:s :t] [:u]])
-  (def b [[:s] :t :s])
-  (diff a b)
-  [[[0 1] :-] [[0] :r [:s]] [[1 0] :-] [[1] :r :t] [[] :+ :s]]
-  [[[0 1] :-] [[0] :r [:s]] [[1 0] :r :t] [[1] :r :s]]
-
-  (def a (vec (seq "abd")))
-  (def b (vec (seq "bc")))
-  [[[0] :-] [[2] :r \c]]
-  (diff a b)
-
-  (def a [[:a :b] :c [:d]])
-  (def b [:c [:d] [:a :b]])
-  [[[0] :-] [[] :+ [:a :b]]]
-  (diff a b)
-
-  (def a [[:a [:b :c] :d] :e :f])
-  (def b [:b :c [:e] :f :g])
-  [[[0] :r :b] [[1] :r :c] [[2] :+ [:e]] [[] :+ :g]]
-  (diff a b)
-
-  (def a [[:u]])
-  (def b [:s :t])
-  (diff a b)
-
-  (def a [:e [:a :b] :c])
-  (def b [:a [:b :c] :d])
-  (diff a b)
-
-  (def a [:a [:b :c :d] :e :f])
-  (def b [[:b :c :d :e] [:f]])
-  (diff a b)
-
-  (def a [[:a] :b [:c [:d] [:e] :f]])
-  (def b [[:b] [:c [:e] [:f] :d]])
-  (diff a b)
-
-  (editscript.diff.base/diff a b)
-
-  (def a 3)
-  (def b 7)
-  (diff a b)
-
-  (def a (vec (seq "ab")))
-  (def b (vec (seq "bc")))
-  (diff a b)
-  [[[0] :-] [[] :+ \c]]
-
-  (children-nodes (last (index a)))
+  (def a 1)
+  (index a)
+  (def b 2)
+  [[[] :r 2]]
+  (patch a (diff a b))
 
   )
