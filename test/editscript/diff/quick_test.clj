@@ -28,34 +28,34 @@
 
 (deftest diff-patch-test
   (testing "Diffing and patching some nested data structures"
-    (let [a {:a {:o 4} :b 'b}
-          b {:a {:o 3} :b 'c :c 42}
+    (let [a   {:a {:o 4} :b 'b}
+          b   {:a {:o 3} :b 'c :c 42}
           b-a (diff a b)
           a-b (diff b a)
-          c [nil 3 'c {:a 3} 4]
-          d [3 'c {:b 3} 4]
+          c   [nil 3 'c {:a 3} 4]
+          d   [3 'c {:b 3} 4]
           d-c (diff c d)
           c-d (diff d c)
-          e ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}]
-          f [24 23 {:a [2 3]} 1 3 #{1 2 3}]
+          e   ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}]
+          f   [24 23 {:a [2 3]} 1 3 #{1 2 3}]
           f-e (diff e f)
           e-f (diff f e)
-          g {nil 1}
-          h {nil 2}
+          g   {nil 1}
+          h   {nil 2}
           h-g (diff g h)
           g-h (diff h g)
-          i {nil 3}
-          j '()
+          i   {nil 3}
+          j   '()
           j-i (diff i j)
           i-j (diff j i)
-          k {1 3}
-          l {1 nil}
+          k   {1 3}
+          l   {1 nil}
           l-k (diff k l)
           k-l (diff l k)]
       (is (= (get-edits b-a)
              [[[:a :o] :r 3]
               [[:b] :r 'c]
-              [[:c] :+ 42]] ))
+              [[:c] :+ 42]]))
       (is (= (get-edits d-c)
              [[[0] :-]
               [[2 :a] :-]
@@ -125,5 +125,4 @@
   ;; Found 1 outliers in 60 samples (1.6667 %)
 	;; low-severe	 1 (1.6667 %)
   ;; Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
-
-  )
+)

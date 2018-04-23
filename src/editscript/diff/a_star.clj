@@ -136,13 +136,11 @@
 (declare diff*)
 
 (defn- compute-cost
-  [ai bi came g [x y :as current] [x' y'] op]
-  (let [na   (ai x)
-        nb   (bi y)
-        sa   (get-size na)
+  [na nb came g cur op]
+  (let [sa   (get-size na)
         sb   (get-size nb)
         sb+1 (inc sb)
-        gc   (access-g g current)]
+        gc   (access-g g cur)]
     (+ gc (if (= gc Long/MAX_VALUE)
             0
             (case op
@@ -151,8 +149,7 @@
               (:a :i) sb+1
               :r      (if (or (= sa 1) (= sb 1))
                         sb+1
-                        (min (diff* na nb came)
-                             sb+1)))))))
+                        (diff* na nb came)))))))
 
 (defn- heuristic
   "An optimistic estimate of the cost to reach goal when at (x y).
@@ -172,19 +169,26 @@
         1
         (inc cost)))))
 
+(defn- get-node
+  [x gx ra ca]
+  (if (= gx x) ra (ca x)))
+
 (defn- explore
-  [ai bi came goal state step]
-  (let [[came' open g]                   (get-state state)
-        [op [x y :as cu] [x' y' :as nb]] (get-step step)
-        tmp-g                            (compute-cost ai bi came g cu nb op)]
-    (if (>= tmp-g (access-g g nb))
-      (if (open nb)
+  [ra rb ca cb came [gx gy :as goal] state step]
+  (let [[came' open g]                     (get-state state)
+        [op [x y :as cur] [x' y' :as nbr]] (get-step step)
+        na                                 (get-node x gx ra ca)
+        nb                                 (get-node y gy rb cb)
+        tmp-g                              (compute-cost na nb came g cur op)]
+    (if (>= tmp-g (access-g g nbr))
+      (if (open nbr)
         state
-        (set-open state (assoc open nb Long/MAX_VALUE)))
+        (set-open state (assoc open nbr Long/MAX_VALUE)))
       (doto state
-        (set-came (assoc came' [(ai x') (bi y')] [[(ai x) (bi y)] op]))
-        (set-open (assoc open nb (+ tmp-g (heuristic nb goal))))
-        (set-g (assoc g nb tmp-g))))))
+        (set-came (assoc came' [(get-node x' gx ra ca) (get-node y' gy rb cb)]
+                         [[na nb] op]))
+        (set-open (assoc open nbr (+ tmp-g (heuristic nbr goal))))
+        (set-g (assoc g nbr tmp-g))))))
 
 (defn- values=?
   [va vb]
@@ -192,12 +196,10 @@
       (and (= (get-type va) (get-type vb) :val) (= va vb))))
 
 (defn- frontier
-  [ai bi [x y :as cur] [gx gy]]
-  (let [na   (get ai x)
-        nb   (get bi y)
-        va   (get-value na)
-        vb   (get-value nb)
-        a=b  (values=? va vb)
+  [ra rb ca cb [x y :as cur] [gx gy]]
+  (let [na   (get-node x gx ra ca)
+        nb   (get-node y gy rb cb)
+        a=b  (values=? (get-value na) (get-value nb))
         x+1  (inc x)
         y+1  (inc y)
         x=gx (= x gx)
@@ -211,16 +213,10 @@
         (and x=gx y<gy) (conj (->Step :a cur [x y+1]))   ; append at the end
         (and x<gx y<gy) (conj (->Step :i cur [x y+1])))))) ; insert in front
 
-(defn- children-nodes
-  [node]
-  (-> node get-children vals vec))
-
 (defn- A*
   [ra rb came]
-  (let [ca   (children-nodes ra)
-        cb   (children-nodes rb)
-        ai   (conj ca ra)
-        bi   (conj cb rb)
+  (let [ca   (get-children ra)
+        cb   (get-children rb)
         goal [(count ca) (count cb)]
         init [0 0]]
     (loop [state (->State {}
@@ -235,20 +231,24 @@
                 (vswap! came assoc end came')
                 cost)
               (recur (reduce
-                      (partial explore ai bi came goal)
+                      (partial explore ra rb ca cb came goal)
                       (set-open state (pop open))
-                      (frontier ai bi cur goal))))))))))
+                      (frontier ra rb ca cb cur goal))))))))))
 
 (defn- diff*
   [ra rb came]
-  (cond
-    (= (get-size ra) (get-size rb) 1)
-    (do (vswap! came assoc [ra rb] {})
-        (if (values=? (get-value ra) (get-value rb))
-          0
-          2))
-    :else
-    (A* ra rb came)))
+  (let [sizeb  (get-size rb)
+        update #(vswap! came assoc [ra rb] {})]
+    (cond
+      (= 1 sizeb
+         (get-size ra)) (do (update)
+                            (if (values=? (get-value ra) (get-value rb))
+                              0
+                              2))
+      (= (get-type ra)
+         (get-type rb)) (A* ra rb came)
+      :else             (do (update)
+                            (inc sizeb)))))
 
 ;; generating editscript
 
@@ -341,7 +341,6 @@
 
   (def a {:a {:o 4} :b 'b})
   (def b {:a {:o 3} :b 'c :c 42})
-  [[[:a :o] :r 3] [[:b] :+ c] [[:b] :r 42]]
   (diff a b)
   (diff a b)
   (patch a (diff a b))
