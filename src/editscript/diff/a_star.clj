@@ -2,45 +2,50 @@
   (:require [clojure.set :as set]
             [clojure.data.priority-map :as p]
             [editscript.core :refer :all])
-  (:import [clojure.lang PersistentTreeMap]))
+  (:import [clojure.lang PersistentVector]
+           [java.io Writer]))
 
-;; (set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 ;; (set! *unchecked-math* :warn-on-boxed)
 
 ;; indexing
 
 (defprotocol INode
-  (get-path [this] "Get the path to the node from root, a vector")
+  (get-path [this] "Get the path to the node from root")
   (get-value [this] "Get the actual data")
-  (get-order [this] "Get the order number of the node in indices")
-  (set-order [this order] "set the order number of the node in indices")
-  (get-children [this] "Get the children nodes as a map")
-  (add-child [this node] "Add a child node to the children map")
+  (get-order [this] "Get the traversal order number of the node")
+  (set-order [this order] "set the traversal order number of the node")
+  (get-children [this] "Get the children ")
+  (add-child [this node] "Add a child node")
   (get-size [this] "Get the size of sub-tree, used to estimate cost")
   (set-size [this s] "Set the size of sub-tree"))
 
-(deftype Node [path
+(deftype Node [^PersistentVector path
                value
-               ^:volatile-mutable ^long order
-               ^:volatile-mutable ^PersistentTreeMap children
-               ^:volatile-mutable ^long size]
+               ^:volatile-mutable ^PersistentVector children
+               ^:volatile-mutable ^int order
+               ^:volatile-mutable ^int size]
   INode
   (get-path [this] path)
   (get-value [this] value)
   (get-order [this] order)
-  (set-order [this o] (set! order (long o)))
+  (set-order [this o] (set! order (int o)))
   (get-children [this] children)
-  (add-child [this node]
-    (set! children (assoc children (last (get-path node)) node)))
+  (add-child [this node] (set! children (conj children node)))
   (get-size [this] size)
-  (set-size [this s] (set! size (long s))))
+  (set-size [this s] (set! size (int s))))
+
+(defn- get-key
+  [node]
+  (-> node get-path peek))
 
 (defmethod print-method Node
-  [x ^java.io.Writer writer]
+  [x ^Writer writer]
   (print-method {:path     (get-path x)
                  :value    (get-value x)
+                 :children (map-indexed (fn [i n] [i (get-order n)])
+                                        (get-children x))
                  :order    (get-order x)
-                 :children (mapv (fn [[k v]] [k (get-order v)]) (get-children x))
                  :size     (get-size x)}
                 writer))
 
@@ -48,7 +53,7 @@
 
 (defn- index-associative
   [nodes path data parent]
-  (let [node (->Node path data 0 (sorted-map) 1)]
+  (let [node (->Node path data [] 0 1)]
     (add-child parent node)
     (reduce-kv
      (fn [_ k v]
@@ -57,13 +62,14 @@
      data)
     (doto node
       (set-order (count @nodes))
-      (set-size (+ (get-size node)
-                   (reduce + (map get-size (vals (get-children node)))))))
+      (set-size (+ (get-size node) (->> (get-children node)
+                                        (map get-size)
+                                        (reduce +)))))
     (vswap! nodes conj node)))
 
 (defn- index-value
   [nodes path data parent]
-  (let [node (->Node path data (count @nodes) nil 1)]
+  (let [node (->Node path data nil (count @nodes) 1)]
     (add-child parent node)
     (vswap! nodes conj node)))
 
@@ -75,10 +81,10 @@
 
 (defn- index
   "Traverse data to build an indexing vector of Nodes in post-order,
-  compute path, sizes of sub-trees, etc."
+  compute path, sizes of sub-trees, etc. for each Node"
   [data]
   (let [nodes (volatile! [])
-        dummy (->Node [] ::dummy 0 (sorted-map) 0)]
+        dummy (->Node [] ::dummy [] 0 0)]
     (index* nodes [] data dummy)
     @nodes))
 
@@ -96,7 +102,7 @@
   (neighbor [_] nb))
 
 (defmethod print-method Step
-  [x ^java.io.Writer writer]
+  [x ^Writer writer]
   (print-method {:op (operator x)
                  :cu (current x)
                  :nb (neighbor x)}
@@ -131,7 +137,7 @@
 
 (defn- access-g
   [g cur]
-  (get g cur Long/MAX_VALUE))
+  (get g cur Integer/MAX_VALUE))
 
 (declare diff*)
 
@@ -141,7 +147,7 @@
         sb   (get-size nb)
         sb+1 (inc sb)
         gc   (access-g g cur)]
-    (+ gc (if (= gc Long/MAX_VALUE)
+    (+ gc (if (= gc Integer/MAX_VALUE)
             0
             (case op
               :=      0
@@ -162,7 +168,7 @@
   editscript, whereas deletion does not, we assign estimate differently."
   [[x y] [gx gy]]
   (let [delta (- gy gx)
-        cost  (Math/abs (- ^long delta (- ^long y ^long x)))]
+        cost  (Math/abs (- ^int delta (- ^int y ^int x)))]
     (if (= cost 0)
       0
       (if (< delta 0)
@@ -171,7 +177,9 @@
 
 (defn- get-node
   [x gx ra ca]
-  (if (= gx x) ra (ca x)))
+  (if (= gx x)
+    ra
+    (ca x)))
 
 (defn- explore
   [ra rb ca cb came [gx gy :as goal] state step]
@@ -183,7 +191,7 @@
     (if (>= tmp-g (access-g g nbr))
       (if (open nbr)
         state
-        (set-open state (assoc open nbr Long/MAX_VALUE)))
+        (set-open state (assoc open nbr Integer/MAX_VALUE)))
       (doto state
         (set-came (assoc came' [(get-node x' gx ra ca) (get-node y' gy rb cb)]
                          [[na nb] op]))
@@ -340,6 +348,7 @@
 (comment
 
   (def a {:a {:o 4} :b 'b})
+  (index a)
   (def b {:a {:o 3} :b 'c :c 42})
   (diff a b)
   (diff a b)
