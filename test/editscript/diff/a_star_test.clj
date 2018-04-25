@@ -48,6 +48,6 @@
   (testing "Testing A* with some mixed data structures"
     (is (= (get-edits (diff 1 2))
            [[[] :r 2]]))
-    #_(is (= (get-edits (diff {:a {:o 4} :b 'b}
+    (is (= (get-edits (diff {:a {:o 4} :b 'b}
                             {:a {:o 3} :b 'c :c 42}))
-           ))))
+           [[[:a :o] :r 3] [[:b] :r 'c] [[:c] :+ 42]]))))
