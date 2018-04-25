@@ -32,7 +32,7 @@
   (get-children [this] children)
   (add-child [this node]
     (set! children (assoc children (get-key node) node))
-    this)
+    node)
   (get-size [this] size)
   (set-size [this s] (set! size (long s)) this))
 
@@ -74,8 +74,7 @@
   "Traverse data to build an indexing vector of Nodes in post-order,
   compute path, sizes of sub-trees, etc. for each Node"
   [data]
-  (let [dummy (->Node [] ::dummy {} 0)]
-    (index* [] data dummy)))
+  (index* [] data (->Node [] ::dummy {} 0)))
 
 ;; diffing
 
@@ -371,6 +370,8 @@
   (index a)
   (def b {:a {:o 3} :b 'c :c 42})
   (index b)
+  (index 1)
+  (index [])
   (diff a b)
   (diff a b)
   (patch a (diff a b))
