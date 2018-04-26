@@ -25,3 +25,9 @@
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
                 (= b (patch a (q/diff a b)))))
+
+(test/defspec a-star-end-2-end-generative-test
+  10000
+  (prop/for-all [a (gen/recursive-gen compound scalars)
+                 b (gen/recursive-gen compound scalars)]
+                (= b (patch a (a/diff a b)))))
