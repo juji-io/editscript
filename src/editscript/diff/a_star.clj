@@ -5,8 +5,8 @@
   (:import [clojure.lang PersistentVector]
            [java.io Writer]))
 
-(set! *warn-on-reflection* true)
-(set! *unchecked-math* :warn-on-boxed)
+;; (set! *warn-on-reflection* true)
+;; (set! *unchecked-math* :warn-on-boxed)
 
 ;; indexing
 
@@ -59,12 +59,13 @@
   [x ^Writer writer]
   (print-method {:path     (get-path x)
                  :value    (get-value x)
-                 :children (mapv (fn [[k v]] [k (get-size v)]) (get-children x))
-                 :first    (get-first x)
-                 :last     (get-last x)
-                 :next     (get-next x)
-                 :index    (get-index x)
-                 :size     (get-size x)}
+                 ;; :children (mapv (fn [[k v]] [k (get-size v)]) (get-children x))
+                 ;; :first    (get-first x)
+                 ;; :last     (get-last x)
+                 ;; :next     (get-next x)
+                 ;; :index    (get-index x)
+                 ;; :size (get-size x)
+                 }
                 writer))
 
 (declare index*)
@@ -92,8 +93,8 @@
     :val        (index-value path data parent)))
 
 (defn- index
-  "Traverse data to build an indexing tree of Nodes in post-order,
-  compute path, sizes of sub-trees, siblings, and so on for each Node"
+  "Traverse data to build an indexing tree of Nodes,
+  compute path, sizes of sub-trees, siblings, etc. for each Node"
   [data]
   (index* [] data (->Node [] ::dummy {} nil nil nil 0 0)))
 
@@ -262,8 +263,6 @@
                           (p/priority-map init (heuristic type init end goal))
                           {init 0})]
       (let [[came' open g] (get-state state)]
-        ;; (println "open:" (mapv (fn [[k v]] [(map get-value k) v]) open))
-        ;; (println "g:" (mapv (fn [[k v]] [(map get-value k) v]) g))
         (if (empty? open)
           (throw (ex-info "A* fails to find a solution" {:ra ra :rb rb}))
           (let [[cur cost] (peek open)]
@@ -286,8 +285,10 @@
           (if (values=? (get-value ra) (get-value rb))
             0
             2))
+
       (= typea (-> rb get-value get-type))
       (A* typea ra rb came)
+
       :else
       (do (update)
           (inc ^long sizeb)))))
@@ -300,29 +301,30 @@
          prev     []
          [k & ks] path]
     (if k
-      (let [^long d (get-in @trie (conj prev ::delta) 0)]
-        (recur (conj newp (if (int? k) (+ ^long k d) k))
+      (let [^long d (get-in @trie (conj prev :delta) 0)]
+        (recur (conj newp (if (integer? k) (+ ^long k d) k))
                (conj prev k)
                ks))
-      (let [seen    (conj (if (seq newp) (pop newp) newp) ::delta)
+      (let [seen    (conj (if (seq path) (pop path) path) :delta)
             ^long d (get-in @trie seen 0)]
         (vswap! trie assoc-in seen (case op :- (dec d) :i (inc d) d))
         newp))))
 
 (defn- adjust-append
-  [trie op na nb path]
+  [trie op na nb path path']
   (if (= op :a)
     (case (-> na get-value get-type)
-      :vec (conj path (let [^long d (get-in @trie (conj path ::delta) 0)]
-                        (+ d (-> na get-children count))))
-      :map (conj path (get-key nb)))
-    path))
+      :vec (conj path'
+                 (let [^long d (get-in @trie (conj path :delta) 0)]
+                   (+ d (-> na get-children count))))
+      :map (conj path' (get-key nb)))
+    path'))
 
 (defn- convert-path
   [trie op na nb path]
   (->> path
        (adjust-delete-insert trie op)
-       (adjust-append trie op na nb)))
+       (adjust-append trie op na nb path)))
 
 (defn- write-script
   [steps script]
@@ -336,7 +338,7 @@
          (:a :i) (add-data script path value)
          nil)
        trie))
-   (volatile! {})
+   (volatile! {:delta 0})
    steps))
 
 (defn- trace*
@@ -346,14 +348,14 @@
       (loop [v (m cur)]
         (if v
           (let [[[na nb :as prev] op] v]
-            (if (came prev)
+            (if (and (came prev) (not= op :-))
               (trace* came prev steps)
               (vswap! steps conj [op na nb]))
             (recur (m prev)))
           steps))
       (let [[ra rb] cur]
-         (vswap! steps conj [:r ra rb])
-         steps))
+        (vswap! steps conj [:r ra rb])
+        steps))
     steps))
 
 (defn- trace
@@ -379,9 +381,16 @@
 
 (comment
 
-  (def a [:a :e [:b :c]])
-  (index a)
-  (def b [:d :a :b :e])
+  (def a [[:a [:b :c] :d] :e :f])
+  (def b [:b :c [:e] :f :g])
+  (diff a b)
+  (patch a (diff a b))
+
+  (def a [[:a] :b [:c [:d] [:e] :f]])
+  (def b [[:b] [:c [:e] [:f] :d]])
+  (diff a b)
+  (patch a (diff a b))
+
   (diff a b)
   (patch a (diff a b))
   (def a [{:a [3 4] :b [1 2]} [42 nil "life"]])
@@ -397,5 +406,6 @@
   (def a [:a :b])
   (def b [:b :c])
   (patch a (diff a b))
+  (diff a b)
 
   )
