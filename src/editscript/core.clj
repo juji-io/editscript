@@ -4,6 +4,7 @@
             IPersistentList IPersistentMap IPersistentSet IPersistentVector]))
 
 (set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 (defprotocol IEdit
   (add-data [this path value])
@@ -91,7 +92,7 @@
     ;;NB, there is a special case where dissoc has no effect:
     ;;if p is ##NaN, then p cannot be found in x, for (= ##NaN ##NaN) is false!
     :map (dissoc x p)
-    :vec (vec (concat (subvec x 0 p) (subvec x (inc p))))
+    :vec (vec (concat (subvec x 0 p) (subvec x (inc ^long p))))
     :set (set/difference x #{p})
     :lst (->> (split-at p x)
               (#(concat (first %) (next (last %))))
@@ -111,7 +112,7 @@
   [x p v]
   (case (get-type x)
     :map (assoc x p v)
-    :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc p))))
+    :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc ^long p))))
     :set (-> x (set/difference #{p}) (conj v))
     :lst (->> (split-at p x)
               (#(concat (first %) (conj (rest (last %)) v)))

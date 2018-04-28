@@ -2,7 +2,8 @@
   (:require [clojure.set :as set]
             [editscript.core :refer :all]))
 
-;; (set! *unchecked-math* :warn-on-boxed)
+(set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 (declare diff*)
 
@@ -25,9 +26,9 @@
 (defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
   Information Processing Letters, 35:6, p317-23.'"
-  [a b n m]
+  [a b ^long n ^long m]
   (let [delta (- n m)
-        snake (fn [k x]
+        snake (fn [^long k ^long x]
                 (loop [x x y (- x k)]
                   (let [ax (get a x) by (get b y)]
                     (if (and (< x n)
@@ -36,13 +37,13 @@
                              (= ax by))
                       (recur (inc x) (inc y))
                       x))))
-        fp-fn (fn [fp k]
+        fp-fn (fn [fp ^long k]
                 (let [[dk-1 vk-1] (get fp (dec k) [-1 []])
-                      dk-1        (inc dk-1)
+                      dk-1        (inc ^long dk-1)
                       [dk+1 vk+1] (get fp (inc k) [-1 []])
-                      x           (max dk-1 dk+1)
-                      sk          (snake k x)
-                      ops         (let [es (if (> dk-1 dk+1)
+                      x           (max dk-1 ^long dk+1)
+                      ^long sk    (snake k x)
+                      ops         (let [es (if (> dk-1 ^long dk+1)
                                              (conj vk-1 :-)
                                              (conj vk+1 :+))]
                                     (if (> sk x)
@@ -70,7 +71,6 @@
   "Turn isolated consecutive `:-` `:+` into a `:r`,
   do not convert if there's `:-` in front, as it is ambiguous"
   [v]
-  {:pre [(vector? v)]}
   (let [n (count v)]
     (loop [r (transient []) i -1 j 0 k 1]
       (let [ei (get v i) ej (get v j) ek (get v k)]
@@ -91,7 +91,7 @@
 
 (defn- diff-vec [script path a b]
   (reduce
-   (fn [{:keys [ia ia' ib] :as m} op]
+   (fn [{:keys [^long ia ^long ia' ^long ib] :as m} op]
      (case op
        :- (do (diff* script (conj path ia') (get a ia) (nada))
               (assoc! m :ia (inc ia)))
@@ -99,7 +99,8 @@
               (assoc! m :ia' (inc ia') :ib (inc ib)))
        :r (do (diff* script (conj path ia') (get a ia) (get b ib))
               (assoc! m :ia (inc ia) :ia' (inc ia') :ib (inc ib)))
-       (assoc! m :ia (+ ia op) :ia' (+ ia' op) :ib (+ ib op))))
+       (assoc! m :ia (+ ia ^long op) :ia' (+ ia' ^long op)
+               :ib (+ ib ^long op))))
    (transient {:ia 0 :ia' 0 :ib 0})
    (vec-edits a b)))
 

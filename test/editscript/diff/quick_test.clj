@@ -4,7 +4,8 @@
             [editscript.diff.quick :refer :all]
             ;; for benchmark
             [criterium.core :as c]
-            [diffit.vec]))
+            ;; [diffit.vec]
+            ))
 
 (deftest vec-edits-test
   (testing "Wu 1990 vector edit example and more"
@@ -100,6 +101,13 @@
   (c/bench (vec-edits as bs))
 
   (c/bench (diff as bs))
+
+  (time (editscript.diff.a-star/diff as bs))
+
+  (= bs (patch as (editscript.diff.a-star/diff as bs)))
+
+  (c/bench (editscript.diff.a-star/diff as bs))
+
   ;; ==>
   ;; Evaluation count : 1260 in 60 samples of 21 calls.
   ;; Execution time mean : 50.319675 ms

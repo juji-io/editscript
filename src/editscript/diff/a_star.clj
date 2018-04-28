@@ -2,11 +2,11 @@
   (:require [clojure.set :as set]
             [clojure.data.priority-map :as p]
             [editscript.core :refer :all])
-  (:import [clojure.lang PersistentVector]
+  (:import [clojure.lang PersistentVector Keyword]
            [java.io Writer]))
 
-;; (set! *warn-on-reflection* true)
-;; (set! *unchecked-math* :warn-on-boxed)
+(set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 ;; indexing
 
@@ -22,6 +22,7 @@
   (set-next [this node] "Set the next sibling node")
   (^long get-index [this] "Get the index of this node among siblings")
   (set-index [this i] "Set the index of this node among siblings")
+  (^long get-order [this] "Get the order of this node in traversal")
   (^long get-size [this] "Get the size of sub-tree, used to estimate cost")
   (set-size [this s] "Set the size of sub-tree"))
 
@@ -32,6 +33,7 @@
                ^:volatile-mutable last
                ^:volatile-mutable next
                ^:volatile-mutable ^long index
+               ^long order
                ^:volatile-mutable ^long size]
   INode
   (get-path [this] path)
@@ -44,6 +46,7 @@
   (set-next [this n] (set! next n))
   (get-index [this] index)
   (set-index [this i] (set! index (long i)))
+  (get-order [this] order)
   (get-size [this] size)
   (set-size [this s] (set! size (long s)) this)
   (add-child [this node]
@@ -57,55 +60,76 @@
 
 (defmethod print-method Node
   [x ^Writer writer]
-  (print-method {:path     (get-path x)
-                 :value    (get-value x)
-                 ;; :children (mapv (fn [[k v]] [k (get-size v)]) (get-children x))
-                 ;; :first    (get-first x)
-                 ;; :last     (get-last x)
-                 ;; :next     (get-next x)
-                 ;; :index    (get-index x)
-                 ;; :size (get-size x)
-                 }
+  (print-method {:path  (get-path x)
+                 :value (get-value x)
+                 :order (get-order x)
+                 :children (get-children x)}
                 writer))
 
 (declare index*)
 
 (defn- index-associative
-  [path data parent]
-  (let [node (->Node path data {} nil nil nil 0 1)]
+  [order path data parent]
+  (let [node (->Node path data {} nil nil nil 0 @order 1)]
+    (vswap! order (fn [^long o] (inc o)))
     (add-child parent node)
     (reduce-kv
      (fn [_ k v]
-       (index* (conj path k) v node))
+       (index* order (conj path k) v node))
      nil
      data)
     (let [^long cs (->> (get-children node) vals (map get-size) (reduce +))]
       (set-size node (+ (get-size node) cs)))))
 
 (defn- index-value
-  [path data parent]
-  (add-child parent (->Node path data nil nil nil nil 0 1)))
+  [order path data parent]
+  (let [node (->Node path data nil nil nil nil 0 @order 1)]
+    (add-child parent node)
+    (vswap! order (fn [^long o] (inc o)))
+    node))
 
 (defn- index*
-  [path data parent]
+  [order path data parent]
   (case (get-type data)
-    (:map :vec) (index-associative path data parent)
-    :val        (index-value path data parent)))
+    (:map :vec) (index-associative order path data parent)
+    :val        (index-value order path data parent)))
 
 (defn- index
   "Traverse data to build an indexing tree of Nodes,
   compute path, sizes of sub-trees, siblings, etc. for each Node"
   [data]
-  (index* [] data (->Node [] ::dummy {} nil nil nil 0 0)))
+  (let [order (volatile! 0)]
+    (index* order [] data (->Node [] ::dummy {} nil nil nil 0 -1 0))))
 
 ;; diffing
+
+(deftype Coord [^Node a
+                ^Node b]
+  Object
+  (hashCode [_]
+    (let [x (get-order a)
+          y (get-order b)]
+      ;; Szudzik's paring function
+      (if (> ^long y ^long x)
+        (+ ^long x ^long (* ^long y ^long y))
+        (+ ^long x ^long y ^ long (* ^long x ^long x)))))
+  (equals [this that]
+    (= (.hashCode this) (.hashCode that)))
+  (toString [_]
+    (str "[" (get-order a) ", "(get-order b)"]")))
+
+(defn- get-coord
+  [^Coord coord]
+  [(.a coord) (.b coord)])
 
 (defprotocol IStep
   (operator [this] "Operator to try")
   (current [this] "Starting pair of nodes")
   (neighbor [this] "Destination pair of nodes"))
 
-(deftype Step [op cur nbr]
+(deftype Step [^Keyword op
+               ^Coord cur
+               ^Coord nbr]
   IStep
   (operator [_] op)
   (current [_] cur)
@@ -152,8 +176,9 @@
 (declare diff*)
 
 (defn- compute-cost
-  [[na nb :as cur] came g op]
-  (let [sa       (get-size na)
+  [cur came g op]
+  (let [[na nb]  (get-coord cur)
+        sa       (get-size na)
         sb       (get-size nb)
         sb+1     (inc ^long sb)
         ^long gc (access-g g cur)
@@ -177,30 +202,35 @@
   For nested structure, multiple edits may be merged into one.
   Also, because addition/replacement requires new value to be present in
   editscript, whereas deletion does not, we assign estimate differently."
-  [type [na nb] [ra rb] [gx gy]]
+  [type cur end [gx gy]]
   (case type
     :map 0
-    :vec 0 #_(let [x     (if (identical? ra na) gx (get-index na))
-               y     (if (identical? rb nb) gy (get-index nb))
-               delta (- ^long gy ^long gx)
-               cost  (Math/abs (- delta (- ^long y ^long x)))]
+    :vec (let [[na nb] (get-coord cur)
+               [ra rb] (get-coord end)
+               x       (if (identical? ra na) gx (get-index na))
+               y       (if (identical? rb nb) gy (get-index nb))
+               delta   (- ^long gy ^long gx)
+               k       (- ^long y ^long x)
+               cost    (- delta k)]
            (if (= cost 0)
              0
-             (if (<= delta 0)
-               1
-               cost)))))
+             (if (>= delta 0)
+               (if (> k delta) 1 0)
+               (if (< k delta) (inc cost) 0))))))
 
 (defn- explore
   [type end came goal state step]
-  (let [[came' open g]                         (get-state state)
-        [op [na nb :as cur] [na' nb' :as nbr]] (get-step step)
-        tmp-g                                  (compute-cost cur came g op)]
+  (let [[came' open g] (get-state state)
+        [op cur nbr]   (get-step step)
+        [na nb]        (get-coord cur)
+        [na' nb']      (get-coord nbr)
+        tmp-g          (compute-cost cur came g op)]
     (if (>= ^long tmp-g ^long (access-g g nbr))
       (if (open nbr)
         state
         (set-open state (assoc open nbr Long/MAX_VALUE)))
       (doto state
-        (set-came (assoc came' [na' nb'] [[na nb] op]))
+        (set-came (assoc came' (->Coord na' nb') [(->Coord na nb) op]))
         (set-open (assoc open nbr
                          (+ ^long tmp-g ^long (heuristic type nbr end goal))))
         (set-g (assoc g nbr tmp-g))))))
@@ -208,30 +238,35 @@
 (defn- values=?
   [va vb]
   (or (identical? va vb)
-      (and (= (get-type va) (get-type vb) :val) (= va vb))))
+      (and (= :val (get-type va) (get-type vb)) (= va vb))))
 
 (defn- next-node
   [na ra]
   (or (get-next na) ra))
 
 (defn- vec-frontier
-  [[ra rb :as end] [na nb :as cur]]
-  (let [a=b  (values=? (get-value na) (get-value nb))
-        x=gx (identical? na ra)
-        x<gx (not x=gx)
-        y<gy (not (identical? nb rb))
-        na'  (next-node na ra)
-        nb'  (next-node nb rb)]
-    (cond-> []
-      (and x<gx y<gy a=b) (conj (->Step := cur [na' nb']))
-      x<gx                (conj (->Step :- cur [na' nb]))  ; delete
-      (and x<gx y<gy)     (conj (->Step :r cur [na' nb'])) ; replace
-      (and x=gx y<gy)     (conj (->Step :a cur [na nb']))  ; append at the end
-      (and x<gx y<gy)     (conj (->Step :i cur [na nb']))))) ; insert in front
+  [end cur]
+  (let [[ra rb] (get-coord end)
+        [na nb] (get-coord cur)
+        a=b     (values=? (get-value na) (get-value nb))
+        x=gx    (identical? na ra)
+        x<gx    (not x=gx)
+        y<gy    (not (identical? nb rb))
+        na'     (next-node na ra)
+        nb'     (next-node nb rb)]
+    (if (and x<gx y<gy a=b)
+      [(->Step := cur (->Coord na' nb'))]
+      (cond-> []
+        x<gx            (conj (->Step :- cur (->Coord na' nb)))  ; delete
+        (and x<gx y<gy) (conj (->Step :r cur (->Coord na' nb'))) ; replace
+        (and x=gx y<gy) (conj (->Step :a cur (->Coord na nb')))  ; append
+        (and x<gx y<gy) (conj (->Step :i cur (->Coord na nb'))))))) ; insert
 
 (defn- map-frontier
-  [[ra rb :as end] [na nb :as cur]]
-  (let [va   (get-value na)
+  [end cur]
+  (let [[ra rb] (get-coord end)
+        [na nb] (get-coord cur)
+        va   (get-value na)
         mb   (get-value rb)
         x<gx (not (identical? na ra))
         y<gy (not (identical? nb rb))
@@ -242,11 +277,11 @@
         nb'' (or ((get-children rb) (get-key na')) nb)]
     (if (and x<gx y<gy)
       (if (contains? mb ka)
-        [(->Step (if (values=? va (mb ka)) := :r) cur [na' nb''])]
-        [(->Step :- cur [na' nb])])
+        [(->Step (if (values=? va (mb ka)) := :r) cur (->Coord na' nb''))]
+        [(->Step :- cur (->Coord na' nb))])
       (if (contains? (get-value ra) kb)
-        [(->Step := cur [ra nb'])]
-        [(->Step :a cur [ra nb'])]))))
+        [(->Step := cur (->Coord ra nb'))]
+        [(->Step :a cur (->Coord ra nb'))]))))
 
 (defn- frontier
   [type end cur]
@@ -256,15 +291,15 @@
 
 (defn- A*
   [type ra rb came]
-  (let [end  [ra rb]
+  (let [end  (->Coord ra rb)
         goal [(-> ra get-children count) (-> rb get-children count)]
-        init [(get-first ra) (get-first rb)]]
+        init (->Coord (get-first ra) (get-first rb))]
     (loop [state (->State {}
                           (p/priority-map init (heuristic type init end goal))
                           {init 0})]
       (let [[came' open g] (get-state state)]
         (if (empty? open)
-          (throw (ex-info "A* fails to find a solution" {:ra ra :rb rb}))
+          (throw (ex-info "A* diff fails to find a solution" {:ra ra :rb rb}))
           (let [[cur cost] (peek open)]
             (if (= cur end)
               (do (vswap! came assoc end came')
@@ -278,7 +313,7 @@
   [ra rb came]
   (let [^long sizeb (get-size rb)
         typea       (-> ra get-value get-type)
-        update      #(vswap! came assoc [ra rb] {})]
+        update      #(vswap! came assoc (->Coord ra rb) {})]
     (cond
       (= 1 sizeb (get-size ra))
       (do (update)
@@ -297,18 +332,20 @@
 
 (defn- adjust-delete-insert
   [trie op path]
-  (loop [newp     []
-         prev     []
-         [k & ks] path]
-    (if k
-      (let [^long d (get-in @trie (conj prev :delta) 0)]
-        (recur (conj newp (if (integer? k) (+ ^long k d) k))
-               (conj prev k)
-               ks))
-      (let [seen    (conj (if (seq path) (pop path) path) :delta)
-            ^long d (get-in @trie seen 0)]
-        (vswap! trie assoc-in seen (case op :- (dec d) :i (inc d) d))
-        newp))))
+  (if (= op :=)
+    path
+    (loop [newp     []
+           prev     []
+           [k & ks] path]
+      (if k
+        (let [^long d (get-in @trie (conj prev :delta) 0)]
+          (recur (conj newp (if (integer? k) (+ ^long k d) k))
+                 (conj prev k)
+                 ks))
+        (let [seen    (conj (if (seq path) (pop path) path) :delta)
+              ^long d (get-in @trie seen 0)]
+          (vswap! trie assoc-in seen (case op :- (dec d) :i (inc d) d))
+          newp)))))
 
 (defn- adjust-append
   [trie op na nb path path']
@@ -347,19 +384,20 @@
     (if (seq m)
       (loop [v (m cur)]
         (if v
-          (let [[[na nb :as prev] op] v]
+          (let [[prev op] v
+                [na nb]   (get-coord prev)]
             (if (and (came prev) (not= op :-))
               (trace* came prev steps)
               (vswap! steps conj [op na nb]))
             (recur (m prev)))
           steps))
-      (let [[ra rb] cur]
+      (let [[ra rb] (get-coord cur)]
         (vswap! steps conj [:r ra rb])
         steps))
     steps))
 
 (defn- trace
-  ([came [ra rb :as cur]]
+  ([came cur]
    @(trace* came cur (volatile! '())))
   ([came cur script]
    (-> (trace came cur)
@@ -374,16 +412,19 @@
             rootb (index b)
             came  (volatile! {})
             cost  (diff* roota rootb came)]
-        (println "cost is" cost)
-        (println "explored" (reduce + (map count (vals @came))))
-        (trace @came [roota rootb] script)))
+        ;; (println "cost is" cost)
+        ;; (let [total          (* (get-size roota) (get-size rootb))
+        ;;       ^long explored (reduce + (map count (vals @came)))]
+        ;;   (printf "explored %d of %d %.1f%%\n"
+        ;;           explored total (* 100 (double (/ explored total)))))
+        (trace @came (->Coord roota rootb) script)))
     script))
 
 (comment
 
   (def a [[:a [:b :c] :d] :e :f])
   (def b [:b :c [:e] :f :g])
-  (diff a b)
+  (time (diff a b))
   (patch a (diff a b))
 
   (def a [[:a] :b [:c [:d] [:e] :f]])
@@ -398,13 +439,15 @@
   (def b [{:a [3] :b {:a 3} :c 42}])
   [[[:a 1] :-] [[:b] :r {:a 3}] [[:c] :+ 42]]
   (diff a b)
+  (index a)
   (index b)
-  (index 1)
   (index [])
   (def a [[:u]])
   (def b [:s :t])
-  (def a [:a :b])
-  (def b [:b :c])
+  (def a 1)
+  (def b 2)
+  (def a {(->Coord (index a) (index b)) 1})
+  (a (->Coord (index a) (index b)))
   (patch a (diff a b))
   (diff a b)
 
