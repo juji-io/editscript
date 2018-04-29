@@ -1,9 +1,20 @@
+;;
+;; Copyright (c) Huahai Yang. All rights reserved.
+;; The use and distribution terms for this software are covered by the
+;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
+;; which can be found in the file LICENSE at the root of this distribution.
+;; By using this software in any fashion, you are agreeing to be bound by
+;; the terms of this license.
+;; You must not remove this notice, or any other, from this software.
+;;
+
 (ns editscript.diff.a-star
   (:require [clojure.set :as set]
-            [clojure.data.priority-map :as p]
+            [editscript.util.priority :as p]
             [editscript.core :refer :all])
   (:import [clojure.lang PersistentVector Keyword]
-           [java.io Writer]))
+           [java.io Writer]
+           [java.lang Comparable]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -62,7 +73,6 @@
   [x ^Writer writer]
   (print-method {:path  (get-path x)
                  :value (get-value x)
-                 :order (get-order x)
                  :children (get-children x)}
                 writer))
 
@@ -71,7 +81,7 @@
 (defn- index-associative
   [order path data parent]
   (let [node (->Node path data {} nil nil nil 0 @order 1)]
-    (vswap! order (fn [^long o] (inc o)))
+    (vswap! order (fn [o] (inc ^long o)))
     (add-child parent node)
     (reduce-kv
      (fn [_ k v]
@@ -85,7 +95,7 @@
   [order path data parent]
   (let [node (->Node path data nil nil nil nil 0 @order 1)]
     (add-child parent node)
-    (vswap! order (fn [^long o] (inc o)))
+    (vswap! order (fn [o] (inc ^long o)))
     node))
 
 (defn- index*
@@ -107,20 +117,24 @@
                 ^Node b]
   Object
   (hashCode [_]
-    (let [x (get-order a)
-          y (get-order b)]
+    (let [x (int (get-order a))
+          y (int (get-order b))]
       ;; Szudzik's paring function
-      (if (> ^long y ^long x)
-        (+ ^long x ^long (* ^long y ^long y))
-        (+ ^long x ^long y ^ long (* ^long x ^long x)))))
+      (if (> y x)
+        (+ x (* y y))
+        (+ x y (* x x)))))
   (equals [this that]
     (= (.hashCode this) (.hashCode that)))
   (toString [_]
-    (str "[" (get-order a) ", "(get-order b)"]")))
+    (str "[" (get-order a) "," (get-order b) "]"))
+
+  Comparable
+  (compareTo [this o]
+    (- (.hashCode this) (.hashCode o))))
 
 (defn- get-coord
   [^Coord coord]
-  [(.a coord) (.b coord)])
+  [(.-a coord) (.-b coord)])
 
 (defprotocol IStep
   (operator [this] "Operator to try")
@@ -183,15 +197,23 @@
       :-      (inc gc)
       (:a :i) (let [sb (get-size (.-b cur))]
                 (+ gc (inc ^long sb)))
-      :r      (let [[na nb] (get-coord cur)
-                    sb      (get-size nb)
-                    sa      (get-size na)]
+      :r      (let [na (.-a cur)
+                    nb (.-b cur)
+                    sb (get-size nb)
+                    sa (get-size na)]
                 (if (or (= sa 1) (= sb 1))
                   (+ gc (inc ^long sb))
                   (+ gc ^long (diff* na nb came)))))))
 
 (defn- heuristic
-
+  "An optimistic estimate of the cost to reach goal when at (x y).
+  For sequences with positive goal differential (delta), the optimal number of
+  edits is deletion dependent, equals to 2p+delta, where p is number of deletions.
+  Optimistically assuming no new deletion will be needed after (x, y), the number
+  of edits is delta-k, where k=y-x. The same logic applies to negative delta.
+  For nested structure, multiple deletion may be merged longo one.
+  Also, because addition/replacement requires new value to be present in
+  editscript, whereas deletion does not, we assign estimate differently."
   [type cur end [gx gy]]
   (case type
     :map 0
@@ -216,10 +238,10 @@
     (if (>= ^long tmp-g ^long (access-g g nbr))
       state
       (doto state
-        (set-came (assoc came' nbr [cur op]))
+        (set-came (assoc! came' nbr [cur op]))
         (set-open (assoc open nbr
                          (+ ^long tmp-g ^long (heuristic type nbr end goal))))
-        (set-g (assoc g nbr tmp-g))))))
+        (set-g (assoc! g nbr tmp-g))))))
 
 (defn- values=?
   [va vb]
@@ -280,15 +302,15 @@
   (let [end  (->Coord ra rb)
         goal [(-> ra get-children count) (-> rb get-children count)]
         init (->Coord (get-first ra) (get-first rb))]
-    (loop [state (->State {}
+    (loop [state (->State (transient {})
                           (p/priority-map init (heuristic type init end goal))
-                          {init 0})]
+                          (transient {init 0}))]
       (let [[came' open g] (get-state state)]
         (if (empty? open)
           (throw (ex-info "A* diff fails to find a solution" {:ra ra :rb rb}))
           (let [[cur cost] (peek open)]
             (if (= cur end)
-              (do (vswap! came assoc end came')
+              (do (vswap! came assoc end (persistent! came'))
                   cost)
               (recur (reduce
                       (partial explore type end came goal)
@@ -436,5 +458,6 @@
   (a (->Coord (index a) (index b)))
   (patch a (diff a b))
   (diff a b)
+
 
   )
