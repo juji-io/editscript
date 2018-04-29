@@ -176,32 +176,22 @@
 (declare diff*)
 
 (defn- compute-cost
-  [cur came g op]
-  (let [[na nb]  (get-coord cur)
-        sa       (get-size na)
-        sb       (get-size nb)
-        sb+1     (inc ^long sb)
-        ^long gc (access-g g cur)
-        ^long co (if (= gc Long/MAX_VALUE)
-                   0
-                   (case op
-                     :=      0
-                     :-      1
-                     (:a :i) sb+1
-                     :r      (if (or (= sa 1) (= sb 1))
-                               sb+1
-                               (diff* na nb came))))]
-    (+ gc co)))
+  [^Coord cur came g op]
+  (let [^long gc (access-g g cur)]
+    (case op
+      :=      gc
+      :-      (inc gc)
+      (:a :i) (let [sb (get-size (.-b cur))]
+                (+ gc (inc ^long sb)))
+      :r      (let [[na nb] (get-coord cur)
+                    sb      (get-size nb)
+                    sa      (get-size na)]
+                (if (or (= sa 1) (= sb 1))
+                  (+ gc (inc ^long sb))
+                  (+ gc ^long (diff* na nb came)))))))
 
 (defn- heuristic
-  "An optimistic estimate of the cost to reach goal when at (x y).
-  For sequences with positive goal differential (delta), the optimal number of
-  edits is deletion dependent, equals to 2p+delta, where p is number of deletions.
-  Optimistically assuming no new deletion will be needed after (x, y), the number
-  of edits is delta-(y-x). The same logic applies to negative delta.
-  For nested structure, multiple edits may be merged into one.
-  Also, because addition/replacement requires new value to be present in
-  editscript, whereas deletion does not, we assign estimate differently."
+
   [type cur end [gx gy]]
   (case type
     :map 0
@@ -222,15 +212,11 @@
   [type end came goal state step]
   (let [[came' open g] (get-state state)
         [op cur nbr]   (get-step step)
-        [na nb]        (get-coord cur)
-        [na' nb']      (get-coord nbr)
         tmp-g          (compute-cost cur came g op)]
     (if (>= ^long tmp-g ^long (access-g g nbr))
-      (if (open nbr)
-        state
-        (set-open state (assoc open nbr Long/MAX_VALUE)))
+      state
       (doto state
-        (set-came (assoc came' (->Coord na' nb') [(->Coord na nb) op]))
+        (set-came (assoc came' nbr [cur op]))
         (set-open (assoc open nbr
                          (+ ^long tmp-g ^long (heuristic type nbr end goal))))
         (set-g (assoc g nbr tmp-g))))))
@@ -309,7 +295,7 @@
                       (set-open state (pop open))
                       (frontier type end cur))))))))))
 
-(defn- diff*
+(defn- ^long diff*
   [ra rb came]
   (let [^long sizeb (get-size rb)
         typea       (-> ra get-value get-type)
