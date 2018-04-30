@@ -390,27 +390,36 @@
 
 ;; generating editscript
 
+(defn- index-key?
+  [node]
+  (#{:vec :lst} (-> node get-value get-type)))
+
 (defn- adjust-delete-insert
-  [trie op na path]
+  [trie op root path]
   (if (= op :=)
     path
-    (if (#{:vec :lst} (-> na get-parent get-value get-type))
-      (loop [newp [] prev [] [k & ks] path]
-        (if k
-          (let [^long d (get-in @trie (conj prev :delta) 0)]
-            (recur (conj newp (if (integer? k) (+ ^long k d) k))
-                   (conj prev k)
-                   ks))
+    (loop [newp []
+           prev []
+           node root
+           left path]
+      (if (seq left)
+        (let [[k & ks] left
+              ^long d  (get-in @trie (conj prev :delta) 0)]
+          (recur (conj newp (if (index-key? node) (+ ^long k d) k))
+                 (conj prev k)
+                 ((get-children node) k)
+                 ks))
+        (if (index-key? (get-parent node))
           (let [seen    (conj (if (seq path) (pop path) path) :delta)
                 ^long d (get-in @trie seen 0)]
             (vswap! trie assoc-in seen (case op :- (dec d) :i (inc d) d))
-            newp)))
-      path)))
+            newp)
+          newp)))))
 
 (defn- adjust-append
   [trie op na nb path path']
   (if (= op :a)
-    (if (#{:vec :lst} (-> na get-value get-type))
+    (if (index-key? na)
       (conj path'(let [seen    (conj path :delta)
                        ^long d (get-in @trie seen 0)]
                    (vswap! trie assoc-in seen (inc d))
@@ -419,17 +428,17 @@
     path'))
 
 (defn- convert-path
-  [trie op na nb path]
+  [trie op roota na nb path]
   ;; (println "converting" path "on" na)
   (->> path
-       (adjust-delete-insert trie op na)
+       (adjust-delete-insert trie op roota)
        (adjust-append trie op na nb path)))
 
 (defn- write-script
-  [steps script]
+  [steps roota script]
   (reduce
    (fn [trie [op na nb]]
-     (let [path  (convert-path trie op na nb (get-path na))
+     (let [path  (convert-path trie op roota na nb (get-path na))
            ;; _ (println "converted" path)
            value (get-value nb)]
        (case op
@@ -466,7 +475,7 @@
    @(trace* came cur (volatile! '())))
   ([came cur script]
    (-> (trace came cur)
-       (write-script script))))
+       (write-script (.-a cur) script))))
 
 (defn diff
   "Create an EditScript that represents the minimal difference between `b` and `a`"
@@ -487,62 +496,13 @@
 
 (comment
 
-  (def a [{:a [3 4] :b #{3 2}} '(42 nil "life")])
-  (def b [{:a [3] :b #{:a 3} :c 42} '(nil "happiness")])
-  (diff a b)
-  (patch a (diff a b))
-
-  (def a [:a [:s :t] :u])
-  (def b [[:b] [:s :t :u]])
-  (diff a b)
-  (patch a (diff a b))
-
-  (def a '(()))
-  (def b '(0 0 1))
-  (diff a b)
-  (patch a (diff a b))
-
-  (def a #{0 -1})
-  (def b #{1})
-  (index a)
-  (diff a b)
-  (patch a (diff a b))
-
-  (def a [[0 0 0]])
-  (def b [[-1] 1])
-  (index a)
-  (index b)
-  [[[0] :+ [-1]] [[1] :r 1]]
-  (diff a b)
-  (patch a (diff a b))
-
   (def a [[:s :t] [:u]])
   (def b [[:s] :t :s])
   (diff a b)
   (patch a (diff a b))
 
   (def a #{nil -30})
-  (index a)
   (def b #{[()] {}})
-  (editscript.diff.quick/diff a b)
-  (diff a b)
-  (patch a (diff a b))
-  (patch a (editscript.diff.quick/diff a b))
-
-  (def a #{0 15 ""})
-  (def b #{nil 0 15})
-  (index b)
-  (diff a b)
-  (patch a (diff a b))
-
-  (def a {-37 0})
-  (def b {"" 5 2 nil -37 1})
-  [[[-37] :r 1] [[""] :+ 5] [[2] :+ nil]]
-  (diff a b)
-  (patch a (diff a b))
-
-  (def a [{} {0 0}])
-  (def b [{() ()}])
   (diff a b)
   (patch a (diff a b))
 
