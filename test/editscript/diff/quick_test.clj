@@ -112,11 +112,6 @@
 
   (c/bench (diff as bs))
 
-  (time (editscript.diff.a-star/diff as bs))
-
-  (= bs (patch as (editscript.diff.a-star/diff as bs)))
-
-  (c/bench (editscript.diff.a-star/diff as bs))
 
   ;; ==>
   ;; Evaluation count : 1260 in 60 samples of 21 calls.
@@ -143,4 +138,12 @@
   ;; Found 1 outliers in 60 samples (1.6667 %)
 	;; low-severe	 1 (1.6667 %)
   ;; Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
+
+
+  (time (editscript.diff.a-star/diff as bs))
+
+  (= bs (patch as (editscript.diff.a-star/diff as bs)))
+
+  (c/bench (editscript.diff.a-star/diff as bs))
+
 )
