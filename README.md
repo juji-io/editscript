@@ -41,8 +41,8 @@ d
 (edit-distance d)
 ;;==> 3
 
-;; get the size of the editscript
-(size d)
+;; get the size of the editscript, size = new-data-size + 1
+(get-size d)
 ;;==> 4
 
 ;; patch a with the editscript to get back b, so that
@@ -167,6 +167,7 @@ are welcome.
 * Design a different API for the quick algorithm, since it is more suitable for detecting
   changes rather than producing editscript. Need to see some use cases.
 * Support other data types, if people want...
+* Explore other diffing algorithms
 
 ## References
 

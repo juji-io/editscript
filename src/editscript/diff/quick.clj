@@ -164,6 +164,6 @@
   This algorithm is fast, but it does not attempt to generate an EditScript
   that is minimal in size"
   [a b]
-  (let [script (e/->EditScript [] 0 0 0)]
+  (let [script (e/->EditScript [] true 0 0 0 0)]
     (diff* script [] a b)
     script))

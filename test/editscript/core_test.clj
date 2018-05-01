@@ -61,7 +61,8 @@
     (is (= data4 (patch data1 (a/diff data1 data4))))))
 
 (comment
-; benchmarks
+
+;; benchmarks
 
 ;; default A* algorithm
 
@@ -75,6 +76,11 @@
 ;; Overhead used : 9.788943 ns
 (e/edit-distance (a/diff data1 data2))
 ;; ==> 1
+(e/get-size (a/diff data1 data2))
+;; ==> 2
+(a/diff data1 data2)
+;; ==>
+;; [[[2 :fill] :r "#0000ff"]]
 
 ;; Found 1 outliers in 6 samples (16.6667 %)
 ;; low-severe	 1 (16.6667 %)
@@ -90,6 +96,11 @@
 ;; Overhead used : 9.788943 ns
 (e/edit-distance (a/diff data1 data3))
 ;; ==> 5
+(e/get-size (a/diff data1 data3))
+;; ==> 10
+(a/diff data1 data3)
+;; ==>
+;; [[[2 :rx] :r 69.5] [[2 :fill] :r "#0000ff"] [[2 :cx] :r 230.5] [[2 :cy] :r 228] [[2 :ry] :r 57]]
 
 (c/quick-bench (a/diff data1 data4))
 ;; ==>
@@ -101,6 +112,11 @@
 ;; Overhead used : 9.788943 ns
 (e/edit-distance (a/diff data1 data4))
 ;; ==> 13
+(e/get-size (a/diff data1 data4))
+;; ==> 23
+(a/diff data1 data4)
+;; ==>
+;; [[[0 :y] :r 13] [[0 :width] :r 262] [[0 :x] :r 19] [[0 :height] :r 101] [[1 :y] :r 122] [[1 :x] :r 12] [[1 :height] :r 25.19999999999999] [[2] :-] [[2] :-] [[2 :y] :r 208] [[2 :x] :r 12] [[2 :height] :r 25.19999999999999] [[3] :-]]
 
 ;; quick algorithm
 
@@ -118,6 +134,11 @@
 ;; Variance from outliers : 14.3936 % Variance is moderately inflated by outliers
 (e/edit-distance (q/diff data1 data2))
 ;; ==> 1
+(e/get-size (q/diff data1 data2))
+;; ==> 2
+(q/diff data1 data2)
+;; ==>
+;; [[[2 :fill] :r "#0000ff"]]
 
 (c/quick-bench (q/diff data1 data3))
 ;; ==>
@@ -133,6 +154,11 @@
 ;; Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
 (e/edit-distance (q/diff data1 data3))
 ;; ==> 5
+(e/get-size (q/diff data1 data3))
+;; ==> 10
+(q/diff data1 data3)
+;; ==>
+;; [[[2 :rx] :r 69.5] [[2 :fill] :r "#0000ff"] [[2 :cx] :r 230.5] [[2 :cy] :r 228] [[2 :ry] :r 57]]
 
 (c/quick-bench (q/diff data1 data4))
 ;; ==>
@@ -144,7 +170,12 @@
 ;; Overhead used : 9.788943 ns
 (e/edit-distance (q/diff data1 data4))
 ;; ==> 9
-;; Here it does some wholesale copy.
+(e/get-size (q/diff data1 data4))
+;; ==> 147
+(q/diff data1 data4)
+;; [[[0] :-] [[0] :-] [[0] :-] [[0] :-] [[0] :-] [[0] :-] [[0] :+ {:y 13, :r 0, :color "#000000", :fill "#CCCCCC", :width 262, :type "rect", :cap "round", :borderWidth 1, :style "Solid", :x 19, :height 101}] [[1] :+ {:y 122, :family "sans-serif", :color "#0000FF", :fill {:r 256, :g 0, :b 0, :a 0.5}, :width 10, :type "textBlock", :cap "round", :borderWidth 1, :size "24px", :style "Solid", :pad 3, :weight "bold", :x 12, :height 25.19999999999999, :text "DojoX Drawing Rocks"}] [[2] :+ {:y 208, :family "sans-serif", :color "#000000", :fill "#CCCCCC", :width 200, :type "text", :cap "round", :borderWidth 1, :size "18px", :style "Solid", :pad 3, :weight "normal", :x 12, :height 25.19999999999999, :text "This is just text"}]]
+
+;; Here it does some wholesale copying, the script size explodes
 
 
 )

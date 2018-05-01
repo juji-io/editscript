@@ -487,7 +487,7 @@
 (defn diff
   "Create an EditScript that represents the minimal difference between `b` and `a`"
   [a b]
-  (let [script (e/->EditScript [] 0 0 0)]
+  (let [script (e/->EditScript [] false 0 0 0 0)]
     (when-not (identical? a b)
       (let [roota (index a)
             rootb (index b)
@@ -498,5 +498,6 @@
         ;;       ^long explored (reduce + (map count (vals @came)))]
         ;;   (printf "explored %d of %d %.1f%%\n"
         ;;           explored total (* 100 (double (/ explored total)))))
-        (trace @came (->Coord roota rootb) script)))
+        (trace @came (->Coord roota rootb) script)
+        (e/set-size script ^long cost)))
     script))

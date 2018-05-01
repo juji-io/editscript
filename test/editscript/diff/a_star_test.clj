@@ -12,7 +12,7 @@
   (:require [clojure.test :refer :all]
             [editscript.edit :refer :all]
             [editscript.core :refer [patch]]
-            [editscript.diff.a-star :refer :all]
+            [editscript.diff.a-star :refer :all :exclude [set-size get-size]]
             [editscript.core-test :refer :all]))
 
 (deftest vec-diff-test
