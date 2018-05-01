@@ -57,22 +57,11 @@
     this))
 
 (defn priority-map
+  "A priority queue that also functions as a map. Backed by Java's mutable
+  version of PriorityQueue and HashMap. I only use and tested these functions:
+  `assoc`,`pop`, and `peek`. We also do not pay the price of `decrease-key`,
+  instead just insert the item again with a new priority. "
   ([]
    (->PriorityMap (PriorityQueue.) (HashMap.)))
   ([item priority]
    (assoc (priority-map) item priority)))
-
-(comment
-
-  (def p (priority-map :a 4))
-
-  (assoc p :b 3)
-  (assoc p :c 2)
-
-  (pop p)
-
-  p
-
-  (peek p)
-
-  )

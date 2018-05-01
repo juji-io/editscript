@@ -10,12 +10,10 @@
 
 (ns editscript.quick-test
   (:require [clojure.test :refer :all]
-            [editscript.core :refer :all]
+            ;; [criterium.core :as c]
+            [editscript.edit :refer :all]
             [editscript.diff.quick :refer :all]
-            ;; for benchmark
-            [criterium.core :as c]
-            ;; [diffit.vec]
-            ))
+            [editscript.core :refer [patch]]))
 
 (deftest vec-edits-test
   (testing "Wu 1990 vector edit example and more"
@@ -88,9 +86,10 @@
       (is (= k (patch l k-l)))
       (is (= l (patch k l-k))))))
 
+
 (comment
 
-  ;; benchmark from https://github.com/friemen/diffit
+  ;; sequence diff benchmark from https://github.com/friemen/diffit
 
   (defn rand-alter
     [pass-prob remove-prob add-prob xs]
@@ -105,45 +104,42 @@
               []
               xs)))
 
-  (def as (vec (range 100)))
+  (def as (vec (range 2000)))
   (def bs (vec (rand-alter 80 10 10 as)))
 
   (c/bench (vec-edits as bs))
+  ;; ==>
+  ;; Evaluation count : 1920 in 60 samples of 32 calls.
+  ;; Execution time mean : 32.714460 ms
+  ;; Execution time std-deviation : 997.703094 µs
+  ;; Execution time lower quantile : 32.008704 ms ( 2.5%)
+  ;; Execution time upper quantile : 35.291895 ms (97.5%)
+  ;; Overhead used : 9.788943 ns
+
+  ;; Found 9 outliers in 60 samples (15.0000 %)
+	;; low-severe	 9 (15.0000 %)
+  ;; Variance from outliers : 17.3922 % Variance is moderately inflated by outliers
 
   (c/bench (diff as bs))
-
-
   ;; ==>
-  ;; Evaluation count : 1260 in 60 samples of 21 calls.
-  ;; Execution time mean : 50.319675 ms
-  ;; Execution time std-deviation : 896.197158 µs
-  ;; Execution time lower quantile : 49.152154 ms ( 2.5%)
-  ;; Execution time upper quantile : 52.479851 ms (97.5%)
-  ;; Overhead used : 10.184272 ns
+  ;; Evaluation count : 1800 in 60 samples of 30 calls.
+  ;; Execution time mean : 34.128722 ms
+  ;; Execution time std-deviation : 1.284325 ms
+  ;; Execution time lower quantile : 33.047449 ms ( 2.5%)
+  ;; Execution time upper quantile : 37.014303 ms (97.5%)
+  ;; Overhead used : 9.788943 ns
 
-  ;; Found 5 outliers in 60 samples (8.3333 %)
-	;; low-severe	 4 (6.6667 %)
-	;; low-mild	 1 (1.6667 %)
-  ;; Variance from outliers : 7.7632 % Variance is slightly inflated by outliers
+  ;; Found 3 outliers in 60 samples (5.0000 %)
+	;; low-severe	 3 (5.0000 %)
+  ;; Variance from outliers : 23.8507 % Variance is moderately inflated by outliers
 
   (c/bench (diffit.vec/diff as bs))
   ;; ==>
-  ;; Evaluation count : 1200 in 60 samples of 20 calls.
-  ;; Execution time mean : 51.102351 ms
-  ;; Execution time std-deviation : 759.814820 µs
-  ;; Execution time lower quantile : 50.090719 ms ( 2.5%)
-  ;; Execution time upper quantile : 52.280115 ms (97.5%)
-  ;; Overhead used : 10.184272 ns
-
-  ;; Found 1 outliers in 60 samples (1.6667 %)
-	;; low-severe	 1 (1.6667 %)
-  ;; Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
-
-
-  (time (editscript.diff.a-star/diff as bs))
-
-  (= bs (patch as (editscript.diff.a-star/diff as bs)))
-
-  (c/bench (editscript.diff.a-star/diff as bs))
+  ;; Evaluation count : 1500 in 60 samples of 25 calls.
+  ;; Execution time mean : 42.089736 ms
+  ;; Execution time std-deviation : 1.517260 ms
+  ;; Execution time lower quantile : 40.642024 ms ( 2.5%)
+  ;; Execution time upper quantile : 45.306760 ms (97.5%)
+  ;; Overhead used : 9.788943 ns
 
 )

@@ -9,16 +9,14 @@
 ;;
 
 (ns editscript.diff.a-star
-  (:require [clojure.set :as set]
-            [editscript.util.priority :as p]
-            ;; [clojure.data.priority-map :as q]
-            [editscript.core :refer :all])
+  (:require [editscript.edit :as e]
+            [editscript.util.priority :as p])
   (:import [clojure.lang PersistentVector Keyword]
            [java.io Writer]
            [java.lang Comparable]))
 
-;; (set! *warn-on-reflection* true)
-;; (set! *unchecked-math* :warn-on-boxed)
+(set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 ;; indexing
 
@@ -77,16 +75,13 @@
   [x ^Writer writer]
   (print-method {:path     (get-path x)
                  :value    (get-value x)
-                 ;; :index    (get-index x)
-                 ;; :order    (get-order x)
-                 ;; :first    (get-first x)
-                 ;; :size     (get-size x)
                  :children (get-children x)}
                 writer))
 
 (declare index*)
 
 (defn- associative-children
+  "map and vector are associative"
   [order path data parent]
   (reduce-kv
    (fn [_ k v]
@@ -94,11 +89,15 @@
    nil
    data))
 
-(defn- set-children [order path data parent]
+(defn- set-children
+  "set is a map of keys to themselves"
+  [order path data parent]
   (doseq [x data]
     (index* order (conj path x) x parent)))
 
-(defn- list-children [order path data parent]
+(defn- list-children
+  "add index as key"
+  [order path data parent]
   (reduce
    (fn [i x]
      (index* order (conj path i) x parent)
@@ -127,14 +126,15 @@
 
 (defn- index*
   [order path data parent]
-  (let [type (get-type data)]
+  (let [type (e/get-type data)]
     (if (= type :val)
-     (index-value order path data parent)
-     (index-collection type order path data parent))))
+      (index-value order path data parent)
+      (index-collection type order path data parent))))
 
 (defn- index
   "Traverse data to build an indexing tree of Nodes,
-  compute path, sizes of sub-trees, siblings, etc. for each Node"
+  compute path, sizes of sub-trees, siblings, etc. for each Node.
+  This takes little time"
   [data]
   (let [order (volatile! 0)]
     (index* order [] data (->Node [] ::dummy nil {} nil nil nil 0 -1 0))))
@@ -143,6 +143,8 @@
 
 (deftype Coord [^Node a
                 ^Node b]
+  ;; Java's native hash is too slow,
+  ;; overriding hashCode significantly speeds things up
   Object
   (hashCode [_]
     (let [x (get-order a)
@@ -218,11 +220,17 @@
 (declare diff*)
 
 (defn- compute-cost
+  "Profiling shows that more than 70% of running time is spent in this function,
+  not counting the recursive call to `diff*`, that means there's not much else
+  can be optimized except to devise better heuristic, so the number of steps tried
+  can be reduced."
   [^Coord cur came g op]
   (let [^long gc (access-g g cur)]
     (case op
       :=      gc
+      ;; delete only cost 1, for not including deleted data in script
       :-      (inc gc)
+      ;; these cost the size of included data, plus 1
       (:a :i) (let [sb (get-size (.-b cur))]
                 (+ gc (inc ^long sb)))
       :r      (let [na (.-a cur)
@@ -234,7 +242,8 @@
                   (+ gc ^long (diff* na nb came)))))))
 
 (defn- heuristic
-  "An optimistic estimate of the cost to reach goal when at (x y).
+  "A simplistic but optimistic estimate of the cost to reach goal when at (x y).
+
   For sequences with positive goal differential (delta), the optimal number of
   edits is deletion dependent, equals to 2p+delta, where p is number of deletions.
   Optimistically assuming no new deletion will be needed after (x, y), the number
@@ -274,7 +283,7 @@
 (defn- values=?
   [va vb]
   (or (identical? va vb)
-      (and (= :val (get-type va) (get-type vb))
+      (and (= :val (e/get-type va) (e/get-type vb))
            (if va
              (.equals ^Object va vb)
              (= va vb)))))
@@ -305,7 +314,6 @@
   [^Coord init end cur]
   (let [[ra rb] (get-coord end)
         [na nb] (get-coord cur)
-        ib      (.-b init)
         va      (get-value na)
         vb      (get-value nb)
         mb      (get-value rb)
@@ -314,29 +322,31 @@
         ka      (get-key na)
         kb      (get-key nb)
         na'     (next-node na ra)
-        nb'     (next-node nb rb)
         x'=gx   (identical? na' ra)
-        cb      (get-children rb)
-        nb''    (or (cb (get-key na')) nb)]
+        cb      (get-children rb)]
     (cond
+      ;; transition point from testing keys of a to that of b
       (and x<gx x'=gx)
-      (if (contains? mb ka)
-         (if (= ka kb)
-           [(->Step (if (values=? va vb) := :r) cur (->Coord ra ib))]
-           [(->Step := cur (->Coord na (cb ka)))
-            (->Step :r (->Coord na (cb ka)) (->Coord ra ib))])
-         [(->Step :- cur (->Coord ra ib))])
-
+      (let [startb (->Coord ra (.-b init))
+            enda   (->Coord na (cb ka))]
+        (if (contains? mb ka)
+          (if (= ka kb)
+            [(->Step (if (values=? va vb) := :r) cur startb)]
+            [(->Step := cur enda)
+             (->Step :r enda startb)])
+          [(->Step :- cur startb)]))
+      ;; testing keys of a
       (and x<gx y<gy)
       [(if (contains? mb ka)
          (if (= ka kb)
-           (->Step (if (values=? va vb) := :r) cur (->Coord na' nb''))
+           (->Step (if (values=? va vb) := :r)
+                   cur (->Coord na' (or (cb (get-key na')) nb)))
            (->Step := cur (->Coord na (cb ka))))
          (->Step :- cur (->Coord na' nb)))]
-
+      ;; keys of b
       :else
       [(->Step (if (contains? (get-value ra) kb) := :a)
-               cur (->Coord ra nb'))])))
+               cur (->Coord ra (next-node nb rb)))])))
 
 (defn- frontier
   [type init end cur]
@@ -368,22 +378,23 @@
   [ra rb came]
   (let [sa     ^long (get-size ra)
         sb     ^long (get-size rb)
-        typea  (-> ra get-value get-type)
+        typea  (-> ra get-value e/get-type)
         update #(vswap! came assoc (->Coord ra rb) {})]
     (cond
+      ;; both are :val, skip or replace
       (= 1 sa sb)
       (do (update)
           (if (values=? (get-value ra) (get-value rb))
             0
             2))
-
+      ;; one of them is :val, replace
       (or (= 1 sa) (= 1 sb))
       (do (update)
           (inc ^long sb))
-
-      (= typea (-> rb get-value get-type))
+      ;; run A* for children
+      (= typea (-> rb get-value e/get-type))
       (A* typea ra rb came)
-
+      ;; types differ, can only replace
       :else
       (do (update)
           (inc ^long sb)))))
@@ -392,7 +403,7 @@
 
 (defn- index-key?
   [node]
-  (#{:vec :lst} (-> node get-value get-type)))
+  (#{:vec :lst} (-> node get-value e/get-type)))
 
 (defn- adjust-delete-insert
   [trie op root path]
@@ -420,16 +431,15 @@
   [trie op na nb path path']
   (if (= op :a)
     (if (index-key? na)
-      (conj path'(let [seen    (conj path :delta)
-                       ^long d (get-in @trie seen 0)]
-                   (vswap! trie assoc-in seen (inc d))
-                   (+ d (-> na get-children count))))
+      (conj path' (let [seen    (conj path :delta)
+                        ^long d (get-in @trie seen 0)]
+                    (vswap! trie assoc-in seen (inc d))
+                    (+ d (-> na get-children count))))
       (conj path' (get-key nb)))
     path'))
 
 (defn- convert-path
   [trie op roota na nb path]
-  ;; (println "converting" path "on" na)
   (->> path
        (adjust-delete-insert trie op roota)
        (adjust-append trie op na nb path)))
@@ -439,12 +449,11 @@
   (reduce
    (fn [trie [op na nb]]
      (let [path  (convert-path trie op roota na nb (get-path na))
-           ;; _ (println "converted" path)
            value (get-value nb)]
        (case op
-         :-      (delete-data script path)
-         :r      (replace-data script path value)
-         (:a :i) (add-data script path value)
+         :-      (e/delete-data script path)
+         :r      (e/replace-data script path value)
+         (:a :i) (e/add-data script path value)
          nil)
        trie))
    (volatile! {:delta 0})
@@ -455,11 +464,9 @@
   (if-let [m (came cur)]
     (if (seq m)
       (loop [v (m cur)]
-        ;; (println "v" v)
         (if v
           (let [[prev op] v
                 [na nb]   (get-coord prev)]
-            ;; (println "step" op "from" na "to" nb)
             (if (and (came prev) (= op :r))
               (trace* came prev steps)
               (vswap! steps conj [op na nb]))
@@ -473,14 +480,14 @@
 (defn- trace
   ([came cur]
    @(trace* came cur (volatile! '())))
-  ([came cur script]
+  ([came ^Coord cur script]
    (-> (trace came cur)
        (write-script (.-a cur) script))))
 
 (defn diff
   "Create an EditScript that represents the minimal difference between `b` and `a`"
   [a b]
-  (let [script (->EditScript [] 0 0 0)]
+  (let [script (e/->EditScript [] 0 0 0)]
     (when-not (identical? a b)
       (let [roota (index a)
             rootb (index b)
@@ -493,18 +500,3 @@
         ;;           explored total (* 100 (double (/ explored total)))))
         (trace @came (->Coord roota rootb) script)))
     script))
-
-(comment
-
-  (def a [[:s :t] [:u]])
-  (def b [[:s] :t :s])
-  (diff a b)
-  (patch a (diff a b))
-
-  (def a #{nil -30})
-  (def b #{[()] {}})
-  (diff a b)
-  (patch a (diff a b))
-
-
-  )

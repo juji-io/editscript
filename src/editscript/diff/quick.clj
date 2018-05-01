@@ -10,32 +10,38 @@
 
 (ns editscript.diff.quick
   (:require [clojure.set :as set]
-            [editscript.core :refer :all]))
+            [editscript.edit :as e]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 (declare diff*)
 
-(defn- diff-map [script path a b]
+(defn- diff-map
+  [script path a b]
   (reduce-kv
    (fn [_ ka va]
      (let [path' (conj path ka)]
        (if (contains? b ka)
         (diff* script path' va (get b ka))
-        (diff* script path' va (nada)))))
+        (diff* script path' va (e/nada)))))
    nil
    a)
   (reduce-kv
    (fn [_ kb vb]
      (when-not (contains? a kb)
-       (diff* script (conj path kb) (nada) vb)))
+       (diff* script (conj path kb) (e/nada) vb)))
    nil
    b))
 
 (defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
-  Information Processing Letters, 35:6, p317-23.'"
+  Information Processing Letters, 35:6, p317-23.'
+
+  A greedy algorithm, attempting to get to the furthest points with a given
+  number of edits. Very fast. However, it does not have replacement operations,
+  so it is not very useful for nested trees. It can also only do unit cost for
+  addition and deletion. "
   [a b ^long n ^long m]
   (let [delta (- n m)
         snake (fn [^long k ^long x]
@@ -44,7 +50,8 @@
                     (if (and (< x n)
                              (< y m)
                              (= (type ax) (type by))
-                             (= ax by))
+                             (= ax by)
+                             )
                       (recur (inc x) (inc y))
                       x))))
         fp-fn (fn [fp ^long k]
@@ -75,10 +82,13 @@
                     (persistent! fp))))]
     (-> fp (get delta) second rest)))
 
-(defn- swap-ops [edits] (vec (map (fn [op] (case op :+ :- :- :+ op)) edits)))
+(defn- swap-ops
+  [edits]
+  (vec (map (fn [op] (case op :+ :- :- :+ op)) edits)))
 
 (defn min+plus->replace
-  "Turn isolated consecutive `:-` `:+` into a `:r`,
+  "A heuristic to create some replacements.
+  This one turns isolated consecutive `:-` `:+` into a `:r`,
   do not convert if there's `:-` in front, as it is ambiguous"
   [v]
   (let [n (count v)]
@@ -91,7 +101,8 @@
          (>= j n)           (persistent! r)
          :else              (recur (conj! r ej) (inc i) (inc j) (inc k)))))))
 
-(defn vec-edits [a b]
+(defn vec-edits
+  [a b]
   (let [n (count a)
         m (count b)
         v (if (< n m)
@@ -99,13 +110,15 @@
             (vec-edits* a b n m))]
     (-> v vec min+plus->replace)))
 
-(defn- diff-vec [script path a b]
+(defn- diff-vec
+  "Adjust the indices to have a correct editscript"
+  [script path a b]
   (reduce
    (fn [{:keys [^long ia ^long ia' ^long ib] :as m} op]
      (case op
-       :- (do (diff* script (conj path ia') (get a ia) (nada))
+       :- (do (diff* script (conj path ia') (get a ia) (e/nada))
               (assoc! m :ia (inc ia)))
-       :+ (do (diff* script (conj path ia') (nada) (get b ib))
+       :+ (do (diff* script (conj path ia') (e/nada) (get b ib))
               (assoc! m :ia' (inc ia') :ib (inc ib)))
        :r (do (diff* script (conj path ia') (get a ia) (get b ib))
               (assoc! m :ia (inc ia) :ia' (inc ia') :ib (inc ib)))
@@ -114,39 +127,43 @@
    (transient {:ia 0 :ia' 0 :ib 0})
    (vec-edits a b)))
 
-(defn- diff-set [script path a b]
+(defn- diff-set
+  [script path a b]
   (doseq [va (set/difference a b)]
-    (diff* script (conj path va) va (nada)))
+    (diff* script (conj path va) va (e/nada)))
   (doseq [vb (set/difference b a)]
-    (diff* script (conj path vb) (nada) vb)))
+    (diff* script (conj path vb) (e/nada) vb)))
 
-(defn- diff-lst [script path a b]
+(defn- diff-lst
+  [script path a b]
   (diff-vec script path (vec a) (vec b)))
 
 (defmacro coll-case
   [a b script path type diff-fn]
-  `(case (get-type ~b)
-     :nil  (delete-data ~script ~path)
+  `(case (e/get-type ~b)
+     :nil  (e/delete-data ~script ~path)
      ~type (~diff-fn ~script ~path ~a ~b)
-     (replace-data ~script ~path ~b)))
+     (e/replace-data ~script ~path ~b)))
 
-(defn diff* [script path a b]
+(defn diff*
+  [script path a b]
   (when-not (identical? a b)
-    (case (get-type a)
-      :nil (add-data script path b)
+    (case (e/get-type a)
+      :nil (e/add-data script path b)
       :map (coll-case a b script path :map #'diff-map)
       :vec (coll-case a b script path :vec #'diff-vec)
       :set (coll-case a b script path :set #'diff-set)
       :lst (coll-case a b script path :lst #'diff-lst)
-      :val (case (get-type b)
-             :nil (delete-data script path)
+      :val (case (e/get-type b)
+             :nil (e/delete-data script path)
              (when-not (= a b)
-               (replace-data script path b))))))
+               (e/replace-data script path b))))))
 
 (defn diff
   "Create an EditScript that represents the difference between `b` and `a`
-  This algorithm is fast, but it does not guarantee the EditScript is minimal"
+  This algorithm is fast, but it does not attempt to generate an EditScript
+  that is minimal in size"
   [a b]
-  (let [script (->EditScript [] 0 0 0)]
+  (let [script (e/->EditScript [] 0 0 0)]
     (diff* script [] a b)
     script))

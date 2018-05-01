@@ -10,11 +10,10 @@
 
 (ns editscript.a-star-test
   (:require [clojure.test :refer :all]
-            [editscript.core :refer :all]
+            [editscript.edit :refer :all]
+            [editscript.core :refer [patch]]
             [editscript.diff.a-star :refer :all]
-            [editscript.core-test :refer :all]
-            ;; for benchmark
-            [criterium.core :as c]))
+            [editscript.core-test :refer :all]))
 
 (deftest vec-diff-test
   (testing "Testing A* with some nested vector data"

@@ -1,156 +1,54 @@
+;;
+;; Copyright (c) Huahai Yang. All rights reserved.
+;; The use and distribution terms for this software are covered by the
+;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
+;; which can be found in the file LICENSE at the root of this distribution.
+;; By using this software in any fashion, you are agreeing to be bound by
+;; the terms of this license.
+;; You must not remove this notice, or any other, from this software.
+;;
+
 (ns editscript.core
-  (:require [clojure.set :as set])
-  (:import [clojure.lang Seqable PersistentVector
-            IPersistentList IPersistentMap IPersistentSet IPersistentVector]))
+  (:require [editscript.edit :as e]
+            [editscript.patch :as p]
+            [editscript.diff.quick :as q]
+            [editscript.diff.a-star :as a]))
 
-(set! *warn-on-reflection* true)
-(set! *unchecked-math* :warn-on-boxed)
+(defn diff
+  "Create an editscript to represent the transformations needed to turn a
+  Clojure data structure `a` into another Clojure data structure `b`.
 
-(defprotocol IEdit
-  (add-data [this path value])
-  (delete-data [this path])
-  (replace-data [this path value]))
+  This function accepts any nested Clojure data structures. However, only those
+  implements Clojure `IPersistentVector`, `IPersistentMap`, `IPersistentList`,
+  and `IPersistentSet` will be treated as collections. Anything else are treated
+  as individual values.
 
-(defprotocol IEditScript
-  (edit-distance [this] "Report the edit instance")
-  (get-edits [this] "Report the edits as a vector")
-  (get-adds-num [this] "Report the number of additions")
-  (get-dels-num [this] "Report the number of deletions")
-  (get-reps-num [this] "Report the number of replacements"))
+  The editscript is represented as a vector of basic operations: add `:+`,
+  delete `:-`, and replace `:r`. Each operation also include a path to the
+  location of the operation, which is similar to the path vector in `update-in`.
+  However, editscript path works for all above four collection types, not just
+  associative ones. For `:+` and `:r`, a new value is also required.
 
-(deftype EditScript [^:volatile-mutable ^PersistentVector edits
-                     ^:volatile-mutable ^long adds-num
-                     ^:volatile-mutable ^long dels-num
-                     ^:volatile-mutable ^long reps-num]
-  :load-ns true
-
-  IEdit
-  (add-data [this path value]
-    (locking this
-      (set! adds-num (inc adds-num))
-      (set! edits (conj edits [path :+ value]))))
-  (delete-data [this path]
-    (locking this
-      (set! dels-num (inc dels-num))
-      (set! edits (conj edits [path :-]))))
-  (replace-data [this path value]
-    (locking this
-      (set! reps-num (inc reps-num))
-      (set! edits (conj edits [path :r value]))))
-
-  IEditScript
-  (get-edits [this] edits)
-  (get-adds-num [this] adds-num)
-  (get-dels-num [this] dels-num)
-  (get-reps-num [this] reps-num)
-  (edit-distance [this] (+ adds-num dels-num reps-num))
-
-  Seqable
-  (seq [this]
-    (.seq edits)))
-
-(defmethod print-method EditScript
-  [x ^java.io.Writer writer]
-  (print-method (get-edits x) writer))
-
-(defprotocol IType
-  (get-type [this]))
-
-(defn nada
-  []
-  (reify IType
-    (get-type [_] :nil)))
-
-(extend-protocol IType
-  IPersistentList
-  (get-type [_] :lst)
-
-  IPersistentMap
-  (get-type [_] :map)
-
-  IPersistentVector
-  (get-type [_] :vec)
-
-  IPersistentSet
-  (get-type [_] :set)
-
-  nil
-  (get-type [_] :val)
-
-  Object
-  (get-type [_] :val))
-
-(defn- vget
-  [x p]
-  (case (get-type x)
-    (:map :vec :set) (get x p)
-    :lst             (nth x p)))
-
-(defn- vdelete
-  [x p]
-  (case (get-type x)
-    ;;NB, there is a special case where dissoc has no effect:
-    ;;if p is ##NaN, then p cannot be found in x, for (= ##NaN ##NaN) is false!
-    :map (dissoc x p)
-    :vec (vec (concat (subvec x 0 p) (subvec x (inc ^long p))))
-    :set (set/difference x #{p})
-    :lst (->> (split-at p x)
-              (#(concat (first %) (next (last %))))
-              (apply list))))
-
-(defn- vadd
-  [x p v]
-  (case (get-type x)
-    :map (assoc x p v)
-    :vec (vec (concat (conj (subvec x 0 p) v) (subvec x p)))
-    :set (conj x v)
-    :lst (->> (split-at p x)
-              (#(concat (first %) (conj (last %) v)))
-              (apply list))))
-
-(defn- vreplace
-  [x p v]
-  (case (get-type x)
-    :map (assoc x p v)
-    :vec (vec (concat (conj (subvec x 0 p) v) (subvec x (inc ^long p))))
-    :set (-> x (set/difference #{p}) (conj v))
-    :lst (->> (split-at p x)
-              (#(concat (first %) (conj (rest (last %)) v)))
-              (apply list))))
-
-(defn- valter
-  [x p o v]
-  (case o
-    :- (vdelete x p)
-    :+ (vadd x p v)
-    :r (vreplace x p v)))
-
-(defn patch*
-  [old [path op value]]
-  (letfn [(up [x p o v]
-            (let [[f & r] p]
-              (if r
-                (valter x f :r (up (vget x f) r o v))
-                (if (seq p)
-                  (valter x f o v)
-                  v))))]
-    (up old path op value)))
+  Currently, the default diffing algorithm, `:A*` aims to minimize the size of the
+  resulting editscript, a faster alternative is `:quick` algorithm, which does
+  not producing optimal diffing results. An `:algo` option can be used to choose
+  the algorithm."
+  ([a b]
+   (diff a b {}))
+  ([a b {:keys [algo] :as options}]
+   (let [algo (or algo :A*)]
+     ((case algo
+        :A*    a/diff
+        :quick q/diff)
+      a b))))
 
 (defn patch
   "Apply the editscript `script` on `a` to produce `b`, assuming the
-  script is the results of diffing `a` and `b`"
+  script is the results of running  `(diff a b)`, such that
+  `(= b (patch a (diff a b)))` is true"
   [a script]
+  {:pre [(instance? editscript.edit.EditScript script)]}
   (reduce
-   #(patch* %1 %2)
+   #(p/patch* %1 %2)
    a
-   (get-edits script)))
-
-(comment
-
-  (def a [1 {:a 1} {:b 2} {:c 3}])
-  (def b [{:a 1} {:b 3} {:c 4}])
-  (editscript.diff.quick/diff a b)
-
-  (patch [:a :b] (->EditScript [[[2] :+ :c]] 1 0 0))
-
-  )
+   (e/get-edits script)))
