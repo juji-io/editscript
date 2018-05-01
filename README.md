@@ -23,6 +23,7 @@ Here is a usage example:
 
 ```Clojure
 (use 'editscript.core)
+(use 'editscript.edit)
 
 ;; Here are two pieces of data, a and b
 (def a ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}])
@@ -41,7 +42,8 @@ d
 (edit-distance d)
 ;;==> 3
 
-;; get the size of the editscript, size = new-data-size + 1
+;; get the size of the editscript,
+;; the size of each operation = new-data-size + 1
 (get-size d)
 ;;==> 4
 
