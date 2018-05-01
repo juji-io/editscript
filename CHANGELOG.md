@@ -4,7 +4,7 @@
 ### Changed
 - docs
 
-## [0.2.0] - 2018-04-30
+## [0.2.1] - 2018-04-30
 ### Changed
 - Developed an `A*` algorithm for diffing
 
