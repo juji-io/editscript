@@ -166,7 +166,7 @@ are welcome.
   steps needed to be considered.
 * Design a different API for the quick algorithm, since it is more suitable for detecting
   changes rather than producing editscript. Need to see some use cases.
-* Support other data types, if people want...
+* Support other data types as collection types, e.g. strings.
 * Explore other diffing algorithms
 
 ## References

@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 ### Changed
-- none yet
+- docs
 
 ## [0.2.0] - 2018-04-30
 ### Changed
@@ -14,7 +14,7 @@
 ### Fixed
 - all tests passing
 
-## 0.1.1 - 2018-04-30
+## 0.1.1 - 2018-03-04
 ### Added
 - Initial commits
 
