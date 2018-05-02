@@ -161,15 +161,12 @@ desired.
 There are a few things I plan to work on. Ideas, suggestions and contributions
 are welcome.
 
-* ClojureScript support, obviously.
-* Better heuristic for the A* algorithm. Currently, we do not track the progress
-  in term of the overall sizes covered, doing so should produce much more
-  accurate estimate of work ahead, and significantly reduces the number of
-  steps needed to be considered.
+* ClojureScript support.
 * Design a different API for the quick algorithm, since it is more suitable for detecting
   changes rather than producing editscript. Need to see some use cases.
 * Support other data types as collection types, e.g. strings.
-* Explore other diffing algorithms
+* Better heuristic for the A* algorithm.
+* Explore other diffing algorithms.
 
 ## References
 

@@ -1,15 +1,15 @@
 # Change Log
 
-## [Unreleased]
+## [0.2.2] - 2018-05-02
 ### Changed
-- docs
+- A* uses global order number for heuristic
 
 ## [0.2.1] - 2018-04-30
 ### Changed
 - Developed an `A*` algorithm for diffing
 
 ### Removed
-- clojure.data.priority-map as a dependency 
+- clojure.data.priority-map as a dependency
 
 ### Fixed
 - all tests passing

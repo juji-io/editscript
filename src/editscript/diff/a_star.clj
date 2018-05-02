@@ -31,8 +31,6 @@
   (get-last [this] "Get the last child node")
   (get-next [this] "Get the next sibling node")
   (set-next [this node] "Set the next sibling node")
-  (^long get-index [this] "Get the index of this node among siblings")
-  (set-index [this i] "Set the index of this node among siblings")
   (set-order [this o] "Set the traversal order of this node")
   (^long get-order [this] "Get the order of this node in traversal")
   (^long get-size [this] "Get the size of sub-tree, used to estimate cost")
@@ -58,17 +56,13 @@
   (get-last [this] last)
   (get-next [this] next)
   (set-next [this n] (set! next n))
-  (get-index [this] index)
-  (set-index [this i] (set! index (long i)))
   (get-order [this] order)
   (set-order [this o] (set! order (long o)) this)
   (get-size [this] size)
   (set-size [this s] (set! size (long s)) this)
   (add-child [this node]
     (set! children (assoc children (get-key node) node))
-    (when last
-      (set-next last node)
-      (set-index node (inc (get-index last))))
+    (when last (set-next last node))
     (when-not first (set! first node))
     (set! last node)
     node))
@@ -503,18 +497,11 @@
             rootb (index b)
             came  (volatile! {})
             cost  (diff* roota rootb came)]
-        (println "cost is" cost)
-        (let [total          (* (get-size roota) (get-size rootb))
-              ^long explored (reduce + (map count (vals @came)))]
-          (printf "explored %d of %d %.1f%%\n"
-                  explored total (* 100 (double (/ explored total)))))
+        ;; (println "cost is" cost)
+        ;; (let [total          (* (get-size roota) (get-size rootb))
+        ;;       ^long explored (reduce + (map count (vals @came)))]
+        ;;   (printf "explored %d of %d %.1f%%\n"
+        ;;           explored total (* 100 (double (/ explored total)))))
         (trace @came (->Coord roota rootb) script)
         (e/set-size script ^long cost)))
     script))
-
-(comment
-
-(def a [1 '(2) 3])
-(index a)
-
-  )

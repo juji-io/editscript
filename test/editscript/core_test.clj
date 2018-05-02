@@ -17,7 +17,7 @@
             [clojure.test.check.clojure-test :as test]
             [clojure.test.check.properties :as prop]
             [clojure.java.io :as io]
-            [criterium.core :as c]
+            ;; [criterium.core :as c]
             [editscript.edit :as e]))
 
 ;; generative tests
@@ -46,7 +46,8 @@
 
 ;; sample data tests
 
-(defn- read-data [f]
+(defn- read-data
+  [f]
   (-> f io/resource slurp read-string))
 
 (def data1 (read-data "drawing1.edn"))
