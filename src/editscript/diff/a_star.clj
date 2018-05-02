@@ -33,6 +33,7 @@
   (set-next [this node] "Set the next sibling node")
   (^long get-index [this] "Get the index of this node among siblings")
   (set-index [this i] "Set the index of this node among siblings")
+  (set-order [this o] "Set the traversal order of this node")
   (^long get-order [this] "Get the order of this node in traversal")
   (^long get-size [this] "Get the size of sub-tree, used to estimate cost")
   (set-size [this s] "Set the size of sub-tree"))
@@ -45,7 +46,7 @@
                ^:volatile-mutable last
                ^:volatile-mutable next
                ^:volatile-mutable index
-               ^long order
+               ^:volatile-mutable ^long order
                ^:volatile-mutable ^long size]
   INode
   (get-path [this] path)
@@ -60,6 +61,7 @@
   (get-index [this] index)
   (set-index [this i] (set! index (long i)))
   (get-order [this] order)
+  (set-order [this o] (set! order (long o)) this)
   (get-size [this] size)
   (set-size [this s] (set! size (long s)) this)
   (add-child [this node]
@@ -75,6 +77,7 @@
   [x ^Writer writer]
   (print-method {:path     (get-path x)
                  :value    (get-value x)
+                 :order    (get-order x)
                  :children (get-children x)}
                 writer))
 
@@ -105,23 +108,30 @@
    0
    data))
 
+(defn- inc-order
+  [order]
+  (vswap! order (fn [o] (inc ^long o))))
+
 (defn- index-collection
   [type order path data parent]
-  (let [node (->Node path data parent {} nil nil nil 0 @order 1)]
-    (vswap! order (fn [o] (inc ^long o)))
+  (let [node (->Node path data parent {} nil nil nil 0 0 1)]
     (add-child parent node)
     (case type
       (:map :vec) (associative-children order path data node)
       :set        (set-children order path data node)
       :lst        (list-children order path data node))
     (let [^long cs (->> (get-children node) vals (map get-size) (reduce +))]
-      (set-size node (+ (get-size node) cs)))))
+      (doto node
+        (set-order @order)
+        (set-size (+ (get-size node) cs))))
+    (inc-order order)
+    node))
 
 (defn- index-value
   [order path data parent]
   (let [node (->Node path data parent nil nil nil nil 0 @order 1)]
     (add-child parent node)
-    (vswap! order (fn [o] (inc ^long o)))
+    (inc-order order)
     node))
 
 (defn- index*
@@ -256,8 +266,8 @@
     (:map :set) 0
     (:vec :lst) (let [[na nb] (get-coord cur)
                       [ra rb] (get-coord end)
-                      x       (if (identical? ra na) gx (get-index na))
-                      y       (if (identical? rb nb) gy (get-index nb))
+                      x       (if (identical? ra na) gx (get-order na))
+                      y       (if (identical? rb nb) gy (get-order nb))
                       delta   (- ^long gy ^long gx)
                       k       (- ^long y ^long x)
                       cost    (- delta k)]
@@ -358,7 +368,7 @@
   [type ra rb came]
   (let [end  (->Coord ra rb)
         init (->Coord (get-first ra) (get-first rb))
-        goal [(-> ra get-children count) (-> rb get-children count)]]
+        goal [(get-order ra) (get-order rb)]]
     (loop [state (->State (transient {})
                           (p/priority-map init (heuristic type init end goal))
                           (transient {init 0}))]
@@ -493,11 +503,18 @@
             rootb (index b)
             came  (volatile! {})
             cost  (diff* roota rootb came)]
-        ;; (println "cost is" cost)
-        ;; (let [total          (* (get-size roota) (get-size rootb))
-        ;;       ^long explored (reduce + (map count (vals @came)))]
-        ;;   (printf "explored %d of %d %.1f%%\n"
-        ;;           explored total (* 100 (double (/ explored total)))))
+        (println "cost is" cost)
+        (let [total          (* (get-size roota) (get-size rootb))
+              ^long explored (reduce + (map count (vals @came)))]
+          (printf "explored %d of %d %.1f%%\n"
+                  explored total (* 100 (double (/ explored total)))))
         (trace @came (->Coord roota rootb) script)
         (e/set-size script ^long cost)))
     script))
+
+(comment
+
+(def a [1 '(2) 3])
+(index a)
+
+  )

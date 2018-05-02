@@ -17,7 +17,7 @@
             [clojure.test.check.clojure-test :as test]
             [clojure.test.check.properties :as prop]
             [clojure.java.io :as io]
-            ;; [criterium.core :as c]
+            [criterium.core :as c]
             [editscript.edit :as e]))
 
 ;; generative tests
