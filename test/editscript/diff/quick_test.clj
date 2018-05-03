@@ -22,14 +22,14 @@
           c [0 0]
           d [1 -1 -1 nil -1 1 -1 -1 -1]]
       (is (= (vec-edits a b) [2 :+ 2 :- 1 :- 1 :+ :+ :+ 2]))
-      (is (= (vec-edits c d) [:+ :+ :+ :+ :+ :+ :+ :+ :+ :- :-])))))
+      (is (= (vec-edits c d) [:+ :+ :+ :+ :+ :+ :+ :r :r])))))
 
 (deftest min+plus->replace-test
   (testing "Replacement of consecutive :- :+ with :r"
     (is (= (min+plus->replace [:- :+ 2 3 4 :- :- :+ 3 4 :- 3 :+ 3])
-           [:r 2 3 4 :- :- :+ 3 4 :- 3 :+ 3]))
+           [:r 2 3 4 :- :r 3 4 :- 3 :+ 3]))
     (is (= (min+plus->replace [:- :+ 2 3 4 :- :- :+ 3 4 :- :+ 3])
-           [:r 2 3 4 :- :- :+ 3 4 :r 3]))
+           [:r 2 3 4 :- :r 3 4 :r 3]))
     (is (= (min+plus->replace [:- :+]) [:r]))
     (is (= (min+plus->replace [:- :+ 3]) [:r 3]))
     (is (= (min+plus->replace []) []))
@@ -107,7 +107,10 @@
   (def as (vec (range 2000)))
   (def bs (vec (rand-alter 80 10 10 as)))
 
+  (c/bench (editscript.diff.a-star/diff as bs))
+
   (c/bench (vec-edits as bs))
+
   ;; ==>
   ;; Evaluation count : 1920 in 60 samples of 32 calls.
   ;; Execution time mean : 32.714460 ms

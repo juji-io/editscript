@@ -69,12 +69,12 @@
 
 (c/quick-bench (a/diff data1 data2))
 ;; ==>
-;; Evaluation count : 264 in 6 samples of 44 calls.
-;; Execution time mean : 2.476637 ms
-;; Execution time std-deviation : 325.440989 µs
-;; Execution time lower quantile : 2.292459 ms ( 2.5%)
-;; Execution time upper quantile : 3.036373 ms (97.5%)
-;; Overhead used : 9.788943 ns
+;; Evaluation count : 258 in 6 samples of 43 calls.
+;; Execution time mean : 2.387151 ms
+;; Execution time std-deviation : 36.977425 µs
+;; Execution time lower quantile : 2.333425 ms ( 2.5%)
+;; Execution time upper quantile : 2.424183 ms (97.5%)
+;; Overhead used : 9.787889 ns
 (e/edit-distance (a/diff data1 data2))
 ;; ==> 1
 (e/get-size (a/diff data1 data2))
@@ -83,18 +83,14 @@
 ;; ==>
 ;; [[[2 :fill] :r "#0000ff"]]
 
-;; Found 1 outliers in 6 samples (16.6667 %)
-;; low-severe	 1 (16.6667 %)
-;; Variance from outliers : 31.6576 % Variance is moderately inflated by outliers
-
 (c/quick-bench (a/diff data1 data3))
 ;; ==>
-;; Evaluation count : 192 in 6 samples of 32 calls.
-;; Execution time mean : 3.714949 ms
-;; Execution time std-deviation : 669.761337 µs
-;; Execution time lower quantile : 3.101943 ms ( 2.5%)
-;; Execution time upper quantile : 4.731556 ms (97.5%)
-;; Overhead used : 9.788943 ns
+;; Evaluation count : 186 in 6 samples of 31 calls.
+;; Execution time mean : 3.374443 ms
+;; Execution time std-deviation : 209.607156 µs
+;; Execution time lower quantile : 3.167858 ms ( 2.5%)
+;; Execution time upper quantile : 3.587970 ms (97.5%)
+;; Overhead used : 9.787889 ns
 (e/edit-distance (a/diff data1 data3))
 ;; ==> 5
 (e/get-size (a/diff data1 data3))
@@ -105,12 +101,16 @@
 
 (c/quick-bench (a/diff data1 data4))
 ;; ==>
-;; Evaluation count : 168 in 6 samples of 28 calls.
-;; Execution time mean : 3.761350 ms
-;; Execution time std-deviation : 147.495117 µs
-;; Execution time lower quantile : 3.615001 ms ( 2.5%)
-;; Execution time upper quantile : 3.918334 ms (97.5%)
-;; Overhead used : 9.788943 ns
+;; Evaluation count : 192 in 6 samples of 32 calls.
+;; Execution time mean : 3.235073 ms
+;; Execution time std-deviation : 157.019928 µs
+;; Execution time lower quantile : 3.113682 ms ( 2.5%)
+;; Execution time upper quantile : 3.478369 ms (97.5%)
+;; Overhead used : 9.787889 ns
+
+;; Found 1 outliers in 6 samples (16.6667 %)
+;; low-severe	 1 (16.6667 %)
+;; Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
 (e/edit-distance (a/diff data1 data4))
 ;; ==> 13
 (e/get-size (a/diff data1 data4))
@@ -123,16 +123,12 @@
 
 (c/quick-bench (q/diff data1 data2))
 ;; ==>
-;; Evaluation count : 20760 in 6 samples of 3460 calls.
-;; Execution time mean : 30.011144 µs
-;; Execution time std-deviation : 1.693011 µs
-;; Execution time lower quantile : 28.824434 µs ( 2.5%)
-;; Execution time upper quantile : 32.695843 µs (97.5%)
-;; Overhead used : 9.788943 ns
-
-;; Found 1 outliers in 6 samples (16.6667 %)
-;; low-severe	 1 (16.6667 %)
-;; Variance from outliers : 14.3936 % Variance is moderately inflated by outliers
+;; Evaluation count : 19254 in 6 samples of 3209 calls.
+;; Execution time mean : 31.286514 µs
+;; Execution time std-deviation : 610.084801 ns
+;; Execution time lower quantile : 30.763616 µs ( 2.5%)
+;; Execution time upper quantile : 31.994251 µs (97.5%)
+;; Overhead used : 9.787889 ns
 (e/edit-distance (q/diff data1 data2))
 ;; ==> 1
 (e/get-size (q/diff data1 data2))
@@ -143,16 +139,12 @@
 
 (c/quick-bench (q/diff data1 data3))
 ;; ==>
-;; Evaluation count : 19692 in 6 samples of 3282 calls.
-;; Execution time mean : 30.754420 µs
-;; Execution time std-deviation : 781.033921 ns
-;; Execution time lower quantile : 30.103331 µs ( 2.5%)
-;; Execution time upper quantile : 32.041437 µs (97.5%)
-;; Overhead used : 9.788943 ns
-
-;; Found 1 outliers in 6 samples (16.6667 %)
-;; low-severe	 1 (16.6667 %)
-;; Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
+;; Evaluation count : 18156 in 6 samples of 3026 calls.
+;; Execution time mean : 34.500821 µs
+;; Execution time std-deviation : 1.234259 µs
+;; Execution time lower quantile : 33.423791 µs ( 2.5%)
+;; Execution time upper quantile : 35.991187 µs (97.5%)
+;; Overhead used : 9.787889 ns
 (e/edit-distance (q/diff data1 data3))
 ;; ==> 5
 (e/get-size (q/diff data1 data3))
@@ -163,20 +155,19 @@
 
 (c/quick-bench (q/diff data1 data4))
 ;; ==>
-;; Evaluation count : 13962 in 6 samples of 2327 calls.
-;; Execution time mean : 43.886412 µs
-;; Execution time std-deviation : 841.086279 ns
-;; Execution time lower quantile : 43.142360 µs ( 2.5%)
-;; Execution time upper quantile : 44.971814 µs (97.5%)
-;; Overhead used : 9.788943 ns
+;; Evaluation count : 6702 in 6 samples of 1117 calls.
+;; Execution time mean : 81.733234 µs
+;; Execution time std-deviation : 1.074693 µs
+;; Execution time lower quantile : 80.428501 µs ( 2.5%)
+;; Execution time upper quantile : 82.611032 µs (97.5%)
+;; Overhead used : 9.787889 ns
 (e/edit-distance (q/diff data1 data4))
-;; ==> 9
+;; ==> 36
 (e/get-size (q/diff data1 data4))
-;; ==> 147
+;; ==> 75
 (q/diff data1 data4)
-;; [[[0] :-] [[0] :-] [[0] :-] [[0] :-] [[0] :-] [[0] :-] [[0] :+ {:y 13, :r 0, :color "#000000", :fill "#CCCCCC", :width 262, :type "rect", :cap "round", :borderWidth 1, :style "Solid", :x 19, :height 101}] [[1] :+ {:y 122, :family "sans-serif", :color "#0000FF", :fill {:r 256, :g 0, :b 0, :a 0.5}, :width 10, :type "textBlock", :cap "round", :borderWidth 1, :size "24px", :style "Solid", :pad 3, :weight "bold", :x 12, :height 25.19999999999999, :text "DojoX Drawing Rocks"}] [[2] :+ {:y 208, :family "sans-serif", :color "#000000", :fill "#CCCCCC", :width 200, :type "text", :cap "round", :borderWidth 1, :size "18px", :style "Solid", :pad 3, :weight "normal", :x 12, :height 25.19999999999999, :text "This is just text"}]]
+;; [[[0] :-] [[0] :-] [[0] :-] [[0 :y1] :-] [[0 :type] :r "rect"] [[0 :borderWidth] :r 1] [[0 :label] :-] [[0 :x1] :-] [[0 :y2] :-] [[0 :x2] :-] [[0 :y] :+ 13] [[0 :r] :+ 0] [[0 :width] :+ 262] [[0 :x] :+ 19] [[0 :height] :+ 101] [[1 :y] :r 122] [[1 :color] :r "#0000FF"] [[1 :fill] :r {:r 256, :g 0, :b 0, :a 0.5}] [[1 :width] :r 10] [[1 :type] :r "textBlock"] [[1 :size] :r "24px"] [[1 :weight] :r "bold"] [[1 :x] :r 12] [[1 :height] :r 25.19999999999999] [[1 :text] :r "DojoX Drawing Rocks"] [[2 :points] :-] [[2 :type] :r "text"] [[2 :y] :+ 208] [[2 :family] :+ "sans-serif"] [[2 :width] :+ 200] [[2 :size] :+ "18px"] [[2 :pad] :+ 3] [[2 :weight] :+ "normal"] [[2 :x] :+ 12] [[2 :height] :+ 25.19999999999999] [[2 :text] :+ "This is just text"]]
 
-;; Here it does some wholesale copying, the script size explodes
 
 
 )

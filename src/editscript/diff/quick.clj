@@ -50,8 +50,7 @@
                     (if (and (< x n)
                              (< y m)
                              (= (type ax) (type by))
-                             (= ax by)
-                             )
+                             (= ax by))
                       (recur (inc x) (inc y))
                       x))))
         fp-fn (fn [fp ^long k]
@@ -87,44 +86,48 @@
   (vec (map (fn [op] (case op :+ :- :- :+ op)) edits)))
 
 (defn min+plus->replace
-  "A heuristic to create some replacements.
-  This one turns isolated consecutive `:-` `:+` into a `:r`,
-  do not convert if there's `:-` in front, as it is ambiguous"
+  "Aggressively turn :- and :+ into replacements."
   [v]
-  (let [n (count v)]
-    (loop [r (transient []) i -1 j 0 k 1]
-      (let [ei (get v i) ej (get v j) ek (get v k)]
-       (cond
-         (and (= ej :-)
-              (= ek :+)
-              (not= ei :-)) (recur (conj! r :r) (+ i 2) (+ j 2) (+ k 2))
-         (>= j n)           (persistent! r)
-         :else              (recur (conj! r ej) (inc i) (inc j) (inc k)))))))
+  (let [xf (comp (partition-by integer?)
+              (mapcat
+               (fn [coll]
+                 (let [m (first coll)]
+                   (if (or (integer? m) (= 1 (count coll)))
+                     coll
+                     (let [p       (if (= m :-) :+ :-)
+                           [ms ps] (split-with #(= % m) coll)
+                           mc      (count ms)
+                           pc      (count ps)
+                           delta   (Math/abs (- mc pc))
+                           rs      (repeat (- (max mc pc) delta) :r)]
+                       (cond
+                         (< mc pc) (concat rs (repeat delta p))
+                         (= mc pc) rs
+                         :else     (concat (repeat delta m) rs))))))))]
+    (into [] xf v)))
 
 (defn vec-edits
   [a b]
   (let [n (count a)
-        m (count b)
-        v (if (< n m)
-            (swap-ops (vec-edits* b a m n))
-            (vec-edits* a b n m))]
-    (-> v vec min+plus->replace)))
+        m (count b)]
+    (min+plus->replace (if (< n m)
+                         (swap-ops (vec-edits* b a m n))
+                         (vec-edits* a b n m)))))
 
 (defn- diff-vec
   "Adjust the indices to have a correct editscript"
   [script path a b]
   (reduce
-   (fn [{:keys [^long ia ^long ia' ^long ib] :as m} op]
+   (fn [[^long ia ^long ia' ^long ib] op]
      (case op
        :- (do (diff* script (conj path ia') (get a ia) (e/nada))
-              (assoc! m :ia (inc ia)))
+              [(inc ia) ia' ib])
        :+ (do (diff* script (conj path ia') (e/nada) (get b ib))
-              (assoc! m :ia' (inc ia') :ib (inc ib)))
+              [ia (inc ia') (inc ib)])
        :r (do (diff* script (conj path ia') (get a ia) (get b ib))
-              (assoc! m :ia (inc ia) :ia' (inc ia') :ib (inc ib)))
-       (assoc! m :ia (+ ia ^long op) :ia' (+ ia' ^long op)
-               :ib (+ ib ^long op))))
-   (transient {:ia 0 :ia' 0 :ib 0})
+              [(inc ia) (inc ia') (inc ib)])
+       [(+ ia ^long op) (+ ia' ^long op) (+ ib ^long op)]))
+   (transient [0 0 0])
    (vec-edits a b)))
 
 (defn- diff-set

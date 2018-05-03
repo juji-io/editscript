@@ -10,6 +10,7 @@
 
 (ns editscript.diff.a-star
   (:require [editscript.edit :as e]
+            [editscript.diff.quick :as q]
             [editscript.util.priority :as p])
   (:import [clojure.lang PersistentVector Keyword]
            [java.io Writer]
@@ -378,26 +379,71 @@
                       (set-open state (pop open))
                       (frontier type init end cur))))))))))
 
+(defn- vec-fn
+  [node]
+  (let [v (get-value node)]
+    (if (= :vec (e/get-type v) )
+      v
+      (vec v))))
+
+(defn- use-quick
+  [ra rb came]
+  (loop [[op & ops] (q/vec-edits (vec-fn ra) (vec-fn rb))
+         na         (get-first ra)
+         nb         (get-first rb)
+         m          (transient {})
+         cost       0]
+    (if op
+      (let [na' (next-node na ra)
+            nb' (next-node nb rb)
+            cur (->Coord na nb)]
+        (if (integer? op)
+          (recur (if (> ^long op 1) `[~(dec ^long op) ~@ops] ops)
+                 na' nb'
+                 (assoc! m (->Coord na' nb') [cur :=])
+                 cost)
+          (case op
+            :- (recur ops na' nb
+                      (assoc! m (->Coord na' nb) [cur op])
+                      (inc cost))
+            :+ (recur ops na nb'
+                      (assoc! m (->Coord na nb')
+                              [cur (if (identical? na ra) :a :i)])
+                      (+ cost 2))
+            :r (recur ops na' nb'
+                      (assoc! m (->Coord na' nb') [cur op])
+                      (+ cost 2)))))
+      (let [root (->Coord ra rb)]
+        (vswap! came assoc root (persistent! m))
+        cost))))
+
 (defn- ^long diff*
   [ra rb came]
   (let [sa     ^long (get-size ra)
         sb     ^long (get-size rb)
         typea  (-> ra get-value e/get-type)
+        cc+1   #(-> % get-children count inc)
         update #(vswap! came assoc (->Coord ra rb) {})]
     (cond
-      ;; both are :val, skip or replace
+      ;; both are :val or empty coll, skip or replace
       (= 1 sa sb)
       (do (update)
           (if (values=? (get-value ra) (get-value rb))
             0
             2))
-      ;; one of them is :val, replace
+      ;; one of them is :val or empty coll, replace
       (or (= 1 sa) (= 1 sb))
       (do (update)
           (inc ^long sb))
-      ;; run A* for children
+      ;; non-empty coll with same type, drill down
       (= typea (-> rb get-value e/get-type))
-      (A* typea ra rb came)
+      (if (and (#{:vec :lst} typea)
+               (= sa (cc+1 ra))
+               (= sb (cc+1 rb)))
+        ;; vec or lst contains values or empty colls, safe to use quick algo.
+        (use-quick ra rb came)
+        ;; otherwise run A*
+        (A* typea ra rb came))
       ;; types differ, can only replace
       :else
       (do (update)
