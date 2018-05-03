@@ -8,7 +8,7 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.a-star-test
+(ns editscript.diff.a-star-test
   (:require [clojure.test :refer :all]
             [editscript.edit :refer :all]
             [editscript.core :refer [patch]]

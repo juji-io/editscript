@@ -8,7 +8,7 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.quick-test
+(ns editscript.diff.quick-test
   (:require [clojure.test :refer :all]
             ;; [criterium.core :as c]
             [editscript.edit :refer :all]
