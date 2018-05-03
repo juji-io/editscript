@@ -98,13 +98,14 @@ the diagonal.
 The implementation is optimized for speed. Currently the algorithm spent most of
 its running time calculating the cost of next steps, perhaps due to the use of a very
 generic heuristic. A more specialized heuristic for our case should reduce the number of
-steps considered.
+steps considered. For special cases of vectors and lists consisting of values or
+empty collections only, we also use the quick algorithm inside.
 
 Although much slower than the non-optimizing quick algorithm below, the algorithm is
 practical for common Clojure data that include lots of maps. Maps and sets do
 not incur the penalty of a large search space in the cases of vectors and lists.
 For a [drawing data set](https://github.com/justsml/json-diff-performance), the
-diffing time of the algorithm is in the range of 2ms to 5ms on a 2014 2.8 GHz
+diffing time of the algorithm is in the range of 2ms to 4ms on a 2014 2.8 GHz
 Core i5 16GB MacBook Pro.
 
 ### Quick diffing
@@ -130,31 +131,32 @@ For instances, when consecutive deletions involving nested elements occur in a
 sequence, the generated editscript can be large. For example:
 
 ```Clojure
-(def a [2 {:a 42} {:b 4} {:c 29}])
-(def b [{:a 5} {:b 5} {:c 29}])
+(def a [2 {:a 42} 3 {:b 4} {:c 29}])
+(def b [{:a 5} {:b 5}])
 
 (editscript.diff.quick/diff a b)
 ;;==>
 ;;[[[0] :-]
 ;; [[0] :-]
 ;; [[0] :-]
-;; [[0] :+ {:a 5}]
-;; [[1] :+ {:b 5}]]
+;; [[0 :b] :-]
+;; [[0 :a] :+ 5]
+;; [[1 :c] :-]
+;; [[1 :b] :+ 5]]
 
 (editscript.diff.a-star/diff a b)
 ;;==>
 ;;[[[0] :-]
 ;; [[0 :a] :r 5]
-;; [[1 :b] :r 5]]
+;; [[1] :-]
+;; [[1 :b] :r 5]
+;; [[2] :-]]
 
 ```
-In this case, the quick algorithm basically deletes the original and then add
+In this case, the quick algorithm seems to delete the original and then add
 new ones back. The reason is that the quick algorithm does not drill down
-(i.e. do replacement) when it is needed. It currently only drills down in one
-unambiguous case, where `:-` is immediately followed by `:+` and there's no `:-` before
-them. More such cases may be added. However, adding more special cases would not
-cover all the situations. An optimizing algorithm is needed if minimal diffs are
-desired.
+(i.e. do replacement) at the correct places. It currently drills down wherever it
+can. An optimizing algorithm is needed if minimal diffs are desired.
 
 ## Roadmap
 

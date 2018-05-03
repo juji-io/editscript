@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.2.3] - 2018-05-03
+### Changed
+- A* Use quick algorithm for all value/empty coll list/vector comparison
+- Quick algorithm aggressively converts replacement
+
 ## [0.2.2] - 2018-05-02
 ### Changed
 - A* uses global order number for heuristic
