@@ -7,9 +7,9 @@ any nested Clojure data structures consisting of regular maps, vectors, lists,
 sets and values.
 
 At Juji, we need to take snapshots of our AI agents' states and later
-restore them. Such a use case requires a good diffing library to avoid
-overwhelming our storage systems. I have not found such a library in Clojure
-ecosystem, so I implemented my own. Hopefully this little
+restore them. Such a use case requires a good diffing library for nested Clojure
+data structures to avoid overwhelming our storage systems. I have not found such
+a library in Clojure ecosystem, so I implemented my own. Hopefully this little
 library could be of some use to further enhance the Clojure's unique
 strength of [Data-Oriented Programming](https://livebook.manning.com/#!/book/the-joy-of-clojure-second-edition/chapter-14/1).
 
@@ -26,7 +26,7 @@ Here is a usage example:
 (use 'editscript.edit)
 
 ;; Here are two pieces of data, a and b
-(def a ["abc" 24 23 {:a [1 2 3]} 1 3 #{1 2}])
+(def a ["abc" 24 22 {:a [1 2 3]} 1 3 #{1 2}])
 (def b [24 23 {:a [2 3]} 1 3 #{1 2 3}])
 
 ;; compute the editscript between a and b
@@ -34,9 +34,10 @@ Here is a usage example:
 
 d
 ;;==>
-;;  [[[0] :-]
-;;   [[2 :a 0] :-]
-;;   [[5 3] :+ 3]]
+;;[[[0] :-]
+;; [[1] :r 23]
+;; [[2 :a 0] :-]
+;; [[5 3] :+ 3]]
 
 ;; get the edit distance
 (edit-distance d)
