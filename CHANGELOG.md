@@ -1,5 +1,12 @@
 # Change Log
 
+
+## [Unreleases]
+
+### Fixed
+- wrong test ns declaration preventing `lein test`
+
+
 ## [0.2.3] - 2018-05-03
 ### Changed
 - A* Use quick algorithm for all value/empty coll list/vector comparison
@@ -23,5 +30,5 @@
 ### Added
 - Initial commits
 
-[Unreleased]: https://github.com/juji-io/editscript/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/juji-io/editscript/compare/0.2.3...HEAD
 [0.2.0]: https://github.com/juji-io/editscript/compare/0.1.1...0.2.0
