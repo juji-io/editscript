@@ -41,12 +41,12 @@ d
 
 ;; get the edit distance
 (edit-distance d)
-;;==> 3
+;;==> 4
 
 ;; get the size of the editscript,
 ;; the size of each operation = new-data-size + 1
 (get-size d)
-;;==> 4
+;;==> 6
 
 ;; patch a with the editscript to get back b, so that
 (= b (patch a d))
