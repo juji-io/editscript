@@ -1,15 +1,20 @@
 # Change Log
 
 
-## [Unreleases]
+## [0.2.4] - 2018-05-05
+### Changed
+- Expand the use of quick algorithm in A* to cases where one party contains only leaves
+- Implements pairing heap for priority queue
+
+### Removed
+- java.util.PriorityQueue and HashMap as dependency
 
 ### Fixed
-- wrong test ns declaration preventing `lein test`
-
+- Wrong test ns declaration preventing `lein test`
 
 ## [0.2.3] - 2018-05-03
 ### Changed
-- A* Use quick algorithm for all value/empty coll list/vector comparison
+- A* uses quick algorithm for all leaves list/vector comparison
 - Quick algorithm aggressively converts replacement
 
 ## [0.2.2] - 2018-05-02

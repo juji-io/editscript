@@ -58,8 +58,11 @@
 (deftest drawing-sample-test
   (testing "A sample JSON data of a drawing program from https://github.com/justsml/json-diff-performance, converted to edn using https://github.com/peterschwarz/json-to-edn"
     (is (= data2 (patch data1 (a/diff data1 data2))))
+    (is (= data1 (patch data2 (a/diff data2 data1))))
     (is (= data3 (patch data1 (a/diff data1 data3))))
-    (is (= data4 (patch data1 (a/diff data1 data4))))))
+    (is (= data1 (patch data3 (a/diff data3 data1))))
+    (is (= data4 (patch data1 (a/diff data1 data4))))
+    (is (= data1 (patch data4 (a/diff data4 data1))))))
 
 (comment
 
@@ -69,12 +72,12 @@
 
 (c/quick-bench (a/diff data1 data2))
 ;; ==>
-;; Evaluation count : 258 in 6 samples of 43 calls.
-;; Execution time mean : 2.387151 ms
-;; Execution time std-deviation : 36.977425 µs
-;; Execution time lower quantile : 2.333425 ms ( 2.5%)
-;; Execution time upper quantile : 2.424183 ms (97.5%)
-;; Overhead used : 9.787889 ns
+;; Evaluation count : 294 in 6 samples of 49 calls.
+;; Execution time mean : 2.148037 ms
+;; Execution time std-deviation : 82.713130 µs
+;; Execution time lower quantile : 2.053515 ms ( 2.5%)
+;; Execution time upper quantile : 2.249461 ms (97.5%)
+;; Overhead used : 9.792106 ns
 (e/edit-distance (a/diff data1 data2))
 ;; ==> 1
 (e/get-size (a/diff data1 data2))
@@ -85,12 +88,12 @@
 
 (c/quick-bench (a/diff data1 data3))
 ;; ==>
-;; Evaluation count : 186 in 6 samples of 31 calls.
-;; Execution time mean : 3.374443 ms
-;; Execution time std-deviation : 209.607156 µs
-;; Execution time lower quantile : 3.167858 ms ( 2.5%)
-;; Execution time upper quantile : 3.587970 ms (97.5%)
-;; Overhead used : 9.787889 ns
+;; Evaluation count : 192 in 6 samples of 32 calls.
+;; Execution time mean : 3.299969 ms
+;; Execution time std-deviation : 116.109515 µs
+;; Execution time lower quantile : 3.203992 ms ( 2.5%)
+;; Execution time upper quantile : 3.445768 ms (97.5%)
+;; Overhead used : 9.792106 ns
 (e/edit-distance (a/diff data1 data3))
 ;; ==> 5
 (e/get-size (a/diff data1 data3))
@@ -102,15 +105,11 @@
 (c/quick-bench (a/diff data1 data4))
 ;; ==>
 ;; Evaluation count : 192 in 6 samples of 32 calls.
-;; Execution time mean : 3.235073 ms
-;; Execution time std-deviation : 157.019928 µs
-;; Execution time lower quantile : 3.113682 ms ( 2.5%)
-;; Execution time upper quantile : 3.478369 ms (97.5%)
-;; Overhead used : 9.787889 ns
-
-;; Found 1 outliers in 6 samples (16.6667 %)
-;; low-severe	 1 (16.6667 %)
-;; Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
+;; Execution time mean : 3.199297 ms
+;; Execution time std-deviation : 82.935858 µs
+;; Execution time lower quantile : 3.130353 ms ( 2.5%)
+;; Execution time upper quantile : 3.320872 ms (97.5%)
+;; Overhead used : 9.792106 ns
 (e/edit-distance (a/diff data1 data4))
 ;; ==> 13
 (e/get-size (a/diff data1 data4))

@@ -11,7 +11,7 @@
 (ns editscript.diff.a-star
   (:require [editscript.edit :as e]
             [editscript.diff.quick :as q]
-            [editscript.util.priority :as p])
+            [editscript.util.pairing :as pa])
   (:import [clojure.lang PersistentVector Keyword]
            [java.io Writer]
            [java.lang Comparable]))
@@ -48,20 +48,20 @@
                ^:volatile-mutable ^long order
                ^:volatile-mutable ^long size]
   INode
-  (get-path [this] path)
+  (get-path [_] path)
   (get-key [this] (-> this get-path peek))
-  (get-value [this] value)
-  (get-parent [this] parent)
-  (get-children [this] children)
-  (get-first [this] first)
-  (get-last [this] last)
-  (get-next [this] next)
-  (set-next [this n] (set! next n))
-  (get-order [this] order)
+  (get-value [_] value)
+  (get-parent [_] parent)
+  (get-children [_] children)
+  (get-first [_] first)
+  (get-last [_] last)
+  (get-next [_] next)
+  (set-next [_ n] (set! next n))
+  (get-order [_] order)
   (set-order [this o] (set! order (long o)) this)
-  (get-size [this] size)
+  (get-size [_] size)
   (set-size [this s] (set! size (long s)) this)
-  (add-child [this node]
+  (add-child [_ node]
     (set! children (assoc children (get-key node) node))
     (when last (set-next last node))
     (when-not first (set! first node))
@@ -225,10 +225,6 @@
 (declare diff*)
 
 (defn- compute-cost
-  "Profiling shows that more than 70% of running time is spent in this function,
-  not counting the recursive call to `diff*`, that means there's not much else
-  can be optimized except to devise better heuristic, so the number of steps tried
-  can be reduced."
   [^Coord cur came g op]
   (let [^long gc (access-g g cur)]
     (case op
@@ -365,7 +361,7 @@
         init (->Coord (get-first ra) (get-first rb))
         goal [(get-order ra) (get-order rb)]]
     (loop [state (->State (transient {})
-                          (p/priority-map init (heuristic type init end goal))
+                          (pa/priority-map init (heuristic type init end goal))
                           (transient {init 0}))]
       (let [[came' open g] (get-state state)]
         (if (empty? open)
@@ -382,7 +378,7 @@
 (defn- vec-fn
   [node]
   (let [v (get-value node)]
-    (if (= :vec (e/get-type v) )
+    (if (= :vec (e/get-type v))
       v
       (vec v))))
 
@@ -396,23 +392,24 @@
     (if op
       (let [na' (next-node na ra)
             nb' (next-node nb rb)
-            cur (->Coord na nb)]
+            cur (->Coord na nb)
+            sb  (get-size nb)]
         (if (integer? op)
           (recur (if (> ^long op 1) `[~(dec ^long op) ~@ops] ops)
                  na' nb'
                  (assoc! m (->Coord na' nb') [cur :=])
-                 cost)
+                 (long cost))
           (case op
             :- (recur ops na' nb
                       (assoc! m (->Coord na' nb) [cur op])
-                      (inc cost))
+                      (inc (long cost)))
             :+ (recur ops na nb'
                       (assoc! m (->Coord na nb')
                               [cur (if (identical? na ra) :a :i)])
-                      (+ cost 2))
+                      (+ (long cost) 1 (long sb)))
             :r (recur ops na' nb'
                       (assoc! m (->Coord na' nb') [cur op])
-                      (+ cost 2)))))
+                      (+ (long cost) 1 (long sb))))))
       (let [root (->Coord ra rb)]
         (vswap! came assoc root (persistent! m))
         cost))))
@@ -422,28 +419,28 @@
   (let [sa     ^long (get-size ra)
         sb     ^long (get-size rb)
         typea  (-> ra get-value e/get-type)
-        cc+1   #(-> % get-children count inc)
         update #(vswap! came assoc (->Coord ra rb) {})]
     (cond
-      ;; both are :val or empty coll, skip or replace
+      ;; both are leaves, skip or replace
       (= 1 sa sb)
       (do (update)
           (if (values=? (get-value ra) (get-value rb))
             0
             2))
-      ;; one of them is :val or empty coll, replace
+      ;; one of them is leaf, replace
       (or (= 1 sa) (= 1 sb))
       (do (update)
           (inc ^long sb))
       ;; non-empty coll with same type, drill down
       (= typea (-> rb get-value e/get-type))
-      (if (and (#{:vec :lst} typea)
-               (= sa (cc+1 ra))
-               (= sb (cc+1 rb)))
-        ;; vec or lst contains values or empty colls, safe to use quick algo.
-        (use-quick ra rb came)
-        ;; otherwise run A*
-        (A* typea ra rb came))
+      (let [cc+1 #(-> % get-children count inc)]
+        (if (and (#{:vec :lst} typea)
+                 (or (= sa (cc+1 ra))
+                     (= sb (cc+1 rb))))
+          ;; vec or lst contains leaves only, safe to use quick algo.
+          (use-quick ra rb came)
+          ;; otherwise run A*
+          (A* typea ra rb came)))
       ;; types differ, can only replace
       :else
       (do (update)

@@ -99,8 +99,8 @@ the diagonal.
 The implementation is optimized for speed. Currently the algorithm spent most of
 its running time calculating the cost of next steps, perhaps due to the use of a very
 generic heuristic. A more specialized heuristic for our case should reduce the number of
-steps considered. For special cases of vectors and lists consisting of values or
-empty collections only, we also use the quick algorithm inside.
+steps considered. For special cases of vectors and lists consisting of leaves
+only, we also use the quick algorithm below to enhance the speed.
 
 Although much slower than the non-optimizing quick algorithm below, the algorithm is
 practical for common Clojure data that include lots of maps. Maps and sets do
@@ -118,7 +118,7 @@ number of deletions if `b` is longer than `a`.  The same sequence diffing algori
 also implemented in [diffit](https://github.com/friemen/diffit). Using their
 benchmark, our implementation has slightly better performance due to more
 optimizations. Keep in mind that our algorithm also handles nested Clojure data
-structures. Compared  with our A* algorithm, our quick algorithm is about two
+structures. Compared  with our A* algorithm, our quick algorithm is up to two
 orders of magnitude faster.
 
 The Wu algorithm does not have replacement operations, and assumes each edit has

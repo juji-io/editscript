@@ -108,9 +108,20 @@
   (def bs (vec (rand-alter 80 10 10 as)))
 
   (c/bench (editscript.diff.a-star/diff as bs))
+  ;; ==>
+  ;; Evaluation count : 960 in 60 samples of 16 calls.
+  ;; Execution time mean : 65.203017 ms
+  ;; Execution time std-deviation : 583.138552 µs
+  ;; Execution time lower quantile : 64.500410 ms ( 2.5%)
+  ;; Execution time upper quantile : 66.464167 ms (97.5%)
+  ;; Overhead used : 9.792106 ns
+
+  ;; Found 4 outliers in 60 samples (6.6667 %)
+	;; low-severe	 3 (5.0000 %)
+	;; low-mild	 1 (1.6667 %)
+  ;; Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
 
   (c/bench (vec-edits as bs))
-
   ;; ==>
   ;; Evaluation count : 1920 in 60 samples of 32 calls.
   ;; Execution time mean : 32.714460 ms
