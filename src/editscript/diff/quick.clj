@@ -15,7 +15,7 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-(declare diff*)
+(defn ^:declared diff* [script path a b])
 
 (defn- diff-map
   [script path a b]
