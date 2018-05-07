@@ -9,8 +9,8 @@
 ;;
 
 (ns editscript.edit
-  (:import [clojure.lang Seqable PersistentVector
-            IPersistentList IPersistentMap IPersistentSet IPersistentVector]))
+  #?(:clj (:import [clojure.lang PersistentVector IPersistentList IPersistentMap
+                    IPersistentSet IPersistentVector])))
 
 (defprotocol IEdit
   (auto-sizing [this value])
@@ -36,24 +36,45 @@
   (reify IType
     (get-type [_] :nil)))
 
-(extend-protocol IType
-  IPersistentList
-  (get-type [_] :lst)
+#?(:clj
+   (extend-protocol IType
+     IPersistentList
+     (get-type [_] :lst)
 
-  IPersistentMap
-  (get-type [_] :map)
+     IPersistentMap
+     (get-type [_] :map)
 
-  IPersistentVector
-  (get-type [_] :vec)
+     IPersistentVector
+     (get-type [_] :vec)
 
-  IPersistentSet
-  (get-type [_] :set)
+     IPersistentSet
+     (get-type [_] :set)
 
-  nil
-  (get-type [_] :val)
+     nil
+     (get-type [_] :val)
 
-  Object
-  (get-type [_] :val))
+     Object
+     (get-type [_] :val))
+
+   :cljs
+   (extend-protocol IType
+     IList
+     (get-type [_] :lst)
+
+     IMap
+     (get-type [_] :map)
+
+     IVector
+     (get-type [_] :vec)
+
+     ISet
+     (get-type [_] :set)
+
+     nil
+     (get-type [_] :val)
+
+     default
+     (get-type [_] :val)))
 
 (defn- sizing*
   [data size]
@@ -76,7 +97,6 @@
                      ^:volatile-mutable ^long adds-num
                      ^:volatile-mutable ^long dels-num
                      ^:volatile-mutable ^long reps-num]
-  :load-ns true
 
   IEdit
   (auto-sizing [this value]
@@ -105,12 +125,8 @@
   (get-adds-num [this] adds-num)
   (get-dels-num [this] dels-num)
   (get-reps-num [this] reps-num)
-  (edit-distance [this] (+ adds-num dels-num reps-num))
+  (edit-distance [this] (+ adds-num dels-num reps-num)))
 
-  Seqable
-  (seq [this]
-    (.seq edits)))
-
-(defmethod print-method EditScript
-  [x ^java.io.Writer writer]
-  (print-method (get-edits x) writer))
+#?(:clj (defmethod print-method EditScript
+          [x ^java.io.Writer writer]
+          (print-method (get-edits x) writer)))

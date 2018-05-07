@@ -9,16 +9,17 @@
 ;;
 
 (ns editscript.core-test
-  (:require [clojure.test :refer :all]
-            [editscript.core :refer :all]
+  (:require [clojure.test :refer [is testing deftest]]
+            [editscript.core :refer [patch]]
+            [editscript.edit :as e]
             [editscript.diff.quick :as q]
             [editscript.diff.a-star :as a]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.clojure-test :as test]
             [clojure.test.check.properties :as prop]
-            [clojure.java.io :as io]
+            #?(:clj [clojure.java.io :as io])
             ;; [criterium.core :as c]
-            [editscript.edit :as e]))
+            ))
 
 ;; generative tests
 

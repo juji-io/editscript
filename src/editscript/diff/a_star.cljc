@@ -11,13 +11,14 @@
 (ns editscript.diff.a-star
   (:require [editscript.edit :as e]
             [editscript.diff.quick :as q]
-            [editscript.util.pairing :as pa])
-  (:import [clojure.lang PersistentVector Keyword]
-           [java.io Writer]
-           [java.lang Comparable]))
+            [editscript.util.pairing :as pa]
+            #?(:cljs [goog.math.Long]))
+  #?(:clj (:import [clojure.lang PersistentVector Keyword]
+                   [java.io Writer]
+                   [java.lang Comparable])))
 
-(set! *warn-on-reflection* true)
-(set! *unchecked-math* :warn-on-boxed)
+#?(:clj (set! *warn-on-reflection* true))
+#?(:clj (set! *unchecked-math* :warn-on-boxed))
 
 ;; indexing
 
@@ -68,13 +69,14 @@
     (set! last node)
     node))
 
-(defmethod print-method Node
-  [x ^Writer writer]
-  (print-method {:path     (get-path x)
-                 :value    (get-value x)
-                 :order    (get-order x)
-                 :children (get-children x)}
-                writer))
+#?(:clj
+   (defmethod print-method Node
+     [x ^Writer writer]
+     (print-method {:path     (get-path x)
+                    :value    (get-value x)
+                    :order    (get-order x)
+                    :children (get-children x)}
+                   writer)))
 
 ;; using defn instead of declare, see http://dev.clojure.org/jira/browse/CLJS-1871
 (defn ^:declared index* [order path data parent])
@@ -147,26 +149,44 @@
 
 ;; diffing
 
-(deftype Coord [^Node a
-                ^Node b]
-  ;; Java's native hash is too slow,
-  ;; overriding hashCode significantly speeds things up
-  Object
-  (hashCode [_]
-    (let [x (get-order a)
-          y (get-order b)]
-      ;; Szudzik's paring function
-      (if (> ^long y ^long x)
-        (+ ^long x (* ^long y ^long y))
-        (+ ^long x ^long y (* ^long x ^long x)))))
-  (equals [this that]
-    (= (.hashCode this) (.hashCode that)))
-  (toString [_]
-    (str "[" (get-value a) "," (get-value b) "]"))
+(defn- coord-hash
+  [a b]
+  (let [x (get-order a)
+        y (get-order b)]
+    ;; Szudzik's paring function
+    (if (> ^long y ^long x)
+      (+ ^long x (* ^long y ^long y))
+      (+ ^long x ^long y (* ^long x ^long x)))))
 
-  Comparable
-  (compareTo [this o]
-    (- (.hashCode this) (.hashCode o))))
+#?(:clj
+   (deftype Coord [^Node a
+                   ^Node b]
+     ;; Java's native hash is too slow,
+     ;; overriding hashCode significantly speeds things up
+     Object
+     (hashCode [_] (coord-hash a b))
+     (equals [this that]
+       (= (.hashCode this) (.hashCode that)))
+     (toString [_]
+       (str "[" (get-value a) "," (get-value b) "]"))
+
+     Comparable
+     (compareTo [this that]
+       (- (.hashCode this) (.hashCode that))))
+
+   :cljs
+   (deftype Coord [^Node a
+                   ^Node b]
+     IHash
+     (-hash [_] (coord-hash a b))
+
+     IEquiv
+     (-equiv [this that]
+       (= (-hash this) (-hash that)))
+
+     IComparable
+     (-compare [this that]
+       (- (-hash this) (-hash that)))))
 
 (defn- get-coord
   [^Coord coord]
@@ -185,12 +205,13 @@
   (current [_] cur)
   (neighbor [_] nbr))
 
-(defmethod print-method Step
-  [x ^Writer writer]
-  (print-method {:op (operator x)
-                 :cur (current x)
-                 :nbr (neighbor x)}
-                writer))
+#?(:clj
+   (defmethod print-method Step
+     [x ^Writer writer]
+     (print-method {:op  (operator x)
+                    :cur (current x)
+                    :nbr (neighbor x)}
+                   writer)))
 
 (defn- get-step
   [step]
@@ -221,7 +242,8 @@
 
 (defn- access-g
   [g cur]
-  (get g cur Long/MAX_VALUE))
+  (get g cur #?(:clj Long/MAX_VALUE
+                :cljs (goog.math.Long/getMaxValue))))
 
 (defn ^:declared diff* [ra rb came])
 
@@ -316,39 +338,34 @@
   [^Coord init end cur]
   (let [[ra rb] (get-coord end)
         [na nb] (get-coord cur)
-        va      (get-value na)
-        vb      (get-value nb)
-        mb      (get-value rb)
-        x<gx    (not (identical? na ra))
-        y<gy    (not (identical? nb rb))
         ka      (get-key na)
-        kb      (get-key nb)
-        na'     (next-node na ra)
-        x'=gx   (identical? na' ra)
-        cb      (get-children rb)]
-    (cond
-      ;; transition point from testing keys of a to that of b
-      (and x<gx x'=gx)
-      (let [startb (->Coord ra (.-b init))
-            enda   (->Coord na (cb ka))]
-        (if (contains? mb ka)
-          (if (= ka kb)
-            [(->Step (if (values=? va vb) := :r) cur startb)]
-            [(->Step := cur enda)
-             (->Step :r enda startb)])
-          [(->Step :- cur startb)]))
-      ;; testing keys of a
-      (and x<gx y<gy)
-      [(if (contains? mb ka)
-         (if (= ka kb)
-           (->Step (if (values=? va vb) := :r)
-                   cur (->Coord na' (or (cb (get-key na')) nb)))
-           (->Step := cur (->Coord na (cb ka))))
-         (->Step :- cur (->Coord na' nb)))]
-      ;; keys of b
-      :else
+        kb      (get-key nb)]
+    (if (identical? na ra)
+      ;; testing keys of b
       [(->Step (if (contains? (get-value ra) kb) := :a)
-               cur (->Coord ra (next-node nb rb)))])))
+               cur (->Coord ra (next-node nb rb)))]
+      (let [va  (get-value na)
+            vb  (get-value nb)
+            mb  (get-value rb)
+            na' (next-node na ra)
+            cb  (get-children rb)]
+        (if (identical? na' ra)
+          ;; transition point from testing keys of a to that of b
+          (let [startb (->Coord ra (.-b init))
+                enda   (->Coord na (cb ka))]
+            (if (contains? mb ka)
+              (if (= ka kb)
+                [(->Step (if (values=? va vb) := :r) cur startb)]
+                [(->Step := cur enda)
+                 (->Step :r enda startb)])
+              [(->Step :- cur startb)]))
+          ;; testing keys of a
+          [(if (contains? mb ka)
+             (if (= ka kb)
+               (->Step (if (values=? va vb) := :r)
+                       cur (->Coord na' (or (cb (get-key na')) nb)))
+               (->Step := cur (->Coord na (cb ka))))
+             (->Step :- cur (->Coord na' nb)))])))))
 
 (defn- frontier
   [type init end cur]

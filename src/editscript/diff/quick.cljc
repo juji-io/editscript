@@ -12,8 +12,8 @@
   (:require [clojure.set :as set]
             [editscript.edit :as e]))
 
-(set! *warn-on-reflection* true)
-(set! *unchecked-math* :warn-on-boxed)
+#?(:clj (set! *warn-on-reflection* true))
+#?(:clj (set! *unchecked-math* :warn-on-boxed))
 
 (defn ^:declared diff* [script path a b])
 
