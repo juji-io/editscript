@@ -4,7 +4,7 @@ A library designed to extract the differences between two Clojure/Clojurescript
 data structures as an "editscript", which represents the minimal modification
 necessary to transform one to another. Currently, the library can diff and patch
 any nested Clojure/Clojurescript data structures consisting of regular maps,
-vectors, lists, sets and values.
+vectors, lists, sets and values. 
 
 At Juji, we need to take snapshots of our AI agents' states and later
 restore them. Such a use case requires a good diffing library for nested Clojure
@@ -74,9 +74,9 @@ produces diffs that are optimal in the number of editing operations and the
 resulting script size. A quick algorithm is also provided, which does not
 guarantee optimal results but is very fast.
 
-### A* diffing
+### A\* diffing
 
-This A* algorithm aims to achieve optimal diffing in term of minimal size of resulting
+This A\* algorithm aims to achieve optimal diffing in term of minimal size of resulting
 editscript, useful for storage, query and restoration. This is an original
 algorithm that has some unique properties: unlike many other general tree
 differing algorithms such as Zhang & Shasha 1989, our algorithm is structure preserving.
@@ -92,7 +92,7 @@ Clojure programmer.
 
 The structure preserving properties were proposed in Lu 1979 and Tanaka 1995.
 These papers describe diffing algorithms with O(|a||b|) time and space
-complexity. We designed an A* based algorithm to achieve some speedup. Instead
+complexity. We designed an A\* based algorithm to achieve some speedup. Instead
 of searching the whole editing graph, we typically search a portion of it along
 the diagonal.
 
@@ -118,7 +118,7 @@ number of deletions if `b` is longer than `a`.  The same sequence diffing algori
 also implemented in [diffit](https://github.com/friemen/diffit). Using their
 benchmark, our implementation has slightly better performance due to more
 optimizations. Keep in mind that our algorithm also handles nested Clojure data
-structures. Compared  with our A* algorithm, our quick algorithm is up to two
+structures. Compared  with our A\* algorithm, our quick algorithm is up to two
 orders of magnitude faster.
 
 The Wu algorithm does not have replacement operations, and assumes each edit has
@@ -159,16 +159,20 @@ new ones back. The reason is that the quick algorithm does not drill down
 (i.e. do replacement) at the correct places. It currently drills down wherever it
 can. An optimizing algorithm is needed if minimal diffs are desired.
 
+## Platform
+
+The library supports JVM Clojure and Clojurescript. The later has been tested 
+with node, nashorn, chrome, safari, and firefox.
+
 ## Roadmap
 
 There are a few things I plan to work on. Ideas, suggestions and contributions
 are welcome.
 
-* ClojureScript support. [Done]
-* More functions to support more use cases, e.g. change detection,
+* Functions to support more use cases, e.g. change detection,
 serialization, pretty print, etc.
 * Support other data types as collection types, e.g. strings.
-* Better heuristic for the A* algorithm.
+* Better heuristic for the A\* algorithm.
 
 ## References
 

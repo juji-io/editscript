@@ -1,7 +1,9 @@
 # Change Log
 
-## [unreleased] 
+## [0.3.0] - 2018-05-09
 ### Changed
+- cljc version
+- Simplify heuristic
 - Use defn in place of declare, see http://dev.clojure.org/jira/browse/CLJS-1871
 
 ## [0.2.4] - 2018-05-05
