@@ -18,10 +18,11 @@
   "Create an editscript to represent the transformations needed to turn a
   Clojure data structure `a` into another Clojure data structure `b`.
 
-  This function accepts any nested Clojure data structures. However, only those
-  implements Clojure `IPersistentVector`, `IPersistentMap`, `IPersistentList`,
-  and `IPersistentSet` will be treated as collections. Anything else are treated
-  as individual values.
+  This function accepts any nested Clojure data structures. In Clojure, those
+  implement `IPersistentVector`, `IPersistentMap`, `IPersistentList`,
+  and `IPersistentSet` will be treated as collections. The same are true for
+  the corresponding deftypes in Clojurescript, such as `PersistentVector`,
+  `PersistentMap`, and so on. Anything else are treated as atomic values.
 
   The editscript is represented as a vector of basic operations: add `:+`,
   delete `:-`, and replace `:r`. Each operation also include a path to the

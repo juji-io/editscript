@@ -104,6 +104,10 @@
    :cljs
    (deftype PriorityMap [^:mutable ^HeapNode heap
                          ^:mutable map]
+
+     ISeqable
+     (-seq [_] (seq map))
+
      ICollection
      (-conj [this e]
        (let [[item priority] e]
@@ -131,7 +135,7 @@
 
 (defn priority-map
   "A priority queue that also functions as a map.
-  Backed by a pairing heap implementation, and a Clojure map.
+  Backed by a pairing heap implementation, and a regular map.
   NB. We do not implement `decrease-key` for the pairing heap,
   instead just insert the item again with a new priority."
   ([]

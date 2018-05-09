@@ -1,10 +1,10 @@
 # editscript
 
-A Clojure library designed to extract the differences between two Clojure data
-structures as an "editscript", which represents the minimal modification
+A library designed to extract the differences between two Clojure/Clojurescript
+data structures as an "editscript", which represents the minimal modification
 necessary to transform one to another. Currently, the library can diff and patch
-any nested Clojure data structures consisting of regular maps, vectors, lists,
-sets and values.
+any nested Clojure/Clojurescript data structures consisting of regular maps,
+vectors, lists, sets and values.
 
 At Juji, we need to take snapshots of our AI agents' states and later
 restore them. Such a use case requires a good diffing library for nested Clojure
@@ -164,12 +164,11 @@ can. An optimizing algorithm is needed if minimal diffs are desired.
 There are a few things I plan to work on. Ideas, suggestions and contributions
 are welcome.
 
-* ClojureScript support.
-* Design a different API for the quick algorithm, since it is more suitable for detecting
-  changes rather than producing editscript. Need to see some use cases.
+* ClojureScript support. [Done]
+* More functions to support more use cases, e.g. change detection,
+serialization, pretty print, etc.
 * Support other data types as collection types, e.g. strings.
 * Better heuristic for the A* algorithm.
-* Explore other diffing algorithms.
 
 ## References
 

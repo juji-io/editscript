@@ -14,12 +14,17 @@
             [editscript.edit :as e]
             [editscript.diff.quick :as q]
             [editscript.diff.a-star :as a]
+            [editscript.util.macros :as m :include-macros true]
             [clojure.test.check.generators :as gen]
-            [clojure.test.check.clojure-test :as test]
-            [clojure.test.check.properties :as prop]
-            #?(:clj [clojure.java.io :as io])
-            ;; [criterium.core :as c]
-            ))
+            #?(:cljs [clojure.test.check :refer [quick-check]])
+            #?(:cljs [cljs.reader :as reader])
+            #?(:clj [clojure.test.check.clojure-test :as test]
+               :cljs [clojure.test.check.clojure-test :as test
+                      :refer-macros [defspec]
+                      :include-macros true])
+            #?(:clj [clojure.test.check.properties :as prop]
+               :cljs [clojure.test.check.properties :as prop
+                      :include-macros true])))
 
 ;; generative tests
 
@@ -34,27 +39,32 @@
                              [1 (gen/return nil)]]))
 
 (test/defspec quick-end-2-end-generative-test
-  10000
+  1000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
                 (= b (patch a (q/diff a b)))))
 
+
 (test/defspec a-star-end-2-end-generative-test
-  10000
+  1000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
                 (= b (patch a (a/diff a b)))))
 
 ;; sample data tests
 
-(defn- read-data
-  [f]
-  (-> f io/resource slurp read-string))
-
-(def data1 (read-data "drawing1.edn"))
-(def data2 (read-data "drawing2.edn"))
-(def data3 (read-data "drawing3.edn"))
-(def data4 (read-data "drawing4.edn"))
+(def data1 (-> "resources/drawing1.edn"
+               #?(:clj slurp :cljs m/slurp)
+               #?(:clj read-string :cljs reader/read-string)))
+(def data2 (-> "resources/drawing2.edn"
+               #?(:clj slurp :cljs m/slurp)
+               #?(:clj read-string :cljs reader/read-string)))
+(def data3 (-> "resources/drawing3.edn"
+               #?(:clj slurp :cljs m/slurp)
+               #?(:clj read-string :cljs reader/read-string)))
+(def data4 (-> "resources/drawing4.edn"
+               #?(:clj slurp :cljs m/slurp)
+               #?(:clj read-string :cljs reader/read-string)))
 
 (deftest drawing-sample-test
   (testing "A sample JSON data of a drawing program from https://github.com/justsml/json-diff-performance, converted to edn using https://github.com/peterschwarz/json-to-edn"
@@ -64,6 +74,7 @@
     (is (= data1 (patch data3 (a/diff data3 data1))))
     (is (= data4 (patch data1 (a/diff data1 data4))))
     (is (= data1 (patch data4 (a/diff data4 data1))))))
+
 
 (comment
 

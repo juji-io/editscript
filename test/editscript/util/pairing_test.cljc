@@ -11,13 +11,13 @@
 (ns editscript.util.pairing-test
   (:require
    [editscript.util.pairing :refer [priority-map]]
-   #?(:clj [clojure.test :refer [are deftest testing]]
-      :cljs [cljs.test :refer-macros [are deftest testing]])))
+   [clojure.test :refer [are deftest testing]]))
 
 (deftest test-priority-map
   (let [a (priority-map :a 1 :b 2 :c 3 :d 4 :e 5 :f 6)]
-    (testing "basic priority-map operations"
+    (testing "Basic priority-map operations that we use in A*"
       (are [x y] (= x y)
+        (empty? a)              false
         (peek a)                [:a 1]
         (peek (pop a))          [:b 2]
         (peek (assoc a :z 0))   [:z 0]

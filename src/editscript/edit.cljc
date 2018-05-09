@@ -58,16 +58,37 @@
 
    :cljs
    (extend-protocol IType
-     IList
+     List
      (get-type [_] :lst)
 
-     IMap
+     EmptyList
+     (get-type [_] :lst)
+
+     Cons
+     (get-type [_] :lst)
+
+     PersistentArrayMap
      (get-type [_] :map)
 
-     IVector
+     PersistentHashMap
+     (get-type [_] :map)
+
+     PersistentTreeMap
+     (get-type [_] :map)
+
+     PersistentVector
      (get-type [_] :vec)
 
-     ISet
+     Subvec
+     (get-type [_] :vec)
+
+     MapEntry
+     (get-type [_] :vec)
+
+     PersistentHashSet
+     (get-type [_] :set)
+
+     PersistentTreeSet
      (get-type [_] :set)
 
      nil
@@ -129,4 +150,8 @@
 
 #?(:clj (defmethod print-method EditScript
           [x ^java.io.Writer writer]
-          (print-method (get-edits x) writer)))
+          (print-method (get-edits x) writer))
+   :cljs (extend-protocol IPrintWithWriter
+           EditScript
+           (-pr-writer [o writer opts]
+             (write-all writer (str (get-edits o))))))

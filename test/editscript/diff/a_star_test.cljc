@@ -9,11 +9,9 @@
 ;;
 
 (ns editscript.diff.a-star-test
-  (:require [clojure.test :refer :all]
-            [editscript.edit :refer :all]
-            [editscript.core :refer [patch]]
-            [editscript.diff.a-star :refer :all :exclude [set-size get-size]]
-            [editscript.core-test :refer :all]))
+  (:require [clojure.test :refer [is testing deftest]]
+            [editscript.edit :refer [get-edits]]
+            [editscript.diff.a-star :refer [diff]]))
 
 (deftest vec-diff-test
   (testing "Testing A* with some nested vector data"

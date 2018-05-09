@@ -10,7 +10,10 @@
 
 (ns editscript.diff.quick
   (:require [clojure.set :as set]
-            [editscript.edit :as e]))
+            [editscript.edit :as e]
+            #?(:clj [editscript.util.macros :refer [coll-case]]
+               :cljs [editscript.util.macros
+                      :include-macros true :refer [coll-case]])))
 
 #?(:clj (set! *warn-on-reflection* true))
 #?(:clj (set! *unchecked-math* :warn-on-boxed))
@@ -141,13 +144,6 @@
 (defn- diff-lst
   [script path a b]
   (diff-vec script path (vec a) (vec b)))
-
-(defmacro coll-case
-  [a b script path type diff-fn]
-  `(case (e/get-type ~b)
-     :nil  (e/delete-data ~script ~path)
-     ~type (~diff-fn ~script ~path ~a ~b)
-     (e/replace-data ~script ~path ~b)))
 
 (defn diff*
   [script path a b]

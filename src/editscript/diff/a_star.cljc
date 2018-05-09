@@ -72,10 +72,11 @@
 #?(:clj
    (defmethod print-method Node
      [x ^Writer writer]
-     (print-method {:path     (get-path x)
+     (print-method {;:path     (get-path x)
                     :value    (get-value x)
                     :order    (get-order x)
-                    :children (get-children x)}
+                    ;; :children (get-children x)
+                    }
                    writer)))
 
 ;; using defn instead of declare, see http://dev.clojure.org/jira/browse/CLJS-1871
@@ -266,15 +267,7 @@
                   (+ gc ^long (diff* na nb came)))))))
 
 (defn- heuristic
-  "A simplistic but optimistic estimate of the cost to reach goal when at (x y).
-
-  For sequences with positive goal differential (delta), the optimal number of
-  edits is deletion dependent, equals to 2p+delta, where p is number of deletions.
-  Optimistically assuming no new deletion will be needed after (x, y), the number
-  of edits is delta-k, where k=y-x. The same logic applies to negative delta.
-  For nested structure, multiple deletion may be merged into one.
-  Also, because addition/replacement requires new value to be present in
-  editscript, whereas deletion does not, we assign estimate differently."
+  "A simplistic but optimistic estimate of the cost to reach goal when at (x y)."
   [type cur end [gx gy]]
   (case type
     (:map :set) 0
@@ -282,14 +275,11 @@
                       [ra rb] (get-coord end)
                       x       (if (identical? ra na) gx (get-order na))
                       y       (if (identical? rb nb) gy (get-order nb))
-                      delta   (- ^long gy ^long gx)
-                      k       (- ^long y ^long x)
-                      cost    (- delta k)]
+                      cost    (- (- ^long gy ^long gx) (- ^long y ^long x))]
                   (if (= cost 0)
                     0
-                    (if (>= delta 0)
-                      (if (> k delta) 1 0)
-                      (if (< k delta) (inc cost) 0))))))
+                    #?(:clj (Math/abs cost)
+                       :cljs (js/Math.abs cost))))))
 
 (defn- explore
   [type end came goal state step]
@@ -308,9 +298,10 @@
   [va vb]
   (or (identical? va vb)
       (and (= :val (e/get-type va) (e/get-type vb))
-           (if va
-             (.equals ^Object va vb)
-             (= va vb)))))
+           #?(:clj (if va
+                     (.equals ^Object va vb)
+                     (= va vb))
+              :cljs (= va vb)))))
 
 (defn- next-node
   [na ra]
@@ -457,6 +448,7 @@
                      (= sb (cc+1 rb))))
           ;; vec or lst contains leaves only, safe to use quick algo.
           (use-quick ra rb came)
+          ;; (A* typea ra rb came)
           ;; otherwise run A*
           (A* typea ra rb came)))
       ;; types differ, can only replace
@@ -558,11 +550,11 @@
             rootb (index b)
             came  (volatile! {})
             cost  (diff* roota rootb came)]
-        ;; (println "cost is" cost)
-        ;; (let [total          (* (get-size roota) (get-size rootb))
-        ;;       ^long explored (reduce + (map count (vals @came)))]
-        ;;   (printf "explored %d of %d %.1f%%\n"
-        ;;           explored total (* 100 (double (/ explored total)))))
+        ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))
+        ;;               ^long explored (reduce + (map count (vals @came)))]
+        ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
+        ;;                   cost explored total
+        ;;                   (* 100 (double (/ explored total))))))
         (trace @came (->Coord roota rootb) script)
         (e/set-size script ^long cost)))
     script))

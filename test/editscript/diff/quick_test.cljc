@@ -9,10 +9,9 @@
 ;;
 
 (ns editscript.diff.quick-test
-  (:require [clojure.test :refer :all]
-            ;; [criterium.core :as c]
-            [editscript.edit :refer :all]
-            [editscript.diff.quick :refer :all]
+  (:require [clojure.test :refer [is testing deftest]]
+            [editscript.edit :refer [get-edits]]
+            [editscript.diff.quick :refer [diff vec-edits min+plus->replace]]
             [editscript.core :refer [patch]]))
 
 (deftest vec-edits-test
@@ -104,8 +103,10 @@
               []
               xs)))
 
-  (def as (vec (range 2000)))
-  (def bs (vec (rand-alter 80 10 10 as)))
+  (def bs (vec (range 200)))
+  (def cs (vec (range 20)))
+  (def as (vec (concat (rand-alter 80 10 10 bs)
+                       (rand-alter 80 10 10 cs))))
 
   (c/bench (editscript.diff.a-star/diff as bs))
   ;; ==>

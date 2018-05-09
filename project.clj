@@ -5,32 +5,55 @@
   :deploy-repositories [["releases" :clojars]]
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojure/clojurescript "1.10.238"]]
-  :plugins [[lein-cljsbuild "1.1.7"]]
-  :aliases {"nashorn-repl" ["run" "-m" "user/nashorn-repl"]}
-  :cljsbuild {:builds 
-              {:dev 
+  :dependencies [[org.clojure/clojure "1.9.0"]]
+  :plugins [[lein-cljsbuild "1.1.7"]
+            [lein-doo "0.1.10"]]
+  :doo {:build "node"
+        :paths {:karma "./node_modules/karma/bin/karma"}
+        :karma {:config {"browserDisconnectTimeout" 30000
+                         "browserNoActivityTimeout" 90000}}}
+  :clean-targets  ^{:protect false} [:target-path "out" "target"]
+  :cljsbuild {:builds
+              {:dev
                {:source-paths ["src" "test" "dev"]
-                :compiler     {:output-to "editscript.js"
-                               :output-dir "out"
+                :compiler     {:output-to      "target/editscript.js"
+                               :output-dir     "target"
                                :optimizations  :none
-                               :main "editscript.core"
                                :source-map     true
                                :cache-analysis true
                                :checked-arrays :warn
                                :parallel-build true}}
-               :release
-               {:source-paths ["src"]
-                :compiler     {:output-to "editscript.js" 
-                               :output-dir "target"
-                               :source-map "target/editscript.js.map"
+               :node
+               {:source-paths ["src" "test"]
+                :compiler     {:output-to      "out/node/editscript.js"
+                               :output-dir     "out/node"
                                :optimizations  :advanced
+                               :main           "editscript.test"
+                               :source-map     "out/node/editscript.js.map"
+                               :target         :nodejs
+                               :cache-analysis true
                                :checked-arrays :warn
-                               :pretty-print   false
+                               :parallel-build true}}
+               :browser
+               {:source-paths ["src" "test"]
+                :compiler     {:output-to      "out/browser/editscript.js"
+                               :output-dir     "out/browser"
+                               :optimizations  :advanced
+                               :main           "editscript.test"
+                               :source-map     "out/browser/editscript.js.map"
+                               :cache-analysis true
+                               :checked-arrays :warn
                                :parallel-build true}}}}
-  :profiles {:dev
-             {:dependencies [[criterium "0.4.4"]
+  :profiles {:deploy
+             {:aot      [#"editscript\.*"]
+              :jvm-opts ["-Dclojure.compiler.direct-linking=true"] }
+             :dev
+             {:dependencies [[org.clojure/clojurescript "1.10.238"
+                              :exclusions [org.clojure/core.rrb-vector]]
+                             ;;see https://github.com/emezeske/lein-cljsbuild/issues/469
+                             [quantum/org.clojure.core.rrb-vector "0.0.12"]
+                             [criterium "0.4.4"]
+                             [doo "0.1.10"]
                              [org.clojure/test.check "0.9.0"]
                              [cider/piggieback "0.3.2"]]
               :source-paths ["src" "test" "dev"]
