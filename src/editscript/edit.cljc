@@ -19,6 +19,8 @@
   (replace-data [this path value]))
 
 (defprotocol IEditScript
+  (combine [this that]
+    "Concate that editscript onto this editscript, return the new editscript")
   (get-size [this] "Report the size of the editscript")
   (set-size [this size] "Set the size, return the script")
   (edit-distance [this] "Report the edit distance, i.e number of operations")
@@ -140,6 +142,13 @@
       (set! edits (conj edits [path :r value]))))
 
   IEditScript
+  (combine [this that]
+    (->EditScript (into edits (get-edits that))
+                  auto-sizing?
+                  (+ size (get-size that))
+                  (+ adds-num (get-adds-num that))
+                  (+ dels-num (get-dels-num that))
+                  (+ reps-num (get-reps-num that))))
   (get-size [this] size)
   (set-size [this s] (set! size (long s)) this)
   (get-edits [this] edits)
