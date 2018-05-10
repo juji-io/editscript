@@ -11,9 +11,8 @@
 (ns editscript.diff.quick
   (:require [clojure.set :as set]
             [editscript.edit :as e]
-            #?(:clj [editscript.util.macros :refer [coll-case]]
-               :cljs [editscript.util.macros
-                      :include-macros true :refer [coll-case]])))
+            [editscript.util.macros :refer [coll-case]
+             #?@(:cljs [:include-macros true])]))
 
 #?(:clj (set! *warn-on-reflection* true))
 #?(:clj (set! *unchecked-math* :warn-on-boxed))

@@ -12,6 +12,7 @@
   (:require [editscript.edit :as e]
             [editscript.diff.quick :as q]
             [editscript.util.pairing :as pa]
+            [editscript.util.common :as co]
             #?(:cljs [goog.math.Long]))
   #?(:clj (:import [clojure.lang PersistentVector Keyword]
                    [java.io Writer]
@@ -152,12 +153,7 @@
 
 (defn- coord-hash
   [a b]
-  (let [x (get-order a)
-        y (get-order b)]
-    ;; Szudzik's paring function
-    (if (> ^long y ^long x)
-      (+ ^long x (* ^long y ^long y))
-      (+ ^long x ^long y (* ^long x ^long x)))))
+  (co/szudzik (get-order a) (get-order b)))
 
 #?(:clj
    (deftype Coord [^Node a
@@ -448,7 +444,6 @@
                      (= sb (cc+1 rb))))
           ;; vec or lst contains leaves only, safe to use quick algo.
           (use-quick ra rb came)
-          ;; (A* typea ra rb came)
           ;; otherwise run A*
           (A* typea ra rb came)))
       ;; types differ, can only replace

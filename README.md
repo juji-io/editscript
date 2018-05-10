@@ -4,7 +4,7 @@ A library designed to extract the differences between two Clojure/Clojurescript
 data structures as an "editscript", which represents the minimal modification
 necessary to transform one to another. Currently, the library can diff and patch
 any nested Clojure/Clojurescript data structures consisting of regular maps,
-vectors, lists, sets and values. 
+vectors, lists, sets and values.
 
 At Juji, we need to take snapshots of our AI agents' states and later
 restore them. Such a use case requires a good diffing library for nested Clojure
@@ -123,7 +123,7 @@ orders of magnitude faster.
 
 The Wu algorithm does not have replacement operations, and assumes each edit has
 a unit cost. These do not work well for tree diffing. Consequently, the quick
-algorithm does not produce optimizing results in term of
+algorithm does not produce optimal results in term of
 script size. In principle, simply changing a pointer to point to `b` instead of
 `a` produces the fastest "diffing" algorithm of the world, but that is not very
 useful. The quick algorithm has a similar problem.
@@ -161,7 +161,7 @@ can. An optimizing algorithm is needed if minimal diffs are desired.
 
 ## Platform
 
-The library supports JVM Clojure and Clojurescript. The later has been tested 
+The library supports JVM Clojure and Clojurescript. The later has been tested
 with node, nashorn, chrome, safari, and firefox.
 
 ## Roadmap
@@ -172,7 +172,7 @@ are welcome.
 * Functions to support more use cases, e.g. change detection,
 serialization, pretty print, etc.
 * Support other data types as collection types, e.g. strings.
-* Better heuristic for the A\* algorithm.
+* Further speed up of the algorithms, e.g. better heuristic, hashing, and so on .
 
 ## References
 
