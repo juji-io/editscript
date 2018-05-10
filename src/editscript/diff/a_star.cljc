@@ -73,11 +73,9 @@
 #?(:clj
    (defmethod print-method Node
      [x ^Writer writer]
-     (print-method {;:path     (get-path x)
-                    :value    (get-value x)
+     (print-method {:value    (get-value x)
                     :order    (get-order x)
-                    ;; :children (get-children x)
-                    }
+                    :children (get-children x)}
                    writer)))
 
 ;; using defn instead of declare, see http://dev.clojure.org/jira/browse/CLJS-1871
@@ -254,16 +252,18 @@
       ;; these cost the size of included data, plus 1
       (:a :i) (let [sb (get-size (.-b cur))]
                 (+ gc (inc ^long sb)))
-      :r      (let [na (.-a cur)
-                    nb (.-b cur)
-                    sb (get-size nb)
-                    sa (get-size na)]
-                (if (or (= sa 1) (= sb 1))
-                  (+ gc (inc ^long sb))
-                  (+ gc ^long (diff* na nb came)))))))
+      :r      (+ gc ^long (diff* (.-a cur) (.-b cur) came)))))
 
 (defn- heuristic
-  "A simplistic but optimistic estimate of the cost to reach goal when at (x y)."
+  "A simplistic but optimistic estimate of the cost to reach goal when at (x y).
+
+  For sequences with positive goal differential (delta), the optimal number of
+  edits is deletion dependent, equals to 2p+delta, where p is number of deletions.
+  Optimistically assuming no new deletion will be needed after (x, y), the number
+  of edits is delta-k, where k=y-x. The same logic applies to negative delta.
+  For nested structure, multiple deletion may be merged into one.
+  Also, because addition/replacement requires new value to be present in
+  editscript, whereas deletion does not, we assign estimate differently. "
   [type cur end [gx gy]]
   (case type
     (:map :set) 0
@@ -271,11 +271,14 @@
                       [ra rb] (get-coord end)
                       x       (if (identical? ra na) gx (get-order na))
                       y       (if (identical? rb nb) gy (get-order nb))
-                      cost    (- (- ^long gy ^long gx) (- ^long y ^long x))]
+                      delta   (- ^long gy ^long gx)
+                      k       (- ^long y ^long x)
+                      cost    (- delta k)]
                   (if (= cost 0)
                     0
-                    #?(:clj (Math/abs cost)
-                       :cljs (js/Math.abs cost))))))
+                    (if (>= delta 0)
+                      (if (> k delta) 1 0)
+                      (if (< k delta) (inc cost) 0))))))
 
 (defn- explore
   [type end came goal state step]
@@ -423,13 +426,18 @@
   [ra rb came]
   (let [sa     ^long (get-size ra)
         sb     ^long (get-size rb)
-        typea  (-> ra get-value e/get-type)
+        va     (get-value ra)
+        vb     (get-value rb)
+        typea  (e/get-type va)
         update #(vswap! came assoc (->Coord ra rb) {})]
     (cond
+      (identical? va vb)
+      (do (update)
+          0)
       ;; both are leaves, skip or replace
       (= 1 sa sb)
       (do (update)
-          (if (values=? (get-value ra) (get-value rb))
+          (if (values=? va vb)
             0
             2))
       ;; one of them is leaf, replace
@@ -437,7 +445,7 @@
       (do (update)
           (inc ^long sb))
       ;; non-empty coll with same type, drill down
-      (= typea (-> rb get-value e/get-type))
+      (= typea (e/get-type vb))
       (let [cc+1 #(-> % get-children count inc)]
         (if (and (#{:vec :lst} typea)
                  (or (= sa (cc+1 ra))
@@ -525,7 +533,8 @@
             (recur (m prev)))
           steps))
       (let [[ra rb] (get-coord cur)]
-        (vswap! steps conj [:r ra rb])
+        (vswap! steps conj [(if (values=? (get-value ra) (get-value rb)) := :r)
+                            ra rb])
         steps))
     steps))
 

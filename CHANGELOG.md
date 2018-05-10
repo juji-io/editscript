@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.3.1] - 2018-05-09
+### Fixed
+- Revert heuristic change in 0.3.0, which breaks optimality
+
 ## [0.3.0] - 2018-05-09
 ### Changed
 - cljc version

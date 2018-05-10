@@ -15,6 +15,7 @@
             [editscript.diff.quick :as q]
             [editscript.diff.a-star :as a]
             [editscript.util.macros :as m :include-macros true]
+            ;; [criterium.core :as c]
             [clojure.test.check.generators :as gen]
             #?(:cljs [clojure.test.check :refer [quick-check]])
             #?(:cljs [cljs.reader :as reader])
@@ -68,12 +69,40 @@
 
 (deftest drawing-sample-test
   (testing "A sample JSON data of a drawing program from https://github.com/justsml/json-diff-performance, converted to edn using https://github.com/peterschwarz/json-to-edn"
-    (is (= data2 (patch data1 (a/diff data1 data2))))
-    (is (= data1 (patch data2 (a/diff data2 data1))))
-    (is (= data3 (patch data1 (a/diff data1 data3))))
-    (is (= data1 (patch data3 (a/diff data3 data1))))
-    (is (= data4 (patch data1 (a/diff data1 data4))))
-    (is (= data1 (patch data4 (a/diff data4 data1))))))
+    (let [diff12 (a/diff data1 data2)
+          diff13 (a/diff data1 data3)
+          diff14 (a/diff data1 data4)]
+      (is (= data2 (patch data1 diff12)))
+      (is (= 1 (e/edit-distance diff12)))
+      (is (= 2 (e/get-size diff12)))
+      (is (= (e/get-edits diff12)
+             [[[2 :fill] :r "#0000ff"]]))
+      (is (= data3 (patch data1 diff13)))
+      (is (= 5 (e/edit-distance diff13)))
+      (is (= 10 (e/get-size diff13)))
+      (is (= (e/get-edits diff13)
+             [[[2 :rx] :r 69.5]
+              [[2 :fill] :r "#0000ff"]
+              [[2 :cx] :r 230.5]
+              [[2 :cy] :r 228]
+              [[2 :ry] :r 57]]))
+      (is (= data4 (patch data1 diff14)))
+      (is (= 13 (e/edit-distance diff14)))
+      (is (= 23 (e/get-size diff14)))
+      (is (= (e/get-edits diff14)
+             [[[0 :y] :r 13]
+              [[0 :width] :r 262]
+              [[0 :x] :r 19]
+              [[0 :height] :r 101]
+              [[1 :y] :r 122]
+              [[1 :x] :r 12]
+              [[1 :height] :r 25.19999999999999]
+              [[2] :-]
+              [[2] :-]
+              [[2 :y] :r 208]
+              [[2 :x] :r 12]
+              [[2 :height] :r 25.19999999999999]
+              [[3] :-]])))))
 
 (comment
 
@@ -83,44 +112,34 @@
 
 (c/quick-bench (a/diff data1 data2))
 ;; ==>
-;; Evaluation count : 294 in 6 samples of 49 calls.
-;; Execution time mean : 2.148037 ms
-;; Execution time std-deviation : 82.713130 µs
-;; Execution time lower quantile : 2.053515 ms ( 2.5%)
-;; Execution time upper quantile : 2.249461 ms (97.5%)
-;; Overhead used : 9.792106 ns
-(e/edit-distance (a/diff data1 data2))
-;; ==> 1
-(e/get-size (a/diff data1 data2))
-;; ==> 2
-(a/diff data1 data2)
-;; ==>
-;; [[[2 :fill] :r "#0000ff"]]
+;; Evaluation count : 270 in 6 samples of 45 calls.
+;; Execution time mean : 2.268114 ms
+;; Execution time std-deviation : 59.297769 µs
+;; Execution time lower quantile : 2.224969 ms ( 2.5%)
+;; Execution time upper quantile : 2.341172 ms (97.5%)
+;; Overhead used : 9.814957 ns
 
 (c/quick-bench (a/diff data1 data3))
 ;; ==>
-;; Evaluation count : 192 in 6 samples of 32 calls.
-;; Execution time mean : 3.299969 ms
-;; Execution time std-deviation : 116.109515 µs
-;; Execution time lower quantile : 3.203992 ms ( 2.5%)
-;; Execution time upper quantile : 3.445768 ms (97.5%)
-;; Overhead used : 9.792106 ns
-(e/edit-distance (a/diff data1 data3))
-;; ==> 5
-(e/get-size (a/diff data1 data3))
-;; ==> 10
-(a/diff data1 data3)
-;; ==>
-;; [[[2 :rx] :r 69.5] [[2 :fill] :r "#0000ff"] [[2 :cx] :r 230.5] [[2 :cy] :r 228] [[2 :ry] :r 57]]
+;; Evaluation count : 180 in 6 samples of 30 calls.
+;; Execution time mean : 3.541472 ms
+;; Execution time std-deviation : 121.891180 µs
+;; Execution time lower quantile : 3.452164 ms ( 2.5%)
+;; Execution time upper quantile : 3.746222 ms (97.5%)
+;; Overhead used : 9.814957 ns
+
+;; Found 1 outliers in 6 samples (16.6667 %)
+;; low-severe	 1 (16.6667 %)
+;; Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
 
 (c/quick-bench (a/diff data1 data4))
 ;; ==>
-;; Evaluation count : 192 in 6 samples of 32 calls.
-;; Execution time mean : 3.199297 ms
-;; Execution time std-deviation : 82.935858 µs
-;; Execution time lower quantile : 3.130353 ms ( 2.5%)
-;; Execution time upper quantile : 3.320872 ms (97.5%)
-;; Overhead used : 9.792106 ns
+;; Evaluation count : 174 in 6 samples of 29 calls.
+;; Execution time mean : 3.514837 ms
+;; Execution time std-deviation : 124.876579 µs
+;; Execution time lower quantile : 3.401492 ms ( 2.5%)
+;; Execution time upper quantile : 3.659879 ms (97.5%)
+;; Overhead used : 9.814957 ns
 (e/edit-distance (a/diff data1 data4))
 ;; ==> 13
 (e/get-size (a/diff data1 data4))
@@ -139,13 +158,6 @@
 ;; Execution time lower quantile : 30.763616 µs ( 2.5%)
 ;; Execution time upper quantile : 31.994251 µs (97.5%)
 ;; Overhead used : 9.787889 ns
-(e/edit-distance (q/diff data1 data2))
-;; ==> 1
-(e/get-size (q/diff data1 data2))
-;; ==> 2
-(q/diff data1 data2)
-;; ==>
-;; [[[2 :fill] :r "#0000ff"]]
 
 (c/quick-bench (q/diff data1 data3))
 ;; ==>
@@ -155,13 +167,6 @@
 ;; Execution time lower quantile : 33.423791 µs ( 2.5%)
 ;; Execution time upper quantile : 35.991187 µs (97.5%)
 ;; Overhead used : 9.787889 ns
-(e/edit-distance (q/diff data1 data3))
-;; ==> 5
-(e/get-size (q/diff data1 data3))
-;; ==> 10
-(q/diff data1 data3)
-;; ==>
-;; [[[2 :rx] :r 69.5] [[2 :fill] :r "#0000ff"] [[2 :cx] :r 230.5] [[2 :cy] :r 228] [[2 :ry] :r 57]]
 
 (c/quick-bench (q/diff data1 data4))
 ;; ==>
