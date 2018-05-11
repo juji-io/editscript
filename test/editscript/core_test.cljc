@@ -19,13 +19,10 @@
             [clojure.test.check.generators :as gen]
             #?(:cljs [clojure.test.check :refer [quick-check]])
             #?(:cljs [cljs.reader :as reader])
-            #?(:clj [clojure.test.check.clojure-test :as test]
-               :cljs [clojure.test.check.clojure-test :as test
-                      :refer-macros [defspec]
-                      :include-macros true])
-            #?(:clj [clojure.test.check.properties :as prop]
-               :cljs [clojure.test.check.properties :as prop
-                      :include-macros true])))
+            [clojure.test.check.clojure-test :as test
+             #?@(:cljs [:refer-macros [defspec] :include-macros true])]
+            [clojure.test.check.properties :as prop
+             #?@(:cljs [:include-macros true])]))
 
 ;; generative tests
 

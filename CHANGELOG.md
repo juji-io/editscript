@@ -1,5 +1,9 @@
 # Change Log
 
+## [unreleased]
+### Added
+- `combine` function to combine two editscripts
+
 ## [0.3.1] - 2018-05-09
 ### Fixed
 - Revert heuristic change in 0.3.0, which breaks optimality

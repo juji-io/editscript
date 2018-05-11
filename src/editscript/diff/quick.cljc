@@ -91,22 +91,23 @@
   "Aggressively turn :- and :+ into replacements."
   [v]
   (into []
-        (comp (partition-by integer?)
-           (mapcat
-            (fn [coll]
-              (let [m (first coll)]
-                (if (or (integer? m) (= 1 (count coll)))
-                  coll
-                  (let [p       (if (= m :-) :+ :-)
-                        [ms ps] (split-with #(= % m) coll)
-                        mc      (count ms)
-                        pc      (count ps)
-                        delta   (Math/abs (- mc pc))
-                        rs      (repeat (- (max mc pc) delta) :r)]
-                    (cond
-                      (< mc pc) (concat rs (repeat delta p))
-                      (= mc pc) rs
-                      :else     (concat (repeat delta m) rs))))))))
+        (comp
+         (partition-by integer?)
+         (mapcat
+          (fn [coll]
+            (let [m (first coll)]
+              (if (or (integer? m) (= 1 (count coll)))
+                coll
+                (let [p       (if (= m :-) :+ :-)
+                      [ms ps] (split-with #(= % m) coll)
+                      mc      (count ms)
+                      pc      (count ps)
+                      delta   (Math/abs (- mc pc))
+                      rs      (repeat (- (max mc pc) delta) :r)]
+                  (cond
+                    (< mc pc) (concat rs (repeat delta p))
+                    (= mc pc) rs
+                    :else     (concat (repeat delta m) rs))))))))
         v))
 
 (defn vec-edits
