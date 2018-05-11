@@ -143,12 +143,12 @@
 
   IEditScript
   (combine [this that]
-    (->EditScript (into edits (get-edits that))
-                  auto-sizing?
-                  (+ size (get-size that))
-                  (+ adds-num (get-adds-num that))
-                  (+ dels-num (get-dels-num that))
-                  (+ reps-num (get-reps-num that))))
+    (EditScript. (into edits (get-edits that))
+                 auto-sizing?
+                 (+ size (get-size that))
+                 (+ adds-num (get-adds-num that))
+                 (+ dels-num (get-dels-num that))
+                 (+ reps-num (get-reps-num that))))
   (get-size [this] size)
   (set-size [this s] (set! size (long s)) this)
   (get-edits [this] edits)
