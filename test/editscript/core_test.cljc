@@ -14,7 +14,8 @@
             [editscript.edit :as e]
             [editscript.diff.quick :as q]
             [editscript.diff.a-star :as a]
-            [editscript.util.macros :as m :include-macros true]
+            [editscript.util.common :as com
+             #?@(:cljs [:include-macros true])]
             ;; [criterium.core :as c]
             [clojure.test.check.generators :as gen]
             #?(:cljs [clojure.test.check :refer [quick-check]])
@@ -52,16 +53,16 @@
 ;; sample data tests
 
 (def data1 (-> "resources/drawing1.edn"
-               #?(:clj slurp :cljs m/slurp)
+               #?(:clj slurp :cljs com/vslurp)
                #?(:clj read-string :cljs reader/read-string)))
 (def data2 (-> "resources/drawing2.edn"
-               #?(:clj slurp :cljs m/slurp)
+               #?(:clj slurp :cljs com/vslurp)
                #?(:clj read-string :cljs reader/read-string)))
 (def data3 (-> "resources/drawing3.edn"
-               #?(:clj slurp :cljs m/slurp)
+               #?(:clj slurp :cljs com/vslurp)
                #?(:clj read-string :cljs reader/read-string)))
 (def data4 (-> "resources/drawing4.edn"
-               #?(:clj slurp :cljs m/slurp)
+               #?(:clj slurp :cljs com/vslurp)
                #?(:clj read-string :cljs reader/read-string)))
 
 (deftest drawing-sample-test

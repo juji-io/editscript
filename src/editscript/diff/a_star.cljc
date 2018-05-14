@@ -264,7 +264,7 @@
   For nested structure, multiple deletion may be merged into one.
   Also, because addition/replacement requires new value to be present in
   editscript, whereas deletion does not, we assign estimate differently. "
-  [type cur end [gx gy]]
+  ^long [type cur end [gx gy]]
   (case type
     (:map :set) 0
     (:vec :lst) (let [[na nb] (get-coord cur)
@@ -364,7 +364,7 @@
     (:map :set) (map-frontier init end cur)))
 
 (defn- A*
-  [type ra rb came]
+  ^long [type ra rb came]
   (let [end  (->Coord ra rb)
         init (->Coord (get-first ra) (get-first rb))
         goal [(get-order ra) (get-order rb)]]
@@ -391,7 +391,7 @@
       (vec v))))
 
 (defn- use-quick
-  [ra rb came]
+  ^long [ra rb came]
   (loop [[op & ops] (q/vec-edits (vec-fn ra) (vec-fn rb))
          na         (get-first ra)
          nb         (get-first rb)
@@ -422,8 +422,8 @@
         (vswap! came assoc root (persistent! m))
         cost))))
 
-(defn- ^long diff*
-  [ra rb came]
+(defn- diff*
+  ^long [ra rb came]
   (let [sa     ^long (get-size ra)
         sb     ^long (get-size rb)
         va     (get-value ra)
@@ -560,5 +560,5 @@
         ;;                   cost explored total
         ;;                   (* 100 (double (/ explored total))))))
         (trace @came (->Coord roota rootb) script)
-        (e/set-size script ^long cost)))
+        (e/set-size script cost)))
     script))

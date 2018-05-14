@@ -8,16 +8,10 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.util.macros
-  (:refer-clojure :exclude [slurp]))
+(ns editscript.util.rabin-test
+  (:require [editscript.util.rabin :as r]
+            [clojure.test :refer [is deftest testing]]))
 
-(defmacro coll-case
-  [a b script path type diff-fn]
-  `(case (e/get-type ~b)
-     :nil  (e/delete-data ~script ~path)
-     ~type (~diff-fn ~script ~path ~a ~b)
-     (e/replace-data ~script ~path ~b)))
-
-(defmacro slurp
-  [file]
-  (clojure.core/slurp file))
+(deftest padd-test
+  (testing "polynomials addition"
+    (is (= (r/padd 42 13) 39))))

@@ -162,7 +162,19 @@ can. An optimizing algorithm is needed if minimal diffs are desired.
 ## Platform
 
 The library supports JVM Clojure and Clojurescript. The later has been tested
-with node, nashorn, chrome, safari, and firefox.
+with node, nashorn, chrome, safari, and firefox. E.g. run our test suite:
+
+```bash
+# Run Clojure tests
+lein test
+
+# Run Clojurescript tests on node.js
+lein doo node
+
+# Run Clojurescript tests on chrome
+lein doo chrome browser
+
+```
 
 ## Rationale
 

@@ -11,7 +11,7 @@
 (ns editscript.diff.quick
   (:require [clojure.set :as set]
             [editscript.edit :as e]
-            [editscript.util.macros :refer [coll-case]
+            [editscript.util.common :refer [coll-case]
              #?@(:cljs [:include-macros true])]))
 
 #?(:clj (set! *warn-on-reflection* true))

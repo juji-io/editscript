@@ -8,7 +8,8 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.util.common)
+(ns editscript.util.common
+  (:refer-clojure :exclude [slurp]))
 
 #?(:clj (set! *warn-on-reflection* true))
 #?(:clj (set! *unchecked-math* :warn-on-boxed))
@@ -36,3 +37,43 @@
                   (- % 256)
                   %))
           (map byte))))
+
+(defn ->bytes
+  [value]
+  (-> value pr-str string->bytes))
+
+(defmacro coll-case
+  [a b script path type diff-fn]
+  `(case (e/get-type ~b)
+     :nil  (e/delete-data ~script ~path)
+     ~type (~diff-fn ~script ~path ~a ~b)
+     (e/replace-data ~script ~path ~b)))
+
+#?(:clj (defmacro vslurp
+          [file]
+          (clojure.core/slurp file)))
+
+(defn bit-shift-right-hint
+  [^long x ^long n]
+  (bit-shift-right x n))
+
+(defn bit-or-hint
+  [^long x ^long y]
+  (bit-or x y))
+
+(defn bit-and-hint
+  ^long [^long x ^long y]
+  (bit-and x y))
+
+(defmacro log2step
+  [r x b s]
+  `(when (> (bit-and-hint @~x ~b) 0)
+     (vswap! ~x bit-shift-right-hint ~s)
+     (vswap! ~r bit-or-hint  ~s)))
+
+
+(comment
+
+
+
+  )

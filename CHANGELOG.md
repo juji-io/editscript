@@ -3,6 +3,8 @@
 ## [unreleased]
 ### Added
 - `combine` function to combine two editscripts
+### Fixed
+- Fix a cljs warning
 
 ## [0.3.1] - 2018-05-09
 ### Fixed
