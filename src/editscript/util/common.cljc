@@ -21,27 +21,6 @@
     (+ x (* y y))
     (+ x y (* x x))))
 
-#?(:clj
-   (defn string->bytes
-     [^String s]
-     (->> (.getBytes s "UTF-16BE")
-          (map byte)))
-   :cljs
-   (defn string->bytes
-     [s]
-     (->> s
-          (mapcat #(let [u (.charCodeAt % 0)]
-                     [(-> u (bit-and 0xFF00) (bit-shift-right 8))
-                      (bit-and u 0xFF)]))
-          (map #(if (>= % 128)
-                  (- % 256)
-                  %))
-          (map byte))))
-
-(defn ->bytes
-  [value]
-  (-> value pr-str string->bytes))
-
 (defmacro coll-case
   [a b script path type diff-fn]
   `(case (e/get-type ~b)
@@ -52,28 +31,3 @@
 #?(:clj (defmacro vslurp
           [file]
           (clojure.core/slurp file)))
-
-(defn bit-shift-right-hint
-  [^long x ^long n]
-  (bit-shift-right x n))
-
-(defn bit-or-hint
-  [^long x ^long y]
-  (bit-or x y))
-
-(defn bit-and-hint
-  ^long [^long x ^long y]
-  (bit-and x y))
-
-(defmacro log2step
-  [r x b s]
-  `(when (> (bit-and-hint @~x ~b) 0)
-     (vswap! ~x bit-shift-right-hint ~s)
-     (vswap! ~r bit-or-hint  ~s)))
-
-
-(comment
-
-
-
-  )
