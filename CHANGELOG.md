@@ -3,6 +3,7 @@
 ## [unreleased]
 ### Added
 - `combine` function to combine two editscripts
+- package.json for npm publising [Andrea Richiardi]
 ### Fixed
 - Fix a cljs warning
 

@@ -162,7 +162,7 @@ can. An optimizing algorithm is needed if minimal diffs are desired.
 ## Platform
 
 The library supports JVM Clojure and Clojurescript. The later has been tested
-with node, nashorn, chrome, safari, and firefox. E.g. run our test suite:
+with node, nashorn, chrome, safari, firefox and lumo. E.g. run our test suite:
 
 ```bash
 # Run Clojure tests
@@ -184,18 +184,20 @@ editscripts can combine (concatenate) into a larger edistscript. I consider
 editscript as a part of a larger data-oriented effort, that tries to elevate
 the level of abstraction of data from the granularity of characters, bytes or
 lines to that of maps, sets, vectors, and lists. So instead of talking about
-changes stream in bytes, we can talk about change streams in term of higher level data
+change streams in bytes, we can talk about change streams in term of higher level data
 structures.
 
 ## Roadmap
 
-There are a few things I plan to work on. Ideas, suggestions and contributions
-are welcome.
+There are a few things I have some interest in exploring with this library. Of course, ideas, 
+suggestions and contributions are very welcome.
 
-* Further speed up of the algorithms, e.g. better heuristic, hashing, and so on .
-* Functions to support more use cases, e.g. change detection,
-serialization, pretty print, etc.
+* Further speed up of the algorithms, e.g. better heuristic, hashing, and so on.
+* API functions to support more use cases, e.g. change detection,
+serialization, pretty print, etc. 
 * Support other data types as collection types, e.g. strings.
+* Globally optimize an editscript stream. 
+* Expose and enrich the data indices for other use cases, such as searching, migration, etc.  
 
 ## References
 
