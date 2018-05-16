@@ -15,9 +15,10 @@ strength of [Data-Oriented Programming](https://livebook.manning.com/#!/book/the
 
 ## Usage
 
-The library is available at clojars
+The library is available at clojars and npm
 
 ![](https://clojars.org/juji/editscript/latest-version.svg)
+[![npm version](https://badge.fury.io/js/clj-editscript.svg)](https://badge.fury.io/js/clj-editscript)
 
 Here is a usage example:
 
