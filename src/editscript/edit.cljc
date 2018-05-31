@@ -114,12 +114,12 @@
     (sizing* data size)
     @size))
 
-(deftype EditScript [^:volatile-mutable ^PersistentVector edits
+(deftype EditScript [^:unsynchronized-mutable ^PersistentVector edits
                      ^boolean auto-sizing?
-                     ^:volatile-mutable ^long size
-                     ^:volatile-mutable ^long adds-num
-                     ^:volatile-mutable ^long dels-num
-                     ^:volatile-mutable ^long reps-num]
+                     ^:unsynchronized-mutable ^long size
+                     ^:unsynchronized-mutable ^long adds-num
+                     ^:unsynchronized-mutable ^long dels-num
+                     ^:unsynchronized-mutable ^long reps-num]
 
   IEdit
   (auto-sizing [this value]

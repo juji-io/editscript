@@ -42,13 +42,13 @@
 (deftype Node [^PersistentVector path
                value
                parent
-               ^:volatile-mutable children
-               ^:volatile-mutable first
-               ^:volatile-mutable last
-               ^:volatile-mutable next
-               ^:volatile-mutable index
-               ^:volatile-mutable ^long order
-               ^:volatile-mutable ^long size]
+               ^:unsynchronized-mutable children
+               ^:unsynchronized-mutable first
+               ^:unsynchronized-mutable last
+               ^:unsynchronized-mutable next
+               ^:unsynchronized-mutable index
+               ^:unsynchronized-mutable ^long order
+               ^:unsynchronized-mutable ^long size]
   INode
   (get-path [_] path)
   (get-key [this] (-> this get-path peek))
@@ -220,9 +220,9 @@
   (get-g [this] "Get the g cost map")
   (set-g [this g] "Set the g cost map"))
 
-(deftype State [^:volatile-mutable came
-                ^:volatile-mutable open
-                ^:volatile-mutable g]
+(deftype State [^:unsynchronized-mutable came
+                ^:unsynchronized-mutable open
+                ^:unsynchronized-mutable g]
   IState
   (get-came [_] came)
   (set-came [this c] (set! came c) this)

@@ -23,8 +23,8 @@
 
 (deftype HeapNode [item
                    priority
-                   ^:volatile-mutable left
-                   ^:volatile-mutable right]
+                   ^:unsynchronized-mutable left
+                   ^:unsynchronized-mutable right]
   IHeapNode
   (get-left [_] left)
   (get-right [_] right)
@@ -66,8 +66,8 @@
       (merge-nodes (merge-nodes a b) (two-pass n)))))
 
 #?(:clj
-   (deftype PriorityMap [^:volatile-mutable ^HeapNode heap
-                         ^:volatile-mutable map]
+   (deftype PriorityMap [^:unsynchronized-mutable ^HeapNode heap
+                         ^:unsynchronized-mutable map]
      IPersistentCollection
      (count [_] (count map))
      (cons [this e]

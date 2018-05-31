@@ -6,6 +6,7 @@
 - package.json for npm publising [Andrea Richiardi]
 ### Fixed
 - Fix a cljs warning
+- Minor speed improvement
 
 ## [0.3.1] - 2018-05-09
 ### Fixed
@@ -50,4 +51,3 @@
 ## 0.1.1 - 2018-03-04
 ### Added
 - Initial commits
-
