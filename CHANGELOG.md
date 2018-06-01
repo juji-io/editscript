@@ -1,6 +1,6 @@
 # Change Log
 
-## [unreleased]
+## [0.3.2] - 2018-5-31
 ### Added
 - `combine` function to combine two editscripts
 - package.json for npm publising [Andrea Richiardi]
