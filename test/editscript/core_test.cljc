@@ -110,21 +110,21 @@
 
 (c/quick-bench (a/diff data1 data2))
 ;; ==>
-;; Evaluation count : 270 in 6 samples of 45 calls.
-;; Execution time mean : 2.268114 ms
-;; Execution time std-deviation : 59.297769 µs
-;; Execution time lower quantile : 2.224969 ms ( 2.5%)
-;; Execution time upper quantile : 2.341172 ms (97.5%)
-;; Overhead used : 9.814957 ns
+;; Evaluation count : 276 in 6 samples of 46 calls.
+;; Execution time mean : 2.270518 ms
+;; Execution time std-deviation : 104.885415 µs
+;; Execution time lower quantile : 2.193152 ms ( 2.5%)
+;; Execution time upper quantile : 2.413475 ms (97.5%)
+;; Overhead used : 10.359206 ns
 
 (c/quick-bench (a/diff data1 data3))
 ;; ==>
-;; Evaluation count : 180 in 6 samples of 30 calls.
-;; Execution time mean : 3.541472 ms
-;; Execution time std-deviation : 121.891180 µs
-;; Execution time lower quantile : 3.452164 ms ( 2.5%)
-;; Execution time upper quantile : 3.746222 ms (97.5%)
-;; Overhead used : 9.814957 ns
+;; Evaluation count : 174 in 6 samples of 29 calls.
+;; Execution time mean : 3.525820 ms
+;; Execution time std-deviation : 132.236457 µs
+;; Execution time lower quantile : 3.428666 ms ( 2.5%)
+;; Execution time upper quantile : 3.752926 ms (97.5%)
+;; Overhead used : 10.359206 ns
 
 ;; Found 1 outliers in 6 samples (16.6667 %)
 ;; low-severe	 1 (16.6667 %)
@@ -132,12 +132,17 @@
 
 (c/quick-bench (a/diff data1 data4))
 ;; ==>
-;; Evaluation count : 174 in 6 samples of 29 calls.
-;; Execution time mean : 3.514837 ms
-;; Execution time std-deviation : 124.876579 µs
-;; Execution time lower quantile : 3.401492 ms ( 2.5%)
-;; Execution time upper quantile : 3.659879 ms (97.5%)
-;; Overhead used : 9.814957 ns
+;; Evaluation count : 180 in 6 samples of 30 calls.
+;; Execution time mean : 3.511243 ms
+;; Execution time std-deviation : 144.306722 µs
+;; Execution time lower quantile : 3.372721 ms ( 2.5%)
+;; Execution time upper quantile : 3.731499 ms (97.5%)
+;; Overhead used : 10.359206 ns
+
+;; Found 1 outliers in 6 samples (16.6667 %)
+;; low-severe	 1 (16.6667 %)
+;; Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
+
 (e/edit-distance (a/diff data1 data4))
 ;; ==> 13
 (e/get-size (a/diff data1 data4))
