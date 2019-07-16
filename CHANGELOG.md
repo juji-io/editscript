@@ -1,8 +1,20 @@
 # Change Log
 
-## [0.3.2] - 2018-5-31
+## [0.4.0] - 2019-07-15
 ### Added
-- `combine` function to combine two editscripts
+- `edits->script` function to convert a vector of edits to an EditScript
+- `valid-edits?` function to validate the edits vector
+- link to cljdoc documentation
+### Changed
+- Instead of using cost, use a more accurate size for `get-size` of an EditScript
+
+## [0.3.3] - 2019-04-04
+### Changed
+- Minor dependency bump
+
+## [0.3.2] - 2018-05-31
+### Added
+- `combine` function to combine two EditScripts
 - package.json for npm publising [Andrea Richiardi]
 ### Fixed
 - Fix a cljs warning

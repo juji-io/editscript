@@ -20,6 +20,11 @@ The library is available at clojars and npm
 ![](https://clojars.org/juji/editscript/latest-version.svg)
 [![npm version](https://badge.fury.io/js/clj-editscript.svg)](https://badge.fury.io/js/clj-editscript)
 
+Documentation is available on cljdoc
+
+[![cljdoc badge](https://cljdoc.org/badge/juji/editscript)](https://cljdoc.org/d/juji/editscript/CURRENT)
+
+
 Here is a usage example:
 
 ```Clojure
@@ -40,14 +45,13 @@ d
 ;; [[2 :a 0] :-]
 ;; [[5 3] :+ 3]]
 
-;; get the edit distance
+;; get the edit distance, i.e. number of edits
 (edit-distance d)
 ;;==> 4
 
-;; get the size of the editscript,
-;; the size of each operation = new-data-size + 1
+;; get the size of the editscript
 (get-size d)
-;;==> 6
+;;==> 22
 
 ;; patch a with the editscript to get back b, so that
 (= b (patch a d))
@@ -55,7 +59,7 @@ d
 
 ```
 
-An editscript is a vector of edits, where each edit is a vector of two or three
+An EditScript contains a vector of edits, where each edit is a vector of two or three
 elements.
 
 The first element of an edit is the path, similar to the path vector in the
@@ -67,6 +71,28 @@ The second element of an edit is a keyword representing the edit operation,
 which is one of `:-` (deletion), `:+` (addition), and `:r `(replacement).
 
 For addition and replacement operation, the third element is the value of new data.
+
+```Clojure
+
+;; get the edits as a plain Clojure vector
+(def v (get-edits d))
+
+v
+;;==>
+;;[[[0] :-]
+;; [[1] :r 23]
+;; [[2 :a 0] :-]
+;; [[5 3] :+ 3]]
+
+;; the plain Clojure vector can be passed around, stored, or modified as usual,
+;; then be loaded back as an EditScript
+(def d' (edits->script v))
+
+;; the new EditScript work the same as the old one
+(= b (patch a d'))
+;;==> true
+
+```
 
 ## Diffing Algorithms
 
@@ -190,15 +216,15 @@ structures.
 
 ## Roadmap
 
-There are a few things I have some interest in exploring with this library. Of course, ideas, 
+There are a few things I have some interest in exploring with this library. Of course, ideas,
 suggestions and contributions are very welcome.
 
 * Further speed up of the algorithms, e.g. better heuristic, hashing, and so on.
 * API functions to support more use cases, e.g. change detection,
-serialization, pretty print, etc. 
+serialization, pretty print, etc.
 * Support other data types as collection types, e.g. strings.
-* Globally optimize an editscript stream. 
-* Expose and enrich the data indices for other use cases, such as searching, migration, etc.  
+* Globally optimize an editscript stream.
+* Expose and enrich the data indices for other use cases, such as searching, migration, etc.
 
 ## References
 

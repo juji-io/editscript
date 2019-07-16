@@ -548,17 +548,17 @@
 (defn diff
   "Create an EditScript that represents the minimal difference between `b` and `a`"
   [a b]
-  (let [script (e/->EditScript [] false 0 0 0 0)]
+  (let [script (e/edits->script [])]
     (when-not (identical? a b)
       (let [roota (index a)
             rootb (index b)
             came  (volatile! {})
-            cost  (diff* roota rootb came)]
+            _  (diff* roota rootb came)]
         ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))
         ;;               ^long explored (reduce + (map count (vals @came)))]
         ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
         ;;                   cost explored total
         ;;                   (* 100 (double (/ explored total))))))
         (trace @came (->Coord roota rootb) script)
-        (e/set-size script cost)))
+        script))
     script))

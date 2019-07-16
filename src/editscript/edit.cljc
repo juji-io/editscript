@@ -13,7 +13,7 @@
                     IPersistentSet IPersistentVector])))
 
 (defprotocol IEdit
-  (auto-sizing [this value])
+  (auto-sizing [this path value])
   (add-data [this path value])
   (delete-data [this path])
   (replace-data [this path value]))
@@ -122,40 +122,83 @@
                      ^:unsynchronized-mutable ^long reps-num]
 
   IEdit
-  (auto-sizing [this value]
+  (auto-sizing [this path value]
     (when auto-sizing?
-      (set! size (long (+ 1 size (sizing value))))))
+      (set! size (long (+ 2 size (sizing path) (if value (sizing value) 0)))))
+    this)
   (add-data [this path value]
     (locking this
-      (auto-sizing this value)
       (set! adds-num (inc adds-num))
-      (set! edits (conj edits [path :+ value]))))
+      (set! edits (conj edits [path :+ value]))
+      (auto-sizing this path value)))
   (delete-data [this path]
     (locking this
-      (set! size (long (+ 1 size)))
       (set! dels-num (inc dels-num))
-      (set! edits (conj edits [path :-]))))
+      (set! edits (conj edits [path :-]))
+      (auto-sizing this path nil)))
   (replace-data [this path value]
     (locking this
-      (auto-sizing this value)
       (set! reps-num (inc reps-num))
-      (set! edits (conj edits [path :r value]))))
+      (set! edits (conj edits [path :r value]))
+      (auto-sizing this path value)))
 
   IEditScript
-  (combine [this that]
+  (combine [_ that]
     (EditScript. (into edits (get-edits that))
                  auto-sizing?
                  (+ size (get-size that))
                  (+ adds-num (get-adds-num that))
                  (+ dels-num (get-dels-num that))
                  (+ reps-num (get-reps-num that))))
-  (get-size [this] size)
+  (get-size [_] size)
   (set-size [this s] (set! size (long s)) this)
-  (get-edits [this] edits)
-  (get-adds-num [this] adds-num)
-  (get-dels-num [this] dels-num)
-  (get-reps-num [this] reps-num)
-  (edit-distance [this] (+ adds-num dels-num reps-num)))
+  (get-edits [_] edits)
+  (get-adds-num [_] adds-num)
+  (get-dels-num [_] dels-num)
+  (get-reps-num [_] reps-num)
+  (edit-distance [_] (+ adds-num dels-num reps-num)))
+
+(defn- valid-edit?
+  [edit]
+  (when (vector? edit)
+    (when (< 1 (count edit) 4)
+      (let [[path op data] edit]
+        (and (vector? path)
+             (seq path)
+             (#{:- :r :+} op)
+             (if (= :- op)
+               (nil? data)
+               (some? data)))))))
+
+(defn valid-edits?
+  "Check if the given vector represents valid edits that can be turned into an
+  EditScript"
+  [edits]
+  (when (vector? edits)
+    (if (seq edits)
+      (every? valid-edit? edits)
+      true)))
+
+(defn- count-ops
+  [edits]
+  (let [adds (volatile! 0)
+        dels (volatile! 0)
+        reps (volatile! 0)]
+    (doseq [[_ op _] edits]
+      (case op
+        :+ (vswap! adds inc)
+        :- (vswap! dels inc)
+        :r (vswap! reps inc)))
+    [@adds @dels @reps]))
+
+(defn edits->script
+  "Create an EditScript instance from a vector of edits, like those obtained
+  through calling `get-edits` on an EditScript"
+  [edits]
+  (assert (valid-edits? edits) "Not a vector of valid edits")
+  (let [[adds dels reps] (count-ops edits)]
+    (->EditScript edits true (sizing edits) adds dels reps)))
+
 
 #?(:clj (defmethod print-method EditScript
           [x ^java.io.Writer writer]

@@ -36,7 +36,7 @@
   the algorithm."
   ([a b]
    (diff a b {}))
-  ([a b {:keys [algo] :as options}]
+  ([a b {:keys [algo]}]
    (let [algo (or algo :A*)]
      ((case algo
         :A*    a/diff
