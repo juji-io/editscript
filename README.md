@@ -18,9 +18,10 @@ strength of [Data-Oriented Programming](https://livebook.manning.com/#!/book/the
 The library is available at clojars and npm
 
 ![](https://clojars.org/juji/editscript/latest-version.svg)
+
 [![npm version](https://badge.fury.io/js/clj-editscript.svg)](https://badge.fury.io/js/clj-editscript)
 
-Documentation is available on cljdoc
+API Documentation is available on cljdoc
 
 [![cljdoc badge](https://cljdoc.org/badge/juji/editscript)](https://cljdoc.org/d/juji/editscript/CURRENT)
 
@@ -85,10 +86,10 @@ v
 ;; [[5 3] :+ 3]]
 
 ;; the plain Clojure vector can be passed around, stored, or modified as usual,
-;; then be loaded back as an EditScript
+;; then be loaded back as a new EditScript
 (def d' (edits->script v))
 
-;; the new EditScript work the same as the old one
+;; the new EditScript works the same as the old one
 (= b (patch a d'))
 ;;==> true
 
