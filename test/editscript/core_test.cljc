@@ -10,7 +10,7 @@
 
 (ns editscript.core-test
   (:require [clojure.test :refer [is are testing deftest]]
-            [editscript.core :refer [patch]]
+            [editscript.core :refer [patch diff]]
             [editscript.edit :as e]
             [editscript.diff.quick :as q]
             [editscript.diff.a-star :as a]
@@ -43,7 +43,6 @@
     ['()]
     [[]]
     [[1 2 3]]
-    [[[] :-]]
     [[[1] :+ 3 4]]
     [[[1] :- 3]]
     [[[1] :r]]))
@@ -60,7 +59,11 @@
     [[[0] :-]
      [[1] :r 23]
      [[2 :a 0] :-]
-     [[5 3] :+ 3]]))
+     [[5 3] :+ 3]]
+
+    {}
+    {:x :hello-world}
+    [[[] :r {:x :hello-world}]]))
 
 ;; generative tests
 
@@ -78,14 +81,22 @@
   1000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
-                (= b (patch a (q/diff a b)))))
+                (let [s  (q/diff a b)
+                      e  (e/get-edits s)
+                      s' (e/edits->script e)]
+                  (and (= b (patch a s))
+                       (= b (patch a s'))))))
 
 
 (test/defspec a-star-end-2-end-generative-test
   1000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
-                (= b (patch a (a/diff a b)))))
+                (let [s  (a/diff a b)
+                      e  (e/get-edits s)
+                      s' (e/edits->script e)]
+                  (and (= b (patch a s))
+                       (= b (patch a s'))))))
 
 ;; sample data tests
 

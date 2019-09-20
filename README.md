@@ -50,7 +50,7 @@ d
 (edit-distance d)
 ;;==> 4
 
-;; get the size of the editscript
+;; get the size of the editscript, i.e. number of nodes
 (get-size d)
 ;;==> 22
 
@@ -240,7 +240,7 @@ serialization, pretty print, etc.
 
 ## License
 
-Copyright © 2018 Juji, Inc.
+Copyright © 2018-2019 Juji, Inc.
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.

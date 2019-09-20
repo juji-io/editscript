@@ -1,4 +1,4 @@
-(defproject juji/editscript "0.4.0"
+(defproject juji/editscript "0.4.1"
   :description "A diffing library for Clojure data structures"
   :url "https://github.com/juji-io/editscript"
   :lein-release {:deploy-via :clojars}
@@ -54,7 +54,7 @@
                              [quantum/org.clojure.core.rrb-vector "0.0.12"]
                              [criterium "0.4.5"]
                              [doo "0.1.11"]
-                             [org.clojure/test.check "0.9.0"]
+                             [org.clojure/test.check "0.10.0"]
                              [cider/piggieback "0.4.1"]]
               :source-paths ["src" "test" "dev"]
               :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}})

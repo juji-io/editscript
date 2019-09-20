@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.4.1] - 2019-09-20
+### Fixed
+- Relax `valid-edits?` to accept more valid edits
+
 ## [0.4.0] - 2019-07-15
 ### Added
 - `edits->script` function to convert a vector of edits to an EditScript

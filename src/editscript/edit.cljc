@@ -161,14 +161,14 @@
 (defn- valid-edit?
   [edit]
   (when (vector? edit)
-    (when (< 1 (count edit) 4)
-      (let [[path op data] edit]
-        (and (vector? path)
-             (seq path)
-             (#{:- :r :+} op)
-             (if (= :- op)
-               (nil? data)
-               (some? data)))))))
+    (let [c (count edit)]
+      (when (< 1 c 4)
+       (let [[path op data] edit]
+         (and (vector? path)
+              (#{:- :r :+} op)
+              (if (= :- op)
+                (nil? data)
+                (= c 3))))))))
 
 (defn valid-edits?
   "Check if the given vector represents valid edits that can be turned into an
