@@ -26,6 +26,14 @@
 
 ;; edits tests
 
+(deftest edits-equality-test
+  (are [d1 d2] (= (e/get-edits d1) (e/get-edits d2))
+    (diff {} {})
+    (diff {} {})
+
+    (diff 1 2)
+    (diff 3 2)))
+
 (deftest valid-edits-test
   (are [edits] (e/valid-edits? edits)
     []
