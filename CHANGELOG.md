@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.4.2] - 2019-09-24
+### Changed
+- Change equality handling to accommodate older versions of Clojure (1.9.0 and older)
+
 ## [0.4.1] - 2019-09-20
 ### Fixed
 - Relax `valid-edits?` to accept more valid edits

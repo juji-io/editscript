@@ -147,7 +147,7 @@
 
 (defn diff*
   [script path a b]
-  (when-not (identical? a b)
+  (when-not (= a b)
     (case (e/get-type a)
       :nil (e/add-data script path b)
       :map (coll-case a b script path :map #'diff-map)

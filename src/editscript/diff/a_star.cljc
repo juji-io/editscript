@@ -549,7 +549,7 @@
   "Create an EditScript that represents the minimal difference between `b` and `a`"
   [a b]
   (let [script (e/edits->script [])]
-    (when-not (identical? a b)
+    (when-not (= a b)
       (let [roota (index a)
             rootb (index b)
             came  (volatile! {})
