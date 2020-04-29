@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.4.3] - 2020-04-29
+### Changed
+- Change A* algorithm equality handling to improve speed for very small diffs
+
 ## [0.4.2] - 2019-09-24
 ### Changed
 - Change equality handling to accommodate older versions of Clojure (1.9.0 and older)

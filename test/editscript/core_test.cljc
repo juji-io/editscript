@@ -86,7 +86,7 @@
                              [1 (gen/return nil)]]))
 
 (test/defspec quick-end-2-end-generative-test
-  1000
+  2000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
                 (let [s  (q/diff a b)
@@ -97,7 +97,7 @@
 
 
 (test/defspec a-star-end-2-end-generative-test
-  1000
+  2000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
                 (let [s  (a/diff a b)
@@ -169,30 +169,30 @@
 
 (c/quick-bench (a/diff data1 data2))
 ;; ==>
-;; Evaluation count : 282 in 6 samples of 47 calls.
-;; Execution time mean : 2.202015 ms
-;; Execution time std-deviation : 66.274036 µs
-;; Execution time lower quantile : 2.143892 ms ( 2.5%)
-;; Execution time upper quantile : 2.294823 ms (97.5%)
-;; Overhead used : 9.966537 ns
+;; Evaluation count : 714 in 6 samples of 119 calls.
+;; Execution time mean : 874.622133 µs
+;; Execution time std-deviation : 24.621119 µs
+;; Execution time lower quantile : 851.593109 µs ( 2.5%)
+;; Execution time upper quantile : 905.972655 µs (97.5%)
+;; Overhead used : 10.902641 ns
 
 (c/quick-bench (a/diff data1 data3))
 ;; ==>
-;; Evaluation count : 186 in 6 samples of 31 calls.
-;; Execution time mean : 3.623474 ms
-;; Execution time std-deviation : 199.726236 µs
-;; Execution time lower quantile : 3.412565 ms ( 2.5%)
-;; Execution time upper quantile : 3.842040 ms (97.5%)
-;; Overhead used : 9.966537 ns
+;; Evaluation count : 546 in 6 samples of 91 calls.
+;; Execution time mean : 1.122936 ms
+;; Execution time std-deviation : 81.787273 µs
+;; Execution time lower quantile : 1.048506 ms ( 2.5%)
+;; Execution time upper quantile : 1.222943 ms (97.5%)
+;; Overhead used : 10.902641 ns
 
 (c/quick-bench (a/diff data1 data4))
 ;; ==>
-;; Evaluation count : 180 in 6 samples of 30 calls.
-;; Execution time mean : 3.468896 ms
-;; Execution time std-deviation : 117.875435 µs
-;; Execution time lower quantile : 3.352683 ms ( 2.5%)
-;; Execution time upper quantile : 3.633014 ms (97.5%)
-;; Overhead used : 9.966537 ns
+;; Evaluation count : 156 in 6 samples of 26 calls.
+;; Execution time mean : 4.023306 ms
+;; Execution time std-deviation : 187.453390 µs
+;; Execution time lower quantile : 3.790716 ms ( 2.5%)
+;; Execution time upper quantile : 4.224034 ms (97.5%)
+;; Overhead used : 10.902641 ns
 
 (e/edit-distance (a/diff data1 data4))
 ;; ==> 13

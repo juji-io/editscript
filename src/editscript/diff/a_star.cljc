@@ -293,15 +293,6 @@
                          (+ ^long tmp-g ^long (heuristic type nbr end goal))))
         (set-g (assoc! g nbr tmp-g))))))
 
-(defn- values=?
-  [va vb]
-  (or (identical? va vb)
-      (and (= :val (e/get-type va) (e/get-type vb))
-           #?(:clj (if va
-                     (.equals ^Object va vb)
-                     (= va vb))
-              :cljs (= va vb)))))
-
 (defn- next-node
   [na ra]
   (or (get-next na) ra))
@@ -310,7 +301,7 @@
   [end cur]
   (let [[ra rb] (get-coord end)
         [na nb] (get-coord cur)
-        a=b     (values=? (get-value na) (get-value nb))
+        a=b     (= (get-value na) (get-value nb))
         x=gx    (identical? na ra)
         x<gx    (not x=gx)
         y<gy    (not (identical? nb rb))
@@ -345,14 +336,14 @@
                 enda   (->Coord na (cb ka))]
             (if (contains? mb ka)
               (if (= ka kb)
-                [(->Step (if (values=? va vb) := :r) cur startb)]
+                [(->Step (if (= va vb) := :r) cur startb)]
                 [(->Step := cur enda)
                  (->Step :r enda startb)])
               [(->Step :- cur startb)]))
           ;; testing keys of a
           [(if (contains? mb ka)
              (if (= ka kb)
-               (->Step (if (values=? va vb) := :r)
+               (->Step (if (= va vb) := :r)
                        cur (->Coord na' (or (cb (get-key na')) nb)))
                (->Step := cur (->Coord na (cb ka))))
              (->Step :- cur (->Coord na' nb)))])))))
@@ -431,13 +422,10 @@
         typea  (e/get-type va)
         update #(vswap! came assoc (->Coord ra rb) {})]
     (cond
-      (identical? va vb)
-      (do (update)
-          0)
       ;; both are leaves, skip or replace
       (= 1 sa sb)
       (do (update)
-          (if (values=? va vb)
+          (if (= va vb)
             0
             2))
       ;; one of them is leaf, replace
@@ -446,14 +434,16 @@
           (inc ^long sb))
       ;; non-empty coll with same type, drill down
       (= typea (e/get-type vb))
-      (let [cc+1 #(-> % get-children count inc)]
-        (if (and (#{:vec :lst} typea)
-                 (or (= sa (cc+1 ra))
-                     (= sb (cc+1 rb))))
-          ;; vec or lst contains leaves only, safe to use quick algo.
-          (use-quick ra rb came)
-          ;; otherwise run A*
-          (A* typea ra rb came)))
+      (if (= va vb)
+        (do (update) 0)
+        (let [cc+1 #(-> % get-children count inc)]
+          (if (and (#{:vec :lst} typea)
+                   (or (= sa (cc+1 ra))
+                       (= sb (cc+1 rb))))
+            ;; vec or lst contains leaves only, safe to use quick algo.
+            (use-quick ra rb came)
+            ;; otherwise run A*
+            (A* typea ra rb came))))
       ;; types differ, can only replace
       :else
       (do (update)
@@ -533,7 +523,7 @@
             (recur (m prev)))
           steps))
       (let [[ra rb] (get-coord cur)]
-        (vswap! steps conj [(if (values=? (get-value ra) (get-value rb)) := :r)
+        (vswap! steps conj [(if (= (get-value ra) (get-value rb)) := :r)
                             ra rb])
         steps))
     steps))
