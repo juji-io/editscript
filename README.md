@@ -240,7 +240,7 @@ serialization, pretty print, etc.
 
 ## License
 
-Copyright © 2018-2019 Juji, Inc.
+Copyright © 2018-2020 Juji, Inc.
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
