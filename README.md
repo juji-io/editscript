@@ -6,8 +6,7 @@ necessary to transform one to another. Currently, the library can diff and patch
 any nested Clojure/Clojurescript data structures consisting of regular maps,
 vectors, lists, sets and values.
 
-At Juji, we need to take snapshots of our AI agents' states and later
-restore them. Such a use case requires a good diffing library for nested Clojure
+At Juji, we send changes of UI states back to server for persistence [see blog post](https://juji.io/blog/this-is-how-we-revamped-the-ui-in-less-than-a-month/). Such a use case requires a good diffing library for nested Clojure
 data structures to avoid overwhelming our storage systems. I have not found such
 a library in Clojure ecosystem, so I implemented my own. Hopefully this little
 library could be of some use to further enhance the Clojure's unique
