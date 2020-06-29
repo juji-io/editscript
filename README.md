@@ -1,6 +1,13 @@
-# editscript
+<p align="center"><img src="logo.png" alt="editscript logo" height="60"></img></p>
+<h1 align="center">Editscript</h1> 
+<p align="center">Diff and patch for Clojure/Clojurescript data.</p>
+<p align="center">
+![](https://clojars.org/juji/editscript/latest-version.svg)
+[![npm version](https://badge.fury.io/js/clj-editscript.svg)](https://badge.fury.io/js/clj-editscript)
+[![cljdoc badge](https://cljdoc.org/badge/juji/editscript)](https://cljdoc.org/d/juji/editscript/CURRENT)
+</p>
 
-A library designed to extract the differences between two Clojure/Clojurescript
+Editscript is a library designed to extract the differences between two Clojure/Clojurescript
 data structures as an "editscript", which represents the minimal modification
 necessary to transform one to another. Currently, the library can diff and patch
 any nested Clojure/Clojurescript data structures consisting of regular maps,
@@ -13,17 +20,6 @@ library could be of some use to further enhance the Clojure's unique
 strength of [Data-Oriented Programming](https://livebook.manning.com/#!/book/the-joy-of-clojure-second-edition/chapter-14/1).
 
 ## Usage
-
-The library is available at clojars and npm
-
-![](https://clojars.org/juji/editscript/latest-version.svg)
-
-[![npm version](https://badge.fury.io/js/clj-editscript.svg)](https://badge.fury.io/js/clj-editscript)
-
-API Documentation is available on cljdoc
-
-[![cljdoc badge](https://cljdoc.org/badge/juji/editscript)](https://cljdoc.org/d/juji/editscript/CURRENT)
-
 
 Here is a usage example:
 
