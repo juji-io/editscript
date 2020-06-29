@@ -1,12 +1,12 @@
 <p align="center"><img src="logo.png" alt="editscript logo" height="60"></img></p>
 <h1 align="center">Editscript</h1> 
 <p align="center">Diff and patch for Clojure/Clojurescript data.</p>
-<p align="center">
-![](https://clojars.org/juji/editscript/latest-version.svg)
-[![npm version](https://badge.fury.io/js/clj-editscript.svg)](https://badge.fury.io/js/clj-editscript)
-[![cljdoc badge](https://cljdoc.org/badge/juji/editscript)](https://cljdoc.org/d/juji/editscript/CURRENT)
-</p>
 
+<a href="https://clojars.org/juji/editscript"><img src="https://clojars.org/juji/editscript/latest-version.svg" alt="clojars"></img></a>)
+<a href="https://badge.fury.io/js/clj-editscript"><img src="https://badge.fury.io/js/clj-editscript.svg" alt="npm"></img></a>)
+<a href="https://cljdoc.org/d/juji/editscript/CURRENT"><img src="https://cljdoc.org/badge/juji/editscript" alt="cljdoc"></img></a>)
+
+## :hear_no_evil: What is it?
 Editscript is a library designed to extract the differences between two Clojure/Clojurescript
 data structures as an "editscript", which represents the minimal modification
 necessary to transform one to another. Currently, the library can diff and patch
@@ -19,9 +19,7 @@ a library in Clojure ecosystem, so I implemented my own. Hopefully this little
 library could be of some use to further enhance the Clojure's unique
 strength of [Data-Oriented Programming](https://livebook.manning.com/#!/book/the-joy-of-clojure-second-edition/chapter-14/1).
 
-## Usage
-
-Here is a usage example:
+## :tada: Usage
 
 ```Clojure
 (use 'editscript.core)
@@ -90,7 +88,7 @@ v
 
 ```
 
-## Diffing Algorithms
+## :zap: Diffing Algorithms
 
 The library currently implements two diffing algorithms. The default algorithm
 produces diffs that are optimal in the number of editing operations and the
