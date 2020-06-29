@@ -3,9 +3,11 @@
 <p align="center">Diff and patch for Clojure/Clojurescript data.</p>
 
 <p align="center">
-<a href="https://clojars.org/juji/editscript"><img src="https://clojars.org/juji/editscript/latest-version.svg" alt="clojars"></img></a>
 <a href="https://badge.fury.io/js/clj-editscript"><img src="https://badge.fury.io/js/clj-editscript.svg" alt="npm"></img></a>
 <a href="https://cljdoc.org/d/juji/editscript/CURRENT"><img src="https://cljdoc.org/badge/juji/editscript" alt="cljdoc"></img></a>
+</p>
+<p align="center">
+<a href="https://clojars.org/juji/editscript"><img src="https://clojars.org/juji/editscript/latest-version.svg" alt="clojars"></img></a>
 </p>
 
 ## :hear_no_evil: What is it?
@@ -199,7 +201,7 @@ lein doo chrome browser
 
 ```
 
-## :blub: Rationale
+## :bulb: Rationale
 
 Editscript is designed with stream processing in mind. An editscript should be
 conceptualized as a chunk in a potentially endless stream of changes. Individual
