@@ -2,9 +2,11 @@
 <h1 align="center">Editscript</h1> 
 <p align="center">Diff and patch for Clojure/Clojurescript data.</p>
 
-<a href="https://clojars.org/juji/editscript"><img src="https://clojars.org/juji/editscript/latest-version.svg" alt="clojars"></img></a>)
-<a href="https://badge.fury.io/js/clj-editscript"><img src="https://badge.fury.io/js/clj-editscript.svg" alt="npm"></img></a>)
-<a href="https://cljdoc.org/d/juji/editscript/CURRENT"><img src="https://cljdoc.org/badge/juji/editscript" alt="cljdoc"></img></a>)
+<p align="center">
+<a href="https://clojars.org/juji/editscript"><img src="https://clojars.org/juji/editscript/latest-version.svg" alt="clojars"></img></a>
+<a href="https://badge.fury.io/js/clj-editscript"><img src="https://badge.fury.io/js/clj-editscript.svg" alt="npm"></img></a>
+<a href="https://cljdoc.org/d/juji/editscript/CURRENT"><img src="https://cljdoc.org/badge/juji/editscript" alt="cljdoc"></img></a>
+</p>
 
 ## :hear_no_evil: What is it?
 Editscript is a library designed to extract the differences between two Clojure/Clojurescript
@@ -180,7 +182,7 @@ new ones back. The reason is that the quick algorithm does not drill down
 (i.e. do replacement) at the correct places. It currently drills down wherever it
 can. An optimizing algorithm is needed if minimal diffs are desired.
 
-## Platform
+## :station: Platform
 
 The library supports JVM Clojure and Clojurescript. The later has been tested
 with node, nashorn, chrome, safari, firefox and lumo. E.g. run our test suite:
@@ -197,7 +199,7 @@ lein doo chrome browser
 
 ```
 
-## Rationale
+## :blub: Rationale
 
 Editscript is designed with stream processing in mind. An editscript should be
 conceptualized as a chunk in a potentially endless stream of changes. Individual
@@ -208,19 +210,16 @@ lines to that of maps, sets, vectors, and lists. So instead of talking about
 change streams in bytes, we can talk about change streams in term of higher level data
 structures.
 
-## Roadmap
+## :roller_coaster: Roadmap
 
 There are a few things I have some interest in exploring with this library. Of course, ideas,
 suggestions and contributions are very welcome.
 
 * Further speed up of the algorithms, e.g. better heuristic, hashing, and so on.
-* API functions to support more use cases, e.g. change detection,
-serialization, pretty print, etc.
 * Support other data types as collection types, e.g. strings.
 * Globally optimize an editscript stream.
-* Expose and enrich the data indices for other use cases, such as searching, migration, etc.
 
-## References
+## :green_book: References
 
 + Lu, S. 1979, A Tree-to-tree distance and its application to cluster analysis. IEEE Transactions on Pattern Analysis and Machine Intelligence. Vol. PAMI-1 No.2. p219-224
 
