@@ -15,13 +15,7 @@ Editscript is a library designed to extract the differences between two Clojure/
 data structures as an "editscript", which represents the minimal modification
 necessary to transform one to another. Currently, the library can diff and patch
 any nested Clojure/Clojurescript data structures consisting of regular maps,
-vectors, lists, sets and values.
-
-At Juji, we send changes of UI states back to server for persistence [see blog post](https://juji.io/blog/this-is-how-we-revamped-the-ui-in-less-than-a-month/). Such a use case requires a good diffing library for nested Clojure
-data structures to avoid overwhelming our storage systems. I have not found such
-a library in Clojure ecosystem, so I implemented my own. Hopefully this little
-library could be of some use to further enhance the Clojure's unique
-strength of [Data-Oriented Programming](https://livebook.manning.com/#!/book/the-joy-of-clojure-second-edition/chapter-14/1).
+vectors, lists, sets and values. Custom data can also be handled if you implement our protocols.
 
 ## :tada: Usage
 
@@ -202,6 +196,12 @@ lein doo chrome browser
 ```
 
 ## :bulb: Rationale
+
+At Juji, we send changes of UI states back to server for persistence [see blog post](https://juji.io/blog/this-is-how-we-revamped-the-ui-in-less-than-a-month/). Such a use case requires a good diffing library for nested Clojure
+data structures to avoid overwhelming our storage systems. I have not found such
+a library in Clojure ecosystem, so I implemented my own. Hopefully this little
+library could be of some use to further enhance the Clojure's unique
+strength of [Data-Oriented Programming](https://livebook.manning.com/#!/book/the-joy-of-clojure-second-edition/chapter-14/1).
 
 Editscript is designed with stream processing in mind. An editscript should be
 conceptualized as a chunk in a potentially endless stream of changes. Individual
