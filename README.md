@@ -1,4 +1,4 @@
-<p align="center"><img src="logo.png" alt="editscript logo" height="60"></img></p>
+<p align="center"><img src="logo.png" alt="editscript logo" height="120"></img></p>
 <h1 align="center">Editscript</h1> 
 <p align="center">Diff and patch for Clojure/Clojurescript data.</p>
 
