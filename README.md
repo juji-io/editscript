@@ -108,7 +108,7 @@ Depending on your use cases, different libraries in this space may suit you need
 ![Diff time benchmark](diff-time-bench.png)
 ![Diff size benchmark](diff-size-bench.png)
 
-[deep-diff2](https://github.com/lambdaisland/deep-diff2) applies Wu 1990 algorithm by first converting trees into linear structures. It is only faster than A\* algorithm of Editscript. Its results are the largest in size. Although unable to achieve optimal tree diffing with this approach, it has some interesting use, e.g. visualization. So if you want to visualize the differences, use deep-diff2. This library does not do patch.
+[deep-diff2](https://github.com/lambdaisland/deep-diff2) applies Wu et al. 1990 [3] algorithm by first converting trees into linear structures. It is only faster than A\* algorithm of Editscript. Its results are the largest in size. Although unable to achieve optimal tree diffing with this approach, it has some interesting use, e.g. visualization. So if you want to visualize the differences, use deep-diff2. This library does not do patch.
 
 [clojure.data/diff](https://clojuredocs.org/clojure.data/diff) and [differ](https://github.com/Skinney/differ) are similar to the quick algorithm of Editscript, in that they all do a naive walk-through of the data, so the generated diff is not going to be optimal.
 
@@ -129,7 +129,7 @@ guarantee optimal results but is very fast.
 This A\* algorithm aims to achieve optimal diffing in term of minimal size of resulting
 editscript, useful for storage, query and restoration. This is an original
 algorithm that has some unique properties: unlike many other general tree
-differing algorithms such as Zhang & Shasha 1989, our algorithm is structure preserving.
+differing algorithms such as Zhang & Shasha 1989 [4], our algorithm is structure preserving.
 
 Roughly speaking, the edit distance is defined on sub-trees rather than nodes,
 such that the ancestor-descendant relationship and tree traversal order are
@@ -140,7 +140,7 @@ reference checks. The additional constraints also yield algorithms with better r
 performance than the general ones. Finally, these constraints feel natural for a
 Clojure programmer.
 
-The structure preserving properties were proposed in Lu 1979 and Tanaka 1995.
+The structure preserving properties were proposed in Lu 1979 [1] and Tanaka 1995 [2].
 These papers describe diffing algorithms with O(|a||b|) time and space
 complexity. We designed an A\* based algorithm to achieve some speedup. Instead
 of searching the whole editing graph, we typically search a portion of it along
@@ -254,14 +254,14 @@ suggestions and contributions are very welcome.
 
 ## :green_book: References
 
-+ Lu, S. 1979, A Tree-to-tree distance and its application to cluster analysis. IEEE Transactions on Pattern Analysis and Machine Intelligence. Vol. PAMI-1 No.2. p219-224
+[1] Lu, S. 1979, A Tree-to-tree distance and its application to cluster analysis. IEEE Transactions on Pattern Analysis and Machine Intelligence. Vol. PAMI-1 No.2. p219-224
 
-+ Tanaka, E., 1995, A note on a tree-to-tree editing problem. International
+[2] Tanaka, E., 1995, A note on a tree-to-tree editing problem. International
  Journal of Pattern Recognition and Artificial Intelligence. p167-172
 
-+ Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm, Information Processing Letters, 35:6, p317-23.
+[3] Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm, Information Processing Letters, 35:6, p317-23.
 
-+ Zhang, K. and Shasha, D. 1989, Simple fast algorithms for the editing distance between trees and related problems. SIAM Journal of Computing, 18:1245–1262
+[4] Zhang, K. and Shasha, D. 1989, Simple fast algorithms for the editing distance between trees and related problems. SIAM Journal of Computing, 18:1245–1262
 
 
 ## License
