@@ -30,7 +30,7 @@ See my [Clojure/North 2020 Talk](https://youtu.be/n-avEZHEHg8): Data Diffing Bas
 (def a ["abc" 24 22 {:a [1 2 3]} 1 3 #{1 2}])
 (def b [24 23 {:a [2 3]} 1 3 #{1 2 3}])
 
-;; compute the editscript between a and b using the default A\* algorithm
+;; compute the editscript between a and b using the default A* algorithm
 (def d (diff a b))
 
 d
@@ -114,9 +114,10 @@ Depending on your use cases, different libraries in this space may suit you need
 
 clojure.data/diff is good for detecting what part of the data have been changed and how. But it is slow and the results are also large. It does not do patch either.
 
-differ looks very good by the numbers in the benchmark. It does patch, is fast and the results the smallest (for it doesn't record editing operators). Unfortunately, it cuts corners. It fails all the property based tests, even if the tests considered only vectors and maps. Use it if you understand its failing patterns and are able to avoid them in your data. However, its algorithm is the same naive walk-through of the data, the best it can do is to become the quick algorithms of Editscript, after it fixes all its bugs.
+differ looks very good by the numbers in the benchmark. It does patch, is fast and the results the smallest (for it doesn't record editing operators). Unfortunately, it cuts corners. It fails all the property based tests, even if the tests considered only vectors and maps. Use it if you understand its failing patterns and are able to avoid them in your data. However, its algorithm is the same naive walk-through of the data, the best it can do is to become on par with the quick algorithm of Editscript, after it fixes all its bugs.
 
 Editscript is designed for data diffing, e.g. data preservation and recovery, not for being looked at by humans. If speed is your primary concern, the quick algorithm of Editscript is the fastest among all the alternatives, and its diff size is reasonably small for the benchmarked data sets. If the diff size is your primary concern, A\* algorithm is the only available option that guarantees optimal data size, but it is also the slowest.
+
 ## :zap: Diffing Algorithms
 
 The library currently implements two diffing algorithms. The default algorithm
