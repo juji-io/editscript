@@ -234,7 +234,7 @@ suggestions and contributions are very welcome.
 
 ## :shopping: Alternative
 
-[deep-diff2](https://github.com/lambdaisland/deep-diff2) applies Wu 1998 algorithm by first converting trees into linear structures. Although not able to achieve optimal tree diffing with this approach, it has some interesting use, e.g. visualization. So if you want to visualize the differences, use deep-diff2.
+[deep-diff2](https://github.com/lambdaisland/deep-diff2) applies Wu 1990 algorithm by first converting trees into linear structures. Although not able to achieve optimal tree diffing with this approach, it has some interesting use, e.g. visualization. So if you want to visualize the differences, use deep-diff2.
 
 If you want data diffing instead, use Editsdcript. For if speed is your primary concern, the quick algorithm of Editscript is much faster than anything else; and if diffing size is your primary concern, A\* algorithm of Ediscript guanrantees optimal data size. 
 
