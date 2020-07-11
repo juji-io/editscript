@@ -1,5 +1,5 @@
 <p align="center"><img src="logo.png" alt="editscript logo" height="140"></img></p>
-<h1 align="center">Editscript</h1> 
+<h1 align="center">Editscript</h1>
 <p align="center">🔦  Diff and patch for Clojure/Clojurescript data. 🧩	</p>
 
 <p align="center">
@@ -17,7 +17,10 @@ necessary to transform one to another. Currently, the library can diff and patch
 any nested Clojure/Clojurescript data structures consisting of regular maps,
 vectors, lists, sets and values. Custom data can also be handled if you implement our protocols.
 
+
 ## :tada: Usage
+
+See my [Clojure/North 2020 Talk](https://youtu.be/n-avEZHEHg8): Data Diffing Based Software Architecture Patterns.
 
 ```Clojure
 (use 'editscript.core)
@@ -236,7 +239,7 @@ suggestions and contributions are very welcome.
 
 [deep-diff2](https://github.com/lambdaisland/deep-diff2) applies Wu 1990 algorithm by first converting trees into linear structures. Although not able to achieve optimal tree diffing with this approach, it has some interesting use, e.g. visualization. So if you want to visualize the differences, use deep-diff2.
 
-If you want data diffing instead, use Editsdcript. For if speed is your primary concern, the quick algorithm of Editscript is much faster than anything else; and if diffing size is your primary concern, A\* algorithm of Ediscript guanrantees optimal data size. 
+If you want data diffing instead, use Editsdcript. For if speed is your primary concern, the quick algorithm of Editscript is much faster than anything else; and if diffing size is your primary concern, A\* algorithm of Ediscript guanrantees optimal data size.
 
 ## License
 
