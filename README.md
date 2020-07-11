@@ -30,7 +30,7 @@ See my [Clojure/North 2020 Talk](https://youtu.be/n-avEZHEHg8): Data Diffing Bas
 (def a ["abc" 24 22 {:a [1 2 3]} 1 3 #{1 2}])
 (def b [24 23 {:a [2 3]} 1 3 #{1 2 3}])
 
-;; compute the editscript between a and b
+;; compute the editscript between a and b using the default A\* algorithm
 (def d (diff a b))
 
 d
@@ -39,6 +39,16 @@ d
 ;; [[1] :r 23]
 ;; [[2 :a 0] :-]
 ;; [[5 3] :+ 3]]
+
+;; compute the editscript between a and b using the quick algorithm
+(def d-q (diff a b {:algo :quick}))
+
+d-q
+;;=>
+;;[[[0] :-]
+;; [[1] :r 23]
+;;[[2 :a 0] :-]
+;;[[5 3] :+ 3]]
 
 ;; get the edit distance, i.e. number of edits
 (edit-distance d)
@@ -50,6 +60,8 @@ d
 
 ;; patch a with the editscript to get back b, so that
 (= b (patch a d))
+;;==> true
+(= b (patch a d-q))
 ;;==> true
 
 ```
@@ -244,13 +256,13 @@ Depending on your use cases, different libraries in this space may suit you need
 
 [deep-diff2](https://github.com/lambdaisland/deep-diff2) applies Wu 1990 algorithm by first converting trees into linear structures. It is only faster than A\* algorithm of Editscript. Its results are the largest in size. Although unable to achieve optimal tree diffing with this approach, it has some interesting use, e.g. visualization. So if you want to visualize the differences, use deep-diff2. This library does not do patch.
 
-[clojure.data/diff](https://clojuredocs.org/clojure.data/diff) and [differ](https://github.com/Skinney/differ) are similar to the quick algorithm of Editscript, in that they all do a naive walk-through of the data, so the generated diff is not going to be optimal. 
+[clojure.data/diff](https://clojuredocs.org/clojure.data/diff) and [differ](https://github.com/Skinney/differ) are similar to the quick algorithm of Editscript, in that they all do a naive walk-through of the data, so the generated diff is not going to be optimal.
 
 clojure.data/diff is good for detecting what part of the data have been changed and how. But it is slow and the results are also large. It does not do patch either.
 
-differ looks very good by the numbers in the benchmark. It does patch, is fast and the results the smallest (for it doesn't record editing operators). Unfortunately, it cuts corners. It fails all the property based tests, even if the tests considered only vectors and maps. Use it if you understand its failing patterns and are able to avoid them in your data. However, its algorithm is the same naive walk-through of the data, the best it can do is to become the quick algorithms of Ediscript, after it fixes all its bugs. 
+differ looks very good by the numbers in the benchmark. It does patch, is fast and the results the smallest (for it doesn't record editing operators). Unfortunately, it cuts corners. It fails all the property based tests, even if the tests considered only vectors and maps. Use it if you understand its failing patterns and are able to avoid them in your data. However, its algorithm is the same naive walk-through of the data, the best it can do is to become the quick algorithms of Ediscript, after it fixes all its bugs.
 
-Editscript is designed for data diffing, e.g. data preservation and recovery, not for being looked at by humans. If speed is your primary concern, the quick algorithm of Editscript is the fastest among all the alternatives, and its diff size is reasonably small for the benchmarked data sets. If the diff size is your primary concern, A\* algorithm is the only available option that guarantees optimal data size, but it is also the slowest. 
+Editscript is designed for data diffing, e.g. data preservation and recovery, not for being looked at by humans. If speed is your primary concern, the quick algorithm of Editscript is the fastest among all the alternatives, and its diff size is reasonably small for the benchmarked data sets. If the diff size is your primary concern, A\* algorithm is the only available option that guarantees optimal data size, but it is also the slowest.
 
 ## License
 
