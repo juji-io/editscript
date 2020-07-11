@@ -185,7 +185,7 @@ sequence, the generated editscript can be large. For example:
 (def a [2 {:a 42} 3 {:b 4} {:c 29}])
 (def b [{:a 5} {:b 5}])
 
-(editscript.diff.quick/diff a b)
+(diff a b {:algo :quick})
 ;;==>
 ;;[[[0] :-]
 ;; [[0] :-]
@@ -195,7 +195,7 @@ sequence, the generated editscript can be large. For example:
 ;; [[1 :c] :-]
 ;; [[1 :b] :+ 5]]
 
-(editscript.diff.a-star/diff a b)
+(diff a b)
 ;;==>
 ;;[[[0] :-]
 ;; [[0 :a] :r 5]
