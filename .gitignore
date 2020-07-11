@@ -16,3 +16,6 @@ pom.xml.asc
 /node_modules
 .cljs_nashorn_repl
 .cljs_node_repl
+*/.lein-env
+*/.nrepl-port
+*/target/
