@@ -1,6 +1,6 @@
 <p align="center"><img src="logo.png" alt="editscript logo" height="140"></img></p>
 <h1 align="center">Editscript</h1> 
-<p align="center">🔦 Diff and patch for Clojure/Clojurescript data. 🧩	</p>
+<p align="center">🔦  Diff and patch for Clojure/Clojurescript data. 🧩	</p>
 
 <p align="center">
 <a href="https://badge.fury.io/js/clj-editscript"><img src="https://badge.fury.io/js/clj-editscript.svg" alt="npm"></img></a>
@@ -231,6 +231,12 @@ suggestions and contributions are very welcome.
 + Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm, Information Processing Letters, 35:6, p317-23.
 
 + Zhang, K. and Shasha, D. 1989, Simple fast algorithms for the editing distance between trees and related problems. SIAM Journal of Computing, 18:1245–1262
+
+## :shopping: Alternative
+
+[deep-diff2](https://github.com/lambdaisland/deep-diff2) applies Wu 1998 algorithm by first converting trees into linear structures. Although not able to achieve optimal tree diffing with this approach, it has some interesting use, e.g. visualization. So if you want to visualize the differences, use deep-diff2.
+
+If you want data diffing instead, use Editsdcript. For if speed is your primary concern, the quick algorithm of Editscript is much faster than anything else; and if diffing size is your primary concern, A\* algorithm of Ediscript guanrantees optimal data size. 
 
 ## License
 
