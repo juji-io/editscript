@@ -103,7 +103,7 @@ v
 
 ## :shopping: Alternatives
 
-Depending on your use cases, different libraries in this space may suit you needs better. The `/bench` folder of this repo contains a benchmark comparing the alternatives. The resulting charts of the benchmark are included below:
+Depending on your use cases, different libraries in this space may suit you needs better. The `/bench` folder of this repo contains a benchmark comparing the alternatives. The resulting charts of [the benchmark](https://juji.io/blog/comparing-clojure-diff-libraries/) are included below:
 
 ![Diff time benchmark](diff-time-bench.png)
 ![Diff size benchmark](diff-size-bench.png)
@@ -114,7 +114,7 @@ Depending on your use cases, different libraries in this space may suit you need
 
 clojure.data/diff is good for detecting what part of the data have been changed and how. But it is slow and the results are also large. It does not do patch either.
 
-differ looks very good by the numbers in the benchmark. It does patch, is fast and the results the smallest (for it doesn't record editing operators). Unfortunately, it cuts corners. It fails all the property based tests, even if the tests considered only vectors and maps. Use it if you understand its failing patterns and are able to avoid them in your data. However, its algorithm is the same naive walk-through of the data, the best it can do is to become on par with the quick algorithm of Editscript, after it fixes all its bugs.
+differ looks very good by the numbers in the benchmark. It does patch, is fast and the results the smallest (for it doesn't record editing operators). Unfortunately, it cuts corners. It fails all the property based tests, even if the tests considered only vectors and maps. Use it if you understand its failing patterns and are able to avoid them in your data. 
 
 Editscript is designed for data diffing, e.g. data preservation and recovery, not for being looked at by humans. If speed is your primary concern, the quick algorithm of Editscript is the fastest among all the alternatives, and its diff size is reasonably small for the benchmarked data sets. If the diff size is your primary concern, A\* algorithm is the only available option that guarantees optimal data size, but it is also the slowest.
 
