@@ -108,8 +108,8 @@ Depending on your use cases, different libraries in this space may suit you
 needs better. The `/bench` folder of this repo contains a benchmark comparing
 the alternatives. The resulting charts of running [the benchmark](https://juji.io/blog/comparing-clojure-diff-libraries/) are included below:
 
-![Diff time benchmark](diff-time-bench.png)
-![Diff size benchmark](diff-size-bench.png)
+![Diff time benchmark](bench/diff-time-bench.png)
+![Diff size benchmark](bench/diff-size-bench.png)
 
 [deep-diff2](https://github.com/lambdaisland/deep-diff2) applies Wu et al. 1990 [3] algorithm by first converting trees into linear structures. It is only faster than A\* algorithm of Editscript. Its results are the largest in size. Although unable to achieve optimal tree diffing with this approach, it has some interesting use, e.g. visualization. So if you want to visualize the differences, use deep-diff2. This library does not do patch.
 
