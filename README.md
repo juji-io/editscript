@@ -13,8 +13,9 @@
 ## :hear_no_evil: What is it?
 Editscript is a library designed to extract the differences between two Clojure/Clojurescript
 data structures as an "editscript", which represents the minimal modification
-necessary to transform one to another. Currently, the library can diff and patch
-any nested Clojure/Clojurescript data structures consisting of regular maps,
+necessary to transform one to another.
+
+Currently, the library can diff and patch any nested Clojure/Clojurescript data structures consisting of regular maps,
 vectors, lists, sets and values. Custom data can also be handled if you implement our protocols.
 
 
@@ -105,7 +106,7 @@ v
 
 Depending on your use cases, different libraries in this space may suit you
 needs better. The `/bench` folder of this repo contains a benchmark comparing
-the alternatives. The resulting charts of running [(the benchmark)](https://juji.io/blog/comparing-clojure-diff-libraries/) are included below:
+the alternatives. The resulting charts of running [the benchmark](https://juji.io/blog/comparing-clojure-diff-libraries/) are included below:
 
 ![Diff time benchmark](diff-time-bench.png)
 ![Diff size benchmark](diff-size-bench.png)
@@ -122,7 +123,7 @@ Editscript is designed for data diffing, e.g. data preservation and recovery, no
 
 ## :zap: Diffing Algorithms
 
-The library currently implements two diffing algorithms. The default algorithm
+As mentioned, the library currently implements two diffing algorithms. The default algorithm
 produces diffs that are optimal in the number of editing operations and the
 resulting script size. A quick algorithm is also provided, which does not
 guarantee optimal results but is very fast.
