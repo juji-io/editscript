@@ -267,7 +267,7 @@
   ^long [type cur end [gx gy]]
   (case type
     (:map :set) 0
-    (:vec :lst) 0#_(let [[na nb] (get-coord cur)
+    (:vec :lst) (let [[na nb] (get-coord cur)
                       [ra rb] (get-coord end)
                       x       (if (identical? ra na) gx (get-order na))
                       y       (if (identical? rb nb) gy (get-order nb))
@@ -548,11 +548,11 @@
             rootb (index b)
             came  (volatile! {})
             cost  (diff* roota rootb came)]
-        ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))
-        ;;               ^long explored (reduce + (map count (vals @came)))]
-        ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
-        ;;                   cost explored total
-        ;;                   (* 100 (double (/ explored total))))))
+        #?(:clj (let [total          (* (get-size roota) (get-size rootb))
+                      ^long explored (reduce + (map count (vals @came)))]
+                  (printf "cost is %d, explored %d of %d - %.1f%%\n"
+                          cost explored total
+                          (* 100 (double (/ explored total))))))
         (trace @came (->Coord roota rootb) script)
         script))
     script))
