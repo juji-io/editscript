@@ -1,8 +1,12 @@
 # Change Log
 
+## [0.4.4] - 2020-08-08
+### Fixed
+- Fix A\* optimality for special cases of smaller `a`
+
 ## [0.4.3] - 2020-04-29
 ### Changed
-- Change A* algorithm equality handling to improve speed for very small diffs
+- Change A\* algorithm equality handling to improve speed for very small diffs
 
 ## [0.4.2] - 2019-09-24
 ### Changed
