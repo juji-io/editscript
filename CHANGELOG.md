@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.4.6] - 2020-08-09
+### Changed
+- Documentation improvement and dependency bump
+
 ## [0.4.5] - 2020-08-09
 ### Fixed
 - Fix suboptimality for vectors and lists too

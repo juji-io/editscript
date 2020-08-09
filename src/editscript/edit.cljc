@@ -12,7 +12,7 @@
   #?(:clj (:import [clojure.lang PersistentVector IPersistentList IPersistentMap
                     IPersistentSet IPersistentVector])))
 
-(defprotocol IEdit
+(defprotocol ^:no-doc IEdit
   (auto-sizing [this path value])
   (add-data [this path value])
   (delete-data [this path])
@@ -22,17 +22,17 @@
   (combine [this that]
     "Concate that editscript onto this editscript, return the new editscript")
   (get-size [this] "Report the size of the editscript")
-  (set-size [this size] "Set the size, return the script")
+  (^:no-doc set-size [this size] "Set the size, return the script")
   (edit-distance [this] "Report the edit distance, i.e number of operations")
   (get-edits [this] "Report the edits as a vector")
   (get-adds-num [this] "Report the number of additions")
   (get-dels-num [this] "Report the number of deletions")
   (get-reps-num [this] "Report the number of replacements"))
 
-(defprotocol IType
+(defprotocol ^:no-doc IType
   (get-type [this] "Return a type keyword, :val, :map, :lst, etc."))
 
-(defn nada
+(defn ^:no-doc nada
   "A special type means 'not present'"
   []
   (reify IType
@@ -114,7 +114,7 @@
     (sizing* data size)
     @size))
 
-(deftype EditScript [^:unsynchronized-mutable ^PersistentVector edits
+(deftype ^:no-doc EditScript [^:unsynchronized-mutable ^PersistentVector edits
                      ^boolean auto-sizing?
                      ^:unsynchronized-mutable ^long size
                      ^:unsynchronized-mutable ^long adds-num

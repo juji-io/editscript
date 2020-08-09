@@ -8,7 +8,7 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.util.pairing
+(ns ^:no-doc editscript.util.pairing
   #?(:clj
      (:import [clojure.lang IPersistentStack IPersistentMap IPersistentCollection]
               [java.io Writer])))

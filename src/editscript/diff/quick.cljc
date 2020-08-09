@@ -8,7 +8,7 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.diff.quick
+(ns ^:no-doc editscript.diff.quick
   (:require [clojure.set :as set]
             [editscript.edit :as e]
             [editscript.util.common :refer [coll-case]

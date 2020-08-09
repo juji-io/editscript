@@ -226,7 +226,7 @@ lein test
 lein doo node
 
 # Run Clojurescript tests on chrome
-lein doo chrome browser
+lein doo chrome browser once
 
 ```
 

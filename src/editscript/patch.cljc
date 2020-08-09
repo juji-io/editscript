@@ -8,7 +8,7 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.patch
+(ns ^:no-doc editscript.patch
   (:require [clojure.set :as set]
             [editscript.edit :as e]))
 

@@ -31,9 +31,11 @@
   associative ones. For `:+` and `:r`, a new value is also required.
 
   Currently, the default diffing algorithm, `:A*` aims to minimize the size of the
-  resulting editscript, a faster alternative is `:quick` algorithm, which does
+  resulting editscript.
+
+  A faster alternative is `:quick` algorithm, which does
   not producing optimal diffing results. An `:algo` option can be used to choose
-  the algorithm."
+  the algorithm, i.e. `{:algo :quick}`."
   ([a b]
    (diff a b {}))
   ([a b {:keys [algo]}]

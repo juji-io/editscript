@@ -8,7 +8,7 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.util.common
+(ns ^:no-doc editscript.util.common
   (:refer-clojure :exclude [slurp]))
 
 #?(:clj (set! *warn-on-reflection* true))

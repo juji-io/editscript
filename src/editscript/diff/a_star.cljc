@@ -8,7 +8,7 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.diff.a-star
+(ns ^:no-doc editscript.diff.a-star
   (:require [editscript.edit :as e]
             [editscript.diff.quick :as q]
             [editscript.util.pairing :as pa]

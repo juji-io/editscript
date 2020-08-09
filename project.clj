@@ -1,5 +1,5 @@
-(defproject juji/editscript "0.4.5"
-  :description "A diff library for Clojure data structures"
+(defproject juji/editscript "0.4.6"
+  :description "A diff library for Clojure/ClojureScript data structures"
   :url "https://github.com/juji-io/editscript"
   :lein-release {:deploy-via :clojars}
   :deploy-repositories [["releases" :clojars]]
@@ -48,13 +48,13 @@
              {:aot      [#"editscript\.*"]
               :jvm-opts ["-Dclojure.compiler.direct-linking=true"] }
              :dev
-             {:dependencies [[org.clojure/clojurescript "1.10.520"
+             {:dependencies [[org.clojure/clojurescript "1.10.773"
                               :exclusions [org.clojure/core.rrb-vector]]
                              ;;see https://github.com/emezeske/lein-cljsbuild/issues/469
                              [quantum/org.clojure.core.rrb-vector "0.0.12"]
-                             [criterium "0.4.5"]
+                             [criterium "0.4.6"]
                              [doo "0.1.11"]
-                             [org.clojure/test.check "0.10.0"]
-                             [cider/piggieback "0.4.1"]]
+                             [org.clojure/test.check "1.1.0"]
+                             [cider/piggieback "0.5.0"]]
               :source-paths ["src" "test" "dev"]
               :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}})
