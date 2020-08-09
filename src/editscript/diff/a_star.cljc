@@ -267,7 +267,7 @@
   ^long [type cur end [gx gy]]
   (case type
     (:map :set) 0
-    (:vec :lst) (let [[na nb] (get-coord cur)
+    (:vec :lst) 0#_(let [[na nb] (get-coord cur)
                       [ra rb] (get-coord end)
                       x       (if (identical? ra na) gx (get-order na))
                       y       (if (identical? rb nb) gy (get-order nb))
@@ -362,7 +362,7 @@
     (loop [state (->State (transient {})
                           (pa/priority-map init (heuristic type init end goal))
                           (transient {init 0}))]
-      (let [[came' open g] (get-state state)]
+      (let [[came' open _] (get-state state)]
         (if (empty? open)
           (throw (ex-info "A* diff fails to find a solution" {:ra ra :rb rb}))
           (let [[cur cost] (peek open)]
@@ -436,14 +436,18 @@
       (= typea (e/get-type vb))
       (if (= va vb)
         (do (update) 0)
-        (let [cc+1 #(-> % get-children count inc)]
-          (if (and (#{:vec :lst} typea)
-                   (or (= sa (cc+1 ra))
-                       (= sb (cc+1 rb))))
-            ;; vec or lst contains leaves only, safe to use quick algo.
-            (use-quick ra rb came)
-            ;; otherwise run A*
-            (A* typea ra rb came))))
+        (if (and (#{:vec :lst} typea)
+                 (let [cc+1 #(-> % get-children count inc)]
+                   (or (= sa (cc+1 ra)) (= sb (cc+1 rb)))))
+          ;; vec or lst contains leaves only, safe to use quick algo.
+          (use-quick ra rb came)
+          ;; otherwise run A* or replace the whole thing, whichever smaller
+          (let [a (A* typea ra rb came)
+                r (inc ^long sb)]
+            (if (< r a)
+              (do (update)
+                  r)
+              a))))
       ;; types differ, can only replace
       :else
       (do (update)
@@ -543,7 +547,7 @@
       (let [roota (index a)
             rootb (index b)
             came  (volatile! {})
-            _  (diff* roota rootb came)]
+            cost  (diff* roota rootb came)]
         ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))
         ;;               ^long explored (reduce + (map count (vals @came)))]
         ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
