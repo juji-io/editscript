@@ -150,12 +150,7 @@
     (is (= (get-edits (diff {-37 0}
                             {"" 5 2 nil -37 1}))
            [[[] :r {"" 5 2 nil -37 1}]]))
-    (is (#{[[[0] :r 0]
-            [[1] :+ 0]
-            [[2] :+ 1]]
-           [[[0] :+ 0]
-            [[1] :+ 0]
-            [[2] :r 1]]}
+    (is (= [[[] :r '(0 0 1)]]
          (get-edits (diff '(())
                           '(0 0 1)))))
     (is (= (get-edits (diff  '([0 0 0])
@@ -181,4 +176,7 @@
     (is (= (get-edits (diff [:zero {:a "a" :b "b"}]
                             [:zero :one]))
            [[[1] :r :one]]))
+    (is (= (get-edits (diff [:zero [:a :b :c :d :e :f]]
+                            [:zero [:a]]))
+           [[[1] :r [:a]]]))
     ))

@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.4.5] - 2020-08-09
+### Fixed
+- Fix suboptimality for vectors and lists too
+
 ## [0.4.4] - 2020-08-08
 ### Fixed
 - Fix A\* optimality for special cases of smaller `a`

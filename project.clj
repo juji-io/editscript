@@ -1,5 +1,5 @@
-(defproject juji/editscript "0.4.4"
-  :description "A diffing library for Clojure data structures"
+(defproject juji/editscript "0.4.5"
+  :description "A diff library for Clojure data structures"
   :url "https://github.com/juji-io/editscript"
   :lein-release {:deploy-via :clojars}
   :deploy-repositories [["releases" :clojars]]
