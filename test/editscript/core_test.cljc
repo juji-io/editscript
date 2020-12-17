@@ -24,54 +24,6 @@
             [clojure.test.check.properties :as prop
              #?@(:cljs [:include-macros true])]))
 
-;; edits tests
-
-(deftest edits-equality-test
-  (are [d1 d2] (= (e/get-edits d1) (e/get-edits d2))
-    (diff {} {})
-    (diff {} {})
-
-    (diff 1 2)
-    (diff 3 2)))
-
-(deftest valid-edits-test
-  (are [edits] (e/valid-edits? edits)
-    []
-    [[[0] :-]]
-    [[[1 2] :r 32]]
-    [[[:b 2] :+ '()]
-     [[:a] :-]]))
-
-(deftest invalid-edits-test
-  (are [edits] (not (e/valid-edits? edits))
-    nil
-    '()
-    [1]
-    [0 1]
-    ['()]
-    [[]]
-    [[1 2 3]]
-    [[[1] :+ 3 4]]
-    [[[1] :- 3]]
-    [[[1] :r]]))
-
-(deftest sizing-test
-  (are [diff size] (= size (e/get-size diff))
-    (e/edits->script [])  1
-    (a/diff [:a :b] [:a]) 5))
-
-(deftest edits->script-test
-  (are [a b edits] (= b (patch a (e/edits->script edits)))
-    ["abc" 24 22 {:a [1 2 3]} 1 3 #{1 2}]
-    [24 23 {:a [2 3]} 1 3 #{1 2 3}]
-    [[[0] :-]
-     [[1] :r 23]
-     [[2 :a 0] :-]
-     [[5 3] :+ 3]]
-
-    {}
-    {:x :hello-world}
-    [[[] :r {:x :hello-world}]]))
 
 ;; generative tests
 
@@ -105,6 +57,19 @@
                       s' (e/edits->script e)]
                   (and (= b (patch a s))
                        (= b (patch a s'))))))
+
+(test/defspec combine-edits-generative-test
+  2000
+  (prop/for-all [a (gen/recursive-gen compound scalars)
+                 b (gen/recursive-gen compound scalars)
+                 c (gen/recursive-gen compound scalars)]
+                (let [d-ab (q/diff a b)
+                      d-bc (q/diff b c)
+                      d-ac (q/diff a c)]
+                  (and (= c (patch a d-ac))
+                       (= c (patch a (e/combine d-ab d-bc)))
+                       (= c (patch a (e/edits->script
+                                      (into (e/get-edits d-ab) (e/get-edits d-bc)))))))))
 
 ;; sample data tests
 
