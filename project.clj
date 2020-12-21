@@ -55,6 +55,6 @@
                              [criterium "0.4.6"]
                              [doo "0.1.11"]
                              [org.clojure/test.check "1.1.0"]
-                             [cider/piggieback "0.5.0"]]
+                             [cider/piggieback "0.5.2"]]
               :source-paths ["src" "test" "dev"]
               :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}})
