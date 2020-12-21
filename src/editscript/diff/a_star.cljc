@@ -273,12 +273,16 @@
                       y       (if (identical? rb nb) gy (get-order nb))
                       delta   (- ^long gy ^long gx)
                       k       (- ^long y ^long x)
+                      dy      (- ^long gy ^long y)
+                      dx      (- ^long gx ^long x)
                       cost    (- delta k)]
-                  (if (= cost 0)
-                    0
-                    (if (>= delta 0)
-                      (if (> k delta) 1 0)
-                      (if (< k delta) (inc cost) 0))))))
+                  (max
+                   (if (= cost 0)
+                     0
+                     (if (>= delta 0)
+                       (if (> k delta) 1 0)
+                       (if (< k delta) (inc cost) 0)))
+                   (if (= gx x) dy (max (- dy dx) 1))))))
 
 (defn- explore
   [type end came goal state step]
