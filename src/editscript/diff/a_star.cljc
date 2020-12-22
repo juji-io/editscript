@@ -10,7 +10,6 @@
 
 (ns ^:no-doc editscript.diff.a-star
   (:require [editscript.edit :as e]
-            [editscript.diff.quick :as q]
             [editscript.util.pairing :as pa]
             [editscript.util.common :as co]
             #?(:cljs [goog.math.Long]))
@@ -135,7 +134,7 @@
 (defn- index*
   [order path data parent]
   (let [type (e/get-type data)]
-    (if (= type :val)
+    (if (or (= type :val) (= type :str))
       (index-value order path data parent)
       (index-collection type order path data parent))))
 
@@ -277,12 +276,12 @@
                       dx      (- ^long gx ^long x)
                       cost    (- delta k)]
                   (max
-                   (if (= cost 0)
-                     0
-                     (if (>= delta 0)
-                       (if (> k delta) 1 0)
-                       (if (< k delta) (inc cost) 0)))
-                   (if (= gx x) dy (max (- dy dx) 1))))))
+                    (if (= cost 0)
+                      0
+                      (if (>= delta 0)
+                        (if (> k delta) 1 0)
+                        (if (< k delta) (inc cost) 0)))
+                    (if (= gx x) dy (max (- dy dx) 1))))))
 
 (defn- explore
   [type end came goal state step]
@@ -387,7 +386,7 @@
 
 (defn- use-quick
   ^long [ra rb came]
-  (loop [[op & ops] (q/vec-edits (vec-fn ra) (vec-fn rb))
+  (loop [[op & ops] (co/vec-edits (vec-fn ra) (vec-fn rb))
          na         (get-first ra)
          nb         (get-first rb)
          m          (transient {})
@@ -503,19 +502,23 @@
        (adjust-append trie op na nb path)))
 
 (defn- write-script
-  [steps roota script]
+  [steps roota script opts]
   (reduce
-   (fn [trie [op na nb]]
-     (let [path  (convert-path trie op roota na nb (get-path na))
-           value (get-value nb)]
-       (case op
-         :-      (e/delete-data script path)
-         :r      (e/replace-data script path value)
-         (:a :i) (e/add-data script path value)
-         nil)
-       trie))
-   (volatile! {:delta 0})
-   steps))
+    (fn [trie [op na nb]]
+      (let [path (convert-path trie op roota na nb (get-path na))
+            va   (get-value na)
+            vb   (get-value nb)]
+        (case op
+          :-      (e/delete-data script path)
+          :r      (if (and (= :str (e/get-type va) (e/get-type vb))
+                           (:diff-str? opts))
+                    (co/diff-str script path va vb opts)
+                    (e/replace-data script path vb))
+          (:a :i) (e/add-data script path vb)
+          nil)
+        trie))
+    (volatile! {:delta 0})
+    steps))
 
 (defn- trace*
   [came cur steps]
@@ -539,24 +542,30 @@
 (defn- trace
   ([came cur]
    @(trace* came cur (volatile! '())))
-  ([came ^Coord cur script]
+  ([came ^Coord cur script opts]
    (-> (trace came cur)
-       (write-script (.-a cur) script))))
+       (write-script (.-a cur) script opts))))
 
 (defn diff
   "Create an EditScript that represents the minimal difference between `b` and `a`"
-  [a b]
-  (let [script (e/edits->script [])]
-    (when-not (= a b)
-      (let [roota (index a)
-            rootb (index b)
-            came  (volatile! {})
-            cost  (diff* roota rootb came)]
-        ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))
-        ;;               ^long explored (reduce + (map count (vals @came)))]
-        ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
-        ;;                   cost explored total
-        ;;                   (* 100 (double (/ explored total))))))
-        (trace @came (->Coord roota rootb) script)
-        script))
-    script))
+  ([a b]
+   (diff a b {:diff-str? false}))
+  ([a b opts]
+   (let [script (e/edits->script [])]
+     (when-not (= a b)
+       (let [roota (index a)
+             rootb (index b)
+             came  (volatile! {})
+             cost  (diff* roota rootb came)]
+         ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))
+         ;;               ^long explored (reduce + (map count (vals @came)))]
+         ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
+         ;;                   cost explored total
+         ;;                   (* 100 (double (/ explored total))))))
+         (trace @came (->Coord roota rootb) script opts)
+         script))
+     script)))
+
+(defmethod co/diff-algo :A*
+  [a b opts]
+  (diff a b opts))

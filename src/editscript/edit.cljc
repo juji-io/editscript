@@ -16,7 +16,8 @@
   (auto-sizing [this path value])
   (add-data [this path value])
   (delete-data [this path])
-  (replace-data [this path value]))
+  (replace-data [this path value])
+  (replace-str [this path ops]))
 
 (defprotocol IEditScript
   (combine [this that]
@@ -54,6 +55,9 @@
 
      nil
      (get-type [_] :val)
+
+     String
+     (get-type [_] :str)
 
      Object
      (get-type [_] :val))
@@ -96,6 +100,9 @@
      nil
      (get-type [_] :val)
 
+     string
+     (get-type [_] :str)
+
      default
      (get-type [_] :val)))
 
@@ -115,11 +122,11 @@
     @size))
 
 (deftype ^:no-doc EditScript [^:unsynchronized-mutable ^PersistentVector edits
-                     ^boolean auto-sizing?
-                     ^:unsynchronized-mutable ^long size
-                     ^:unsynchronized-mutable ^long adds-num
-                     ^:unsynchronized-mutable ^long dels-num
-                     ^:unsynchronized-mutable ^long reps-num]
+                              ^boolean auto-sizing?
+                              ^:unsynchronized-mutable ^long size
+                              ^:unsynchronized-mutable ^long adds-num
+                              ^:unsynchronized-mutable ^long dels-num
+                              ^:unsynchronized-mutable ^long reps-num]
 
   IEdit
   (auto-sizing [this path value]
@@ -141,6 +148,11 @@
       (set! reps-num (inc reps-num))
       (set! edits (conj edits [path :r value]))
       (auto-sizing this path value)))
+  (replace-str [this path ops]
+    (locking this
+      (set! reps-num (inc reps-num))
+      (set! edits (conj edits [path :s ops]))
+      (auto-sizing this path "")))
 
   IEditScript
   (combine [_ that]
@@ -158,17 +170,35 @@
   (get-reps-num [_] reps-num)
   (edit-distance [_] (+ adds-num dels-num reps-num)))
 
+(defn- valid-str-edits?
+  [data]
+  (and (vector? data)
+       (every? (fn [x]
+                 (or (nat-int? x)
+                     (and (vector? x)
+                          (= 2 (count x))
+                          (let [[op y] x]
+                            (and
+                              (#{:- :r :+} op)
+                              (case op
+                                :-      (nat-int? y)
+                                (:+ :r) (string? y)))))))
+               data)))
+
 (defn- valid-edit?
   [edit]
   (when (vector? edit)
     (let [c (count edit)]
       (when (< 1 c 4)
-       (let [[path op data] edit]
-         (and (vector? path)
-              (#{:- :r :+} op)
-              (if (= :- op)
-                (nil? data)
-                (= c 3))))))))
+        (let [[path op data] edit]
+          (and (vector? path)
+               (#{:- :r :+ :s} op)
+               (if (= :- op)
+                 (nil? data)
+                 (= c 3))
+               (if (= :s op)
+                 (valid-str-edits? data)
+                 true)))))))
 
 (defn valid-edits?
   "Check if the given vector represents valid edits that can be turned into an

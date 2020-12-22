@@ -128,79 +128,79 @@
 
   (require '[criterium.core :as c])
 
-;; benchmarks
+  ;; benchmarks on Intel i7-6850K CPU @ 3.60GHz
 
-;; default A* algorithm
+  ;; default A* algorithm
 
-(c/quick-bench (a/diff data1 data2))
-;; ==>
-;; Evaluation count : 714 in 6 samples of 119 calls.
-;; Execution time mean : 874.622133 µs
-;; Execution time std-deviation : 24.621119 µs
-;; Execution time lower quantile : 851.593109 µs ( 2.5%)
-;; Execution time upper quantile : 905.972655 µs (97.5%)
-;; Overhead used : 10.902641 ns
+  (c/quick-bench (a/diff data1 data2))
+  ;; ==>
+  ;; Evaluation count : 1572 in 6 samples of 262 calls.
+  ;; Execution time mean : 401.898504 µs
+  ;; Execution time std-deviation : 22.407441 µs
+  ;; Execution time lower quantile : 383.259332 µs ( 2.5%)
+  ;; Execution time upper quantile : 430.432477 µs (97.5%)
+  ;; Overhead used : 14.418351 ns
 
-(c/quick-bench (a/diff data1 data3))
-;; ==>
-;; Evaluation count : 546 in 6 samples of 91 calls.
-;; Execution time mean : 1.122936 ms
-;; Execution time std-deviation : 81.787273 µs
-;; Execution time lower quantile : 1.048506 ms ( 2.5%)
-;; Execution time upper quantile : 1.222943 ms (97.5%)
-;; Overhead used : 10.902641 ns
+  (c/quick-bench (a/diff data1 data3))
+  ;; ==>
+  ;; Evaluation count : 1440 in 6 samples of 240 calls.
+  ;; Execution time mean : 424.948115 µs
+  ;; Execution time std-deviation : 10.427895 µs
+  ;; Execution time lower quantile : 415.827046 µs ( 2.5%)
+  ;; Execution time upper quantile : 440.711749 µs (97.5%)
+  ;; Overhead used : 14.418351 ns
 
-(c/quick-bench (a/diff data1 data4))
-;; ==>
-;; Evaluation count : 156 in 6 samples of 26 calls.
-;; Execution time mean : 4.023306 ms
-;; Execution time std-deviation : 187.453390 µs
-;; Execution time lower quantile : 3.790716 ms ( 2.5%)
-;; Execution time upper quantile : 4.224034 ms (97.5%)
-;; Overhead used : 10.902641 ns
+  (c/quick-bench (a/diff data1 data4))
+  ;; ==>
+  ;; Evaluation count : 216 in 6 samples of 36 calls.
+  ;; Execution time mean : 2.819674 ms
+  ;; Execution time std-deviation : 43.294925 µs
+  ;; Execution time lower quantile : 2.777175 ms ( 2.5%)
+  ;; Execution time upper quantile : 2.880294 ms (97.5%)
+  ;; Overhead used : 14.418351 ns
 
-(e/edit-distance (a/diff data1 data4))
-;; ==> 13
-(e/get-size (a/diff data1 data4))
-;; ==> 73
-(a/diff data1 data4)
-;; ==>
-;; [[[0 :y] :r 13] [[0 :width] :r 262] [[0 :x] :r 19] [[0 :height] :r 101] [[1 :y] :r 122] [[1 :x] :r 12] [[1 :height] :r 25.19999999999999] [[2] :-] [[2] :-] [[2 :y] :r 208] [[2 :x] :r 12] [[2 :height] :r 25.19999999999999] [[3] :-]]
+  (e/edit-distance (a/diff data1 data4))
+  ;; ==> 13
+  (e/get-size (a/diff data1 data4))
+  ;; ==> 73
+  (a/diff data1 data4)
+  ;; ==>
+  ;; [[[0 :y] :r 13] [[0 :width] :r 262] [[0 :x] :r 19] [[0 :height] :r 101] [[1 :y] :r 122] [[1 :x] :r 12] [[1 :height] :r 25.19999999999999] [[2] :-] [[2] :-] [[2 :y] :r 208] [[2 :x] :r 12] [[2 :height] :r 25.19999999999999] [[3] :-]]
 
-;; quick algorithm
+  ;; quick algorithm
 
-(c/quick-bench (q/diff data1 data2))
-;; ==>
-;; Evaluation count : 14100 in 6 samples of 2350 calls.
-;; Execution time mean : 41.946587 µs
-;; Execution time std-deviation : 3.521578 µs
-;; Execution time lower quantile : 37.960159 µs ( 2.5%)
-;; Execution time upper quantile : 45.623306 µs (97.5%)
-;; Overhead used : 9.966537 ns
+  (c/quick-bench (q/diff data1 data2))
+  ;; ==>
+  ;; Evaluation count : 14100 in 6 samples of 2350 calls.
+  ;; Execution time mean : 41.946587 µs
+  ;; Execution time std-deviation : 3.521578 µs
+  ;; Execution time lower quantile : 37.960159 µs ( 2.5%)
+  ;; Execution time upper quantile : 45.623306 µs (97.5%)
+  ;; Overhead used : 9.966537 ns
 
-(c/quick-bench (q/diff data1 data3))
-;; ==>
-;; Evaluation count : 13794 in 6 samples of 2299 calls.
-;; Execution time mean : 45.373427 µs
-;; Execution time std-deviation : 2.745173 µs
-;; Execution time lower quantile : 42.548519 µs ( 2.5%)
-;; Execution time upper quantile : 49.367947 µs (97.5%)
-;; Overhead used : 9.966537 ns
+  (c/quick-bench (q/diff data1 data3))
+  ;; ==>
+  ;; Evaluation count : 13794 in 6 samples of 2299 calls.
+  ;; Execution time mean : 45.373427 µs
+  ;; Execution time std-deviation : 2.745173 µs
+  ;; Execution time lower quantile : 42.548519 µs ( 2.5%)
+  ;; Execution time upper quantile : 49.367947 µs (97.5%)
+  ;; Overhead used : 9.966537 ns
 
-(c/quick-bench (q/diff data1 data4))
-;; ==>
-;; Evaluation count : 4674 in 6 samples of 779 calls.
-;; Execution time mean : 135.947273 µs
-;; Execution time std-deviation : 10.746898 µs
-;; Execution time lower quantile : 124.835175 µs ( 2.5%)
-;; Execution time upper quantile : 150.795063 µs (97.5%)
-;; Overhead used : 9.966537 ns
-(e/edit-distance (q/diff data1 data4))
-;; ==> 36
-(e/get-size (q/diff data1 data4))
-;; ==> 217
-(q/diff data1 data4)
-;; [[[0] :-] [[0] :-] [[0] :-] [[0 :y1] :-] [[0 :type] :r "rect"] [[0 :borderWidth] :r 1] [[0 :label] :-] [[0 :x1] :-] [[0 :y2] :-] [[0 :x2] :-] [[0 :y] :+ 13] [[0 :r] :+ 0] [[0 :width] :+ 262] [[0 :x] :+ 19] [[0 :height] :+ 101] [[1 :y] :r 122] [[1 :color] :r "#0000FF"] [[1 :fill] :r {:r 256, :g 0, :b 0, :a 0.5}] [[1 :width] :r 10] [[1 :type] :r "textBlock"] [[1 :size] :r "24px"] [[1 :weight] :r "bold"] [[1 :x] :r 12] [[1 :height] :r 25.19999999999999] [[1 :text] :r "DojoX Drawing Rocks"] [[2 :points] :-] [[2 :type] :r "text"] [[2 :y] :+ 208] [[2 :family] :+ "sans-serif"] [[2 :width] :+ 200] [[2 :size] :+ "18px"] [[2 :pad] :+ 3] [[2 :weight] :+ "normal"] [[2 :x] :+ 12] [[2 :height] :+ 25.19999999999999] [[2 :text] :+ "This is just text"]]
+  (c/quick-bench (q/diff data1 data4))
+  ;; ==>
+  ;; Evaluation count : 4674 in 6 samples of 779 calls.
+  ;; Execution time mean : 135.947273 µs
+  ;; Execution time std-deviation : 10.746898 µs
+  ;; Execution time lower quantile : 124.835175 µs ( 2.5%)
+  ;; Execution time upper quantile : 150.795063 µs (97.5%)
+  ;; Overhead used : 9.966537 ns
+  (e/edit-distance (q/diff data1 data4))
+  ;; ==> 36
+  (e/get-size (q/diff data1 data4))
+  ;; ==> 217
+  (q/diff data1 data4)
+  ;; [[[0] :-] [[0] :-] [[0] :-] [[0 :y1] :-] [[0 :type] :r "rect"] [[0 :borderWidth] :r 1] [[0 :label] :-] [[0 :x1] :-] [[0 :y2] :-] [[0 :x2] :-] [[0 :y] :+ 13] [[0 :r] :+ 0] [[0 :width] :+ 262] [[0 :x] :+ 19] [[0 :height] :+ 101] [[1 :y] :r 122] [[1 :color] :r "#0000FF"] [[1 :fill] :r {:r 256, :g 0, :b 0, :a 0.5}] [[1 :width] :r 10] [[1 :type] :r "textBlock"] [[1 :size] :r "24px"] [[1 :weight] :r "bold"] [[1 :x] :r 12] [[1 :height] :r 25.19999999999999] [[1 :text] :r "DojoX Drawing Rocks"] [[2 :points] :-] [[2 :type] :r "text"] [[2 :y] :+ 208] [[2 :family] :+ "sans-serif"] [[2 :width] :+ 200] [[2 :size] :+ "18px"] [[2 :pad] :+ 3] [[2 :weight] :+ "normal"] [[2 :x] :+ 12] [[2 :height] :+ 25.19999999999999] [[2 :text] :+ "This is just text"]]
 
 
-)
+  )

@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.5.0] - 2020-12-22
+### Added
+- `:diff-str? `option to determine if strings need to be diffed, if so, `:s`
+  operator is used to represents the diff of two strings
+### Improved
+- Better heuristic for A\* diff algorithm, more than 2X speed improvement for some data sets
+
 ## [0.4.6] - 2020-08-09
 ### Changed
 - Documentation improvement and dependency bump

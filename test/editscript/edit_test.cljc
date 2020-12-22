@@ -28,7 +28,8 @@
     [[[0] :-]]
     [[[1 2] :r 32]]
     [[[:b 2] :+ '()]
-     [[:a] :-]]))
+     [[:a] :-]]
+    [[[] :s [32 [:- 10] 2 [:r "ab"] 11 [:+ "old"]]]]))
 
 (deftest invalid-edits-test
   (are [edits] (not (e/valid-edits? edits))
@@ -41,7 +42,9 @@
     [[1 2 3]]
     [[[1] :+ 3 4]]
     [[[1] :- 3]]
-    [[[1] :r]]))
+    [[[1] :r]]
+    [[[1] :s [1 [:- "ab"] [:+ "cd"]]]]
+    [[[1] :s [[:r 10] 2]]]))
 
 (deftest sizing-test
   (are [diff size] (= size (e/get-size diff))

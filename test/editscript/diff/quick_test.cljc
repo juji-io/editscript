@@ -10,9 +10,9 @@
 
 (ns editscript.diff.quick-test
   (:require [clojure.test :refer [is testing deftest]]
-            ;; [criterium.core :as c]
             [editscript.edit :refer [get-edits]]
-            [editscript.diff.quick :refer [diff vec-edits min+plus->replace]]
+            [editscript.util.common :refer [vec-edits min+plus->replace]]
+            [editscript.diff.quick :refer [diff]]
             [editscript.core :refer [patch]]))
 
 (deftest vec-edits-test
@@ -60,7 +60,11 @@
           k   {1 3}
           l   {1 nil}
           l-k (diff k l)
-          k-l (diff l k)]
+          k-l (diff l k)
+          m   "hello world, this is our first visit to your planet. we come in peace."
+          n   "hello worldhis is our first visit to your planet. We come in peace. haha"
+          n-m (diff m n {:diff-str? true})
+          m-n (diff n m {:diff-str? true})]
       (is (= (get-edits b-a)
              [[[:a :o] :r 3]
               [[:b] :r 'c]
@@ -73,6 +77,8 @@
              [[[0] :-]
               [[2 :a 0] :-]
               [[5 3] :+ 3]]))
+      (is (= (get-edits n-m)
+             [[[] :s [11 [:- 3] 39 [:r "W"] 16 [:+ " haha"]]]]))
       (is (= a (patch b a-b)))
       (is (= b (patch a b-a)))
       (is (= c (patch d c-d)))
@@ -84,10 +90,14 @@
       (is (= i (patch j i-j)))
       (is (= j (patch e j-i)))
       (is (= k (patch l k-l)))
-      (is (= l (patch k l-k))))))
+      (is (= l (patch k l-k)))
+      (is (= m (patch n m-n)))
+      (is (= n (patch m n-m))))))
 
 
 (comment
+
+  (require '[criterium.core :as c])
 
   ;; sequence diff benchmark from https://github.com/friemen/diffit
 
@@ -156,4 +166,4 @@
   ;; Execution time upper quantile : 45.306760 ms (97.5%)
   ;; Overhead used : 9.788943 ns
 
-)
+  )

@@ -137,8 +137,8 @@
            [[[0] :-]
             [[-1] :-]
             [[1] :+ 1]]}
-         (get-edits (diff #{0 -1}
-                            #{1}))))
+          (get-edits (diff #{0 -1}
+                           #{1}))))
     (is (= (get-edits (diff []
                             [[{-1 3}]]))
            [[[] :r [[{-1 3}]]]]))
@@ -153,14 +153,14 @@
                             {"" 5 2 nil -37 1}))
            [[[] :r {"" 5 2 nil -37 1}]]))
     (is (= [[[] :r '(0 0 1)]]
-         (get-edits (diff '(())
-                          '(0 0 1)))))
+           (get-edits (diff '(())
+                            '(0 0 1)))))
     (is (#{[[[0] :+ [-1]]
             [[1] :r '()]]
            [[[0] :r [-1]]
             [[1] :+ '()]]}
-         (get-edits (diff  '([0 0 0])
-                           '([-1] ())))))
+          (get-edits (diff  '([0 0 0])
+                            '([-1] ())))))
     (is (= (get-edits (diff {:a {:o 4} :b 'b}
                             {:a {:o 3} :b 'c :c 42}))
            [[[:a :o] :r 3]
@@ -183,4 +183,11 @@
     (is (= (get-edits (diff [:zero [:a :b :c :d :e :f]]
                             [:zero [:a]]))
            [[[1] :r [:a]]]))
+    (is
+      (= (get-edits
+           (diff
+             "hello world, this is our first visit to your planet. we come in peace."
+             "hello worldhis is our first visit to your planet. We come in peace. haha"
+             {:diff-str? true}))
+         [[[] :s [11 [:- 3] 39 [:r "W"] 16 [:+ " haha"]]]]))
     ))
