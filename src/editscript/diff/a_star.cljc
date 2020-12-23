@@ -566,6 +566,6 @@
          script))
      script)))
 
-(defmethod co/diff-algo :A*
+(defmethod co/diff-algo :a-star
   [a b opts]
   (diff a b opts))

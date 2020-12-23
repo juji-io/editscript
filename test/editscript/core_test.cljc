@@ -12,8 +12,8 @@
   (:require [clojure.test :refer [is are testing deftest]]
             [editscript.core :refer [patch diff]]
             [editscript.edit :as e]
-            [editscript.diff.quick :as q]
-            [editscript.diff.a-star :as a]
+            ;; [editscript.diff.quick :as q]
+            ;; [editscript.diff.a-star :as a]
             [editscript.util.common :as com
              #?@(:cljs [:include-macros true])]
             [clojure.test.check.generators :as gen]
@@ -24,6 +24,7 @@
             [clojure.test.check.properties :as prop
              #?@(:cljs [:include-macros true])]))
 
+(diff :a :b)
 
 ;; generative tests
 
@@ -41,7 +42,7 @@
   2000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
-                (let [s  (q/diff a b)
+                (let [s  (diff a b {:algo :quick})
                       e  (e/get-edits s)
                       s' (e/edits->script e)]
                   (and (= b (patch a s))
@@ -52,7 +53,7 @@
   2000
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)]
-                (let [s  (a/diff a b)
+                (let [s  (diff a b)
                       e  (e/get-edits s)
                       s' (e/edits->script e)]
                   (and (= b (patch a s))
@@ -63,9 +64,9 @@
   (prop/for-all [a (gen/recursive-gen compound scalars)
                  b (gen/recursive-gen compound scalars)
                  c (gen/recursive-gen compound scalars)]
-                (let [d-ab (q/diff a b)
-                      d-bc (q/diff b c)
-                      d-ac (q/diff a c)]
+                (let [d-ab (diff a b {:algo :quick})
+                      d-bc (diff b c {:algo :quick})
+                      d-ac (diff a c {:algo :quick})]
                   (and (= c (patch a d-ac))
                        (= c (patch a (e/combine d-ab d-bc)))
                        (= c (patch a (e/edits->script
@@ -88,9 +89,9 @@
 
 (deftest drawing-sample-test
   (testing "A sample JSON data of a drawing program from https://github.com/justsml/json-diff-performance, converted to edn using https://github.com/peterschwarz/json-to-edn"
-    (let [diff12 (a/diff data1 data2)
-          diff13 (a/diff data1 data3)
-          diff14 (a/diff data1 data4)]
+    (let [diff12 (diff data1 data2)
+          diff13 (diff data1 data3)
+          diff14 (diff data1 data4)]
       (is (= data2 (patch data1 diff12)))
       (is (= 1 (e/edit-distance diff12)))
       (is (= 7 (e/get-size diff12)))
@@ -132,7 +133,7 @@
 
   ;; default A* algorithm
 
-  (c/quick-bench (a/diff data1 data2))
+  (c/quick-bench (diff data1 data2))
   ;; ==>
   ;; Evaluation count : 1572 in 6 samples of 262 calls.
   ;; Execution time mean : 401.898504 µs
@@ -141,7 +142,7 @@
   ;; Execution time upper quantile : 430.432477 µs (97.5%)
   ;; Overhead used : 14.418351 ns
 
-  (c/quick-bench (a/diff data1 data3))
+  (c/quick-bench (diff data1 data3))
   ;; ==>
   ;; Evaluation count : 1440 in 6 samples of 240 calls.
   ;; Execution time mean : 424.948115 µs
@@ -150,7 +151,7 @@
   ;; Execution time upper quantile : 440.711749 µs (97.5%)
   ;; Overhead used : 14.418351 ns
 
-  (c/quick-bench (a/diff data1 data4))
+  (c/quick-bench (diff data1 data4))
   ;; ==>
   ;; Evaluation count : 216 in 6 samples of 36 calls.
   ;; Execution time mean : 2.819674 ms
@@ -159,17 +160,17 @@
   ;; Execution time upper quantile : 2.880294 ms (97.5%)
   ;; Overhead used : 14.418351 ns
 
-  (e/edit-distance (a/diff data1 data4))
+  (e/edit-distance (diff data1 data4))
   ;; ==> 13
-  (e/get-size (a/diff data1 data4))
+  (e/get-size (diff data1 data4))
   ;; ==> 73
-  (a/diff data1 data4)
+  (diff data1 data4)
   ;; ==>
   ;; [[[0 :y] :r 13] [[0 :width] :r 262] [[0 :x] :r 19] [[0 :height] :r 101] [[1 :y] :r 122] [[1 :x] :r 12] [[1 :height] :r 25.19999999999999] [[2] :-] [[2] :-] [[2 :y] :r 208] [[2 :x] :r 12] [[2 :height] :r 25.19999999999999] [[3] :-]]
 
   ;; quick algorithm
 
-  (c/quick-bench (q/diff data1 data2))
+  (c/quick-bench (diff data1 data2 {:algo :quick}))
   ;; ==>
   ;; Evaluation count : 14100 in 6 samples of 2350 calls.
   ;; Execution time mean : 41.946587 µs
@@ -178,7 +179,7 @@
   ;; Execution time upper quantile : 45.623306 µs (97.5%)
   ;; Overhead used : 9.966537 ns
 
-  (c/quick-bench (q/diff data1 data3))
+  (c/quick-bench (diff data1 data3 {:algo :quick}))
   ;; ==>
   ;; Evaluation count : 13794 in 6 samples of 2299 calls.
   ;; Execution time mean : 45.373427 µs
@@ -187,7 +188,7 @@
   ;; Execution time upper quantile : 49.367947 µs (97.5%)
   ;; Overhead used : 9.966537 ns
 
-  (c/quick-bench (q/diff data1 data4))
+  (c/quick-bench (diff data1 data4 {:algo :quick}))
   ;; ==>
   ;; Evaluation count : 4674 in 6 samples of 779 calls.
   ;; Execution time mean : 135.947273 µs
@@ -195,11 +196,11 @@
   ;; Execution time lower quantile : 124.835175 µs ( 2.5%)
   ;; Execution time upper quantile : 150.795063 µs (97.5%)
   ;; Overhead used : 9.966537 ns
-  (e/edit-distance (q/diff data1 data4))
+  (e/edit-distance (diff data1 data4 {:algo :quick}))
   ;; ==> 36
-  (e/get-size (q/diff data1 data4))
+  (e/get-size (diff data1 data4))
   ;; ==> 217
-  (q/diff data1 data4)
+  (diff data1 data4)
   ;; [[[0] :-] [[0] :-] [[0] :-] [[0 :y1] :-] [[0 :type] :r "rect"] [[0 :borderWidth] :r 1] [[0 :label] :-] [[0 :x1] :-] [[0 :y2] :-] [[0 :x2] :-] [[0 :y] :+ 13] [[0 :r] :+ 0] [[0 :width] :+ 262] [[0 :x] :+ 19] [[0 :height] :+ 101] [[1 :y] :r 122] [[1 :color] :r "#0000FF"] [[1 :fill] :r {:r 256, :g 0, :b 0, :a 0.5}] [[1 :width] :r 10] [[1 :type] :r "textBlock"] [[1 :size] :r "24px"] [[1 :weight] :r "bold"] [[1 :x] :r 12] [[1 :height] :r 25.19999999999999] [[1 :text] :r "DojoX Drawing Rocks"] [[2 :points] :-] [[2 :type] :r "text"] [[2 :y] :+ 208] [[2 :family] :+ "sans-serif"] [[2 :width] :+ 200] [[2 :size] :+ "18px"] [[2 :pad] :+ 3] [[2 :weight] :+ "normal"] [[2 :x] :+ 12] [[2 :height] :+ 25.19999999999999] [[2 :text] :+ "This is just text"]]
 
 

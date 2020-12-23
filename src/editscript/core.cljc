@@ -12,9 +12,8 @@
   (:require [editscript.edit :as e]
             [editscript.patch :as p]
             [editscript.util.common :as c]
-            ;; [editscript.diff.quick :as q]
-            ;; [editscript.diff.a-star :as a]
-            ))
+            [editscript.diff.quick]
+            [editscript.diff.a-star]))
 
 (defn diff
   "Create an editscript to represent the transformations needed to turn a
@@ -35,12 +34,12 @@
 
   The following options are supported in the option map:
 
-  * `:algo`  chooses the diff algorithm. The value can be `:A*` (default) or `:quick`; `:A*` algorithm minimize the size of the resulting editscript, `:quick` algorithm is much faster, but does not producing diff with minimal size.
+  * `:algo`  chooses the diff algorithm. The value can be `:a-star` (default) or `:quick`; `:a-star` algorithm minimize the size of the resulting editscript, `:quick` algorithm is much faster, but does not producing diff with minimal size.
 
   * `:str-diff?` determines if to perform string diff, string diff may reduce the result size for small changes in long strings, but will incur a slight computation cost. The value is a boolean: `true` or `false` (default) "
   ([a b]
-   (diff a b {:algo :A* :str-diff? false}))
-  ([a b {:or {algo :A* str-diff? false} :as opts}]
+   (diff a b {:algo :a-star :str-diff? false}))
+  ([a b {:or {algo :a-star str-diff? false} :as opts}]
    (c/diff-algo a b opts)))
 
 (defn patch
