@@ -8,6 +8,7 @@
             [criterium.core :as c]
             [differ.core :as differ]
             [editscript.core :as editscript]
+            [editscript.edit]
             [lambdaisland.deep-diff2 :as deep]
             [taoensso.nippy :as nippy]))
 
@@ -42,14 +43,17 @@
 
 (defn diff-size
   [k [d1 d2]]
-  (count (nippy/fast-freeze ((diffs k) d1 d2))))
+  (count (nippy/fast-freeze (let [d ((diffs k) d1 d2)]
+                              (if (instance? editscript.edit.EditScript d)
+                                (editscript.edit/get-edits d)
+                                d)))))
 
 (pp/pprint
- (let [ids (combo/permuted-combinations [1 2 3 4] 2)
-       res (for [k  (keys diffs)
-                 ds (combo/permuted-combinations [data1 data2 data3 data4] 2)]
-             [k (diff-size k ds)])]
-   (map (fn[i r] [i r]) (cycle ids) res)))
+  (let [ids (combo/permuted-combinations [1 2 3 4] 2)
+        res (for [k  (keys diffs)
+                  ds (combo/permuted-combinations [data1 data2 data3 data4] 2)]
+              [k (diff-size k ds)])]
+    (map (fn[i r] [i r]) (cycle ids) res)))
 ;; ==>
 ;; [[1 2] [:editscript-a* 28]]
 ;; [[2 1] [:editscript-a* 28]]
