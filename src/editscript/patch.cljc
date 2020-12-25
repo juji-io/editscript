@@ -43,6 +43,25 @@
               (#(concat (first %) (conj (second %) v)))
               (apply list))))
 
+(defn- sreplace
+  [x edits]
+  (let [i (volatile! 0)]
+    (apply str
+           (persistent!
+            (reduce
+             (fn [ss e]
+               (cond
+                 (integer? e)     (let [s (subs x @i (+ ^long @i ^long e))]
+                                    (vswap! i (partial + e))
+                                    (conj! ss s))
+                 (= (first e) :-) (do (vswap! i (partial + (second e))) ss)
+                 (= (first e) :r) (let [s (second e)]
+                                    (vswap! i (partial + (count s)))
+                                    (conj! ss s))
+                 (= (first e) :+) (conj! ss (second e))))
+             (transient [])
+             edits)))))
+
 (defn- vreplace
   [x p v]
   (case (e/get-type x)
@@ -53,31 +72,13 @@
               (#(concat (first %) (conj (rest (second %)) v)))
               (apply list))))
 
-(defn- sreplace
-  [x edits]
-  (let [i (volatile! 0)]
-    (apply str
-           (persistent!
-             (reduce
-               (fn [ss e]
-                 (cond
-                   (integer? e)     (let [s (subs x @i (+ ^long @i ^long e))]
-                                      (vswap! i (partial + e))
-                                      (conj! ss s))
-                   (= (first e) :-) (do (vswap! i (partial + (second e))) ss)
-                   (= (first e) :r) (let [s (second e)]
-                                      (vswap! i (partial + (count s)))
-                                      (conj! ss s))
-                   (= (first e) :+) (conj! ss (second e))))
-               (transient [])
-               edits)))))
-
 (defn- valter
   [x p o v]
   (case o
     :- (vdelete x p)
     :+ (vadd x p v)
-    :r (vreplace x p v)))
+    :r (vreplace x p v)
+    :s (vreplace x p (sreplace (vget x p) v))))
 
 (defn patch*
   [old [path op value]]
@@ -85,8 +86,9 @@
             (let [[f & r] p]
               (if r
                 (valter x f :r (up (vget x f) r o v))
-                (cond
-                  (= o :s) (sreplace x v)
-                  (seq p)  (valter x f o v)
-                  :else    v))))]
+                (if (seq p)
+                  (valter x f o v)
+                  (if (= o :s)
+                    (sreplace x v)
+                    v)))))]
     (up old path op value)))

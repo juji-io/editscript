@@ -1,12 +1,17 @@
 # Change Log
 
+## [0.5.2] - 2020-12-24
+### Fixed
+- consistent use of keywords
+- correct patch with string diff inside
+
 ## [0.5.1] - 2020-12-22
 ### Fixed
 - require both algorithms in core
 
 ## [0.5.0] - 2020-12-22
 ### Added
-- `:diff-str? `option to determine if strings need to be diffed, if so, `:s`
+- `:str-diff? `option to determine if strings need to be diffed, if so, `:s`
   operator is used to represents the diff of two strings
 ### Improved
 - Better heuristic for A\* diff algorithm, more than 2X speed improvement for some data sets

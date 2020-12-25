@@ -24,7 +24,18 @@
             [clojure.test.check.properties :as prop
              #?@(:cljs [:include-macros true])]))
 
-(diff :a :b)
+(deftest str-diff-test
+  (let [a   {:data ["hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2 3}]}
+        b   {:data ["Hello world!" 42 22 {:a [1 3]} 1 3 #{1 2 3}]}
+        d-q (diff a b {:algo :quick :str-diff? true})
+        d-a (diff a b {:algo :a-star :str-diff? true})]
+    (is (= (e/get-edits d-q)
+           (e/get-edits d-a)
+           [[[:data 0] :s [[:r "H"] 8 [:+ "l"] 1 [:+ "!"]]]
+            [[:data 1] :r 42]
+            [[:data 3 :a 1] :-]]))
+    (is (= b (patch a d-q)))
+    (is (= b (patch a d-a)))))
 
 ;; generative tests
 

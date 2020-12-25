@@ -25,28 +25,23 @@ See my [Clojure/north 2020 Talk](https://youtu.be/n-avEZHEHg8): Data Diffing Bas
 (use 'editscript.edit)
 
 ;; Here are two pieces of data, a and b
-(def a ["abc" 24 22 {:a [1 2 3]} 1 3 #{1 2}])
-(def b [24 23 {:a [2 3]} 1 3 #{1 2 3}])
+(def a ["Hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2}])
+(def b ["Hello world" 24 23 {:a [2 3]} 1 3 #{1 2 3}])
 
-;; compute the editscript between a and b using the default A* algorithm
+;; compute the editscript between a and b using the default options
 (def d (diff a b))
 
-d
+;; look at the editscript
+(get-edits d)
 ;;==>
-;;[[[0] :-]
-;; [[1] :r 23]
-;; [[2 :a 0] :-]
-;; [[5 3] :+ 3]]
+;; [[[0] :r "Hello world"] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]
 
-;; compute the editscript between a and b using the quick algorithm
-(def d-q (diff a b {:algo :quick}))
+;; diff using the quick algorithm and diff the strings
+(def d-q (diff a b {:algo :quick :str-diff? true}))
 
-d-q
+(get-edits d-q)
 ;;=>
-;;[[[0] :-]
-;; [[1] :r 23]
-;;[[2 :a 0] :-]
-;;[[5 3] :+ 3]]
+;; [[[0] :s [9 [:+ "l"] 1]] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]
 
 ;; get the edit distance, i.e. number of edits
 (edit-distance d)
@@ -54,7 +49,7 @@ d-q
 
 ;; get the size of the editscript, i.e. number of nodes
 (get-size d)
-;;==> 22
+;;==> 23
 
 ;; patch a with the editscript to get back b, so that
 (= b (patch a d))

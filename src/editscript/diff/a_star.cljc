@@ -511,7 +511,7 @@
         (case op
           :-      (e/delete-data script path)
           :r      (if (and (= :str (e/get-type va) (e/get-type vb))
-                           (:diff-str? opts))
+                           (:str-diff? opts))
                     (co/diff-str script path va vb opts)
                     (e/replace-data script path vb))
           (:a :i) (e/add-data script path vb)
@@ -549,7 +549,7 @@
 (defn diff
   "Create an EditScript that represents the minimal difference between `b` and `a`"
   ([a b]
-   (diff a b {:diff-str? false}))
+   (diff a b {:str-diff? false}))
   ([a b opts]
    (let [script (e/edits->script [])]
      (when-not (= a b)

@@ -78,7 +78,7 @@
       :vec (c/coll-case a b script path :vec #'diff-vec opts)
       :set (c/coll-case a b script path :set #'diff-set opts)
       :lst (c/coll-case a b script path :lst #'diff-lst opts)
-      :str (if (:diff-str? opts)
+      :str (if (:str-diff? opts)
              (c/coll-case a b script path :str
                           #'editscript.util.common/diff-str opts)
              (diff-val script path a b))
@@ -89,7 +89,7 @@
   This algorithm is fast, but it does not attempt to generate an EditScript
   that is minimal in size"
   ([a b]
-   (diff a b {:diff-str? false}))
+   (diff a b {:str-diff? false}))
   ([a b opts]
    (let [script (e/edits->script [])]
      (diff* script [] a b opts)

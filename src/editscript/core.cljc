@@ -39,8 +39,8 @@
   * `:str-diff?` determines if to perform string diff, string diff may reduce the result size for small changes in long strings, but will incur a slight computation cost. The value is a boolean: `true` or `false` (default) "
   ([a b]
    (diff a b {:algo :a-star :str-diff? false}))
-  ([a b {:or {algo :a-star str-diff? false} :as opts}]
-   (c/diff-algo a b opts)))
+  ([a b {:keys [algo str-diff?] :or {algo :a-star str-diff? false}}]
+   (c/diff-algo a b {:algo algo :str-diff? str-diff?})))
 
 (defn patch
   "Apply the editscript `script` on `a` to produce `b`, assuming the

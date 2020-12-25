@@ -188,6 +188,6 @@
            (diff
              "hello world, this is our first visit to your planet. we come in peace."
              "hello worldhis is our first visit to your planet. We come in peace. haha"
-             {:diff-str? true}))
+             {:str-diff? true}))
          [[[] :s [11 [:- 3] 39 [:r "W"] 16 [:+ " haha"]]]]))
     ))
