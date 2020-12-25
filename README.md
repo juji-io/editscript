@@ -68,7 +68,8 @@ structures (map and vector), whereas the editscript works for map, vector, list
 and set alike.
 
 The second element of an edit is a keyword representing the edit operation,
-which is one of `:-` (deletion), `:+` (addition), and `:r `(replacement).
+which is one of `:-` (deletion), `:+` (addition), `:r ` (data replacement) or
+`:s` (string edit).
 
 For addition and replacement operation, the third element is the value of new data.
 
