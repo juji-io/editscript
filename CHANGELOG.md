@@ -1,9 +1,13 @@
 # Change Log
 
+## [0.5.3] - 2020-12-28
+### Improved
+- Sligtly better heuristic for A\* diff algorithm
+
 ## [0.5.2] - 2020-12-24
 ### Fixed
 - consistent use of keywords
-- correct patch with string diff inside
+- correct `patch` with string diff inside
 
 ## [0.5.1] - 2020-12-22
 ### Fixed
