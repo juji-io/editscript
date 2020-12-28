@@ -21,40 +21,40 @@ vectors, lists, sets and values. Custom data can also be handled if you implemen
 See my [Clojure/north 2020 Talk](https://youtu.be/n-avEZHEHg8): Data Diffing Based Software Architecture Patterns.
 
 ```Clojure
-(use 'editscript.core)
-(use 'editscript.edit)
+(require '[editscript.core :as c])
+(require '[editscript.edit :as e])
 
 ;; Here are two pieces of data, a and b
 (def a ["Hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2}])
 (def b ["Hello world" 24 23 {:a [2 3]} 1 3 #{1 2 3}])
 
 ;; compute the editscript between a and b using the default options
-(def d (diff a b))
+(def d (c/diff a b))
 
 ;; look at the editscript
-(get-edits d)
+(e/get-edits d)
 ;;==>
 ;; [[[0] :r "Hello world"] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]
 
 ;; diff using the quick algorithm and diff the strings
-(def d-q (diff a b {:algo :quick :str-diff? true}))
+(def d-q (c/diff a b {:algo :quick :str-diff? true}))
 
-(get-edits d-q)
+(e/get-edits d-q)
 ;;=>
 ;; [[[0] :s [9 [:+ "l"] 1]] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]
 
 ;; get the edit distance, i.e. number of edits
-(edit-distance d)
+(e/edit-distance d)
 ;;==> 4
 
 ;; get the size of the editscript, i.e. number of nodes
-(get-size d)
+(e/get-size d)
 ;;==> 23
 
 ;; patch a with the editscript to get back b, so that
-(= b (patch a d))
+(= b (c/patch a d))
 ;;==> true
-(= b (patch a d-q))
+(= b (c/patch a d-q))
 ;;==> true
 
 ```
@@ -76,21 +76,18 @@ For addition and replacement operation, the third element is the value of new da
 ```Clojure
 
 ;; get the edits as a plain Clojure vector
-(def v (get-edits d))
+(def v (e/get-edits d))
 
 v
 ;;==>
-;;[[[0] :-]
-;; [[1] :r 23]
-;; [[2 :a 0] :-]
-;; [[5 3] :+ 3]]
+;;[[[0] :r "Hello world"] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]
 
 ;; the plain Clojure vector can be passed around, stored, or modified as usual,
 ;; then be loaded back as a new EditScript
-(def d' (edits->script v))
+(def d' (e/edits->script v))
 
 ;; the new EditScript works the same as the old one
-(= b (patch a d'))
+(= b (c/patch a d'))
 ;;==> true
 
 ```
