@@ -256,10 +256,6 @@
 (defn- heuristic
   "A simplistic but optimistic estimate of the cost to reach goal when at (x y).
 
-  For sequences with positive goal differential (delta), the optimal number of
-  edits is deletion dependent, equals to 2p+delta, where p is number of deletions.
-  Optimistically assuming no new deletion will be needed after (x, y), the number
-  of edits is delta-k, where k=y-x. The same logic applies to negative delta.
   For nested structure, multiple deletion may be merged into one.
   Also, because addition/replacement requires new value to be present in
   editscript, whereas deletion does not, we assign estimate differently. "
@@ -270,18 +266,14 @@
                       [ra rb] (get-coord end)
                       x       (if (identical? ra na) gx (get-order na))
                       y       (if (identical? rb nb) gy (get-order nb))
-                      delta   (- ^long gy ^long gx)
-                      k       (- ^long y ^long x)
                       dy      (- ^long gy ^long y)
-                      dx      (- ^long gx ^long x)
-                      cost    (- delta k)]
-                  (max
-                    (if (= cost 0)
-                      0
-                      (if (>= delta 0)
-                        (if (> k delta) 1 0)
-                        (if (< k delta) (inc cost) 0)))
-                    (if (= gx x) dy (max (- dy dx) 1))))))
+                      dx      (- ^long gx ^long x)]
+                  (cond
+                    (== dx 0) dy
+                    (== dy 0) 1
+                    (> dx dy) 4
+                    (< dx dy) (+ (- dy dx) 3)
+                    :else     2))))
 
 (defn- explore
   [type end came goal state step]
