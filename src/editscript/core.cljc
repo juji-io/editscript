@@ -34,9 +34,15 @@
 
   The following options are supported in the option map:
 
-  * `:algo`  chooses the diff algorithm. The value can be `:a-star` (default) or `:quick`; `:a-star` algorithm minimize the size of the resulting editscript, `:quick` algorithm is much faster, but does not producing diff with minimal size.
+  * `:algo`  chooses the diff algorithm. The value can be `:a-star` (default) or
+  `:quick`; `:a-star` algorithm minimize the size of the resulting editscript,
+  `:quick` algorithm is much faster, but does not producing diff with minimal size.
 
-  * `:str-diff?` determines if to perform string diff, string diff may reduce the result size for small changes in long strings, but will incur a slight computation cost. The value is a boolean: `true` or `false` (default) "
+  * `:str-diff?` indicates a desire to perform string diff. It  may reduce the
+  result size for small changes in long strings, but will incur a slight computation
+  cost. The value is a boolean: `true` or `false` (default). When enabled, the diff
+  algorithm will perform string diff if the changes are less than 30 percent of the
+  string length; otherwise, whole string replacement will be used."
   ([a b]
    (diff a b {:algo :a-star :str-diff? false}))
   ([a b {:keys [algo str-diff?] :or {algo :a-star str-diff? false}}]
