@@ -12,4 +12,4 @@
                  [com.taoensso/nippy "3.1.1"]
                  [differ "0.3.3"]
                  [lambdaisland/deep-diff2 "2.0.108"]
-                 [juji/editscript "0.5.3"]])
+                 [juji/editscript "0.5.4"]])

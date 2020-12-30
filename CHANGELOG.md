@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.5.4] - 2020-12-29
+### Improved
+- Enhanced A\* diff algorithm speed for cases of increased data size
+
 ## [0.5.3] - 2020-12-28
 ### Improved
 - Sligtly better heuristic for A\* diff algorithm

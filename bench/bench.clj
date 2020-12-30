@@ -84,27 +84,32 @@
 
 ;; round trip
 
-(def patches {:editscript-a*    #'editscript/patch
-              :editscript-quick #'editscript/patch
-              :differ           #'differ/patch})
+(def patches {"Editscript A*"    #'editscript/patch
+              "Editscript Quick" #'editscript/patch
+              "differ"           #'differ/patch})
 
 (defn roundtrip-time
-  [k [i1 i2]]
-  (println [(inc i1) (inc i2)])
-  (println k)
-  (let [d1       (datas i1)
-        d2       (datas i2)
-        diff     (diffs k)
+  [k [d1 d2]]
+  (let [diff     (diffs k)
         patch    (patches k)
         correct? (= d2 (patch d1 (diff d1 d2)))]
     (if correct?
-      (c/quick-bench (patch d1 (diff d1 d2)))
-      "Round trip failed!"))
-  (println "---"))
+      (-> (c/quick-benchmark (patch d1 (diff d1 d2)) {})
+          :mean
+          first
+          ((partial * 1000000))
+          (double)
+          (Math/round))
+      "Round trip failed!")))
 
-(doseq [k  (keys patches)
-        ds (combo/permuted-combinations [0 1 2 3] 2)]
-  (roundtrip-time k ds))
+(let [res (conj (map (fn [[i j] ds]
+                       (conj (for [k (keys patches)] (roundtrip-time k ds))
+                             (str "diff" i "-" j)))
+                     ids
+                     datas)
+                (conj (keys patches) "Data Set"))]
+  (with-open [writer (io/writer "roundtrip-time.csv")]
+    (csv/write-csv writer res)))
 
 ;; property based testing
 
