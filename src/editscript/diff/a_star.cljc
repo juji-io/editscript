@@ -106,8 +106,9 @@
    data))
 
 (defn- inc-order
-  [order]
-  (vswap! order (fn [o] (inc ^long o))))
+  "order value reflects the size of elements"
+  [order ^long size]
+  (vswap! order (fn [o] (+ size ^long o))))
 
 (defn- index-collection
   [type order path data parent]
@@ -117,18 +118,19 @@
       (:map :vec) (associative-children order path data node)
       :set        (set-children order path data node)
       :lst        (list-children order path data node))
-    (let [^long cs (->> (get-children node) vals (map get-size) (reduce +))]
+    (let [^long cs (->> (get-children node) vals (map get-size) (reduce +))
+          size     (+ (get-size node) cs)]
       (doto node
         (set-order @order)
-        (set-size (+ (get-size node) cs))))
-    (inc-order order)
+        (set-size size))
+      (inc-order order size))
     node))
 
 (defn- index-value
   [order path data parent]
   (let [node (->Node path data parent nil nil nil nil 0 @order 1)]
     (add-child parent node)
-    (inc-order order)
+    (inc-order order 1)
     node))
 
 (defn- index*
@@ -271,8 +273,8 @@
                   (cond
                     (== dx 0) dy
                     (== dy 0) 1
-                    (> dx dy) 4
-                    (< dx dy) (+ (- dy dx) 3)
+                    (> dx dy) 3
+                    (< dx dy) (inc (- dy dx))
                     :else     2))))
 
 (defn- explore
