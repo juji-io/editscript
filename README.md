@@ -152,8 +152,7 @@ Although much slower than the non-optimizing quick algorithm below, the algorith
 practical for common Clojure data that include lots of maps. Maps and sets do
 not incur the penalty of a large search space in the cases of vectors and lists.
 For a [drawing data set](https://github.com/justsml/json-diff-performance), the
-diffing time of the algorithm is in the range of 2ms to 4ms on a 2014 2.8 GHz
-Core i5 16GB MacBook Pro.
+diffing time is less than 3ms on a 2014 2.8 GHz Core i5 16GB MacBook Pro.
 
 ### Quick diffing
 
@@ -164,7 +163,7 @@ number of deletions if `b` is longer than `a`.  The same sequence diffing algori
 also implemented in [diffit](https://github.com/friemen/diffit). Using their
 benchmark, our implementation has slightly better performance due to more
 optimizations. Keep in mind that our algorithm also handles nested Clojure data
-structures. Compared  with our A\* algorithm, our quick algorithm is up to two
+structures. Compared  with our A\* algorithm, our quick algorithm can be up to two
 orders of magnitude faster.
 
 The Wu algorithm does not have replacement operations, and assumes each edit has

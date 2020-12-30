@@ -274,7 +274,7 @@
                     (== dx 0) dy
                     (== dy 0) 1
                     (> dx dy) 3
-                    (< dx dy) (inc (- dy dx))
+                    (< dx dy) (- dy dx)
                     :else     2))))
 
 (defn- explore
