@@ -261,7 +261,7 @@ suggestions and contributions are very welcome.
 
 ## License
 
-Copyright © 2018-2020 Juji, Inc.
+Copyright © 2018-2020 [Juji, Inc.](https://juji.io)
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
