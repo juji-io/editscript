@@ -8,6 +8,7 @@
 </p>
 
 ## :hear_no_evil: What is it?
+
 Editscript is a library designed to extract the differences between two Clojure/Clojurescript
 data structures as an "editscript", which represents the minimal modification
 necessary to transform one to another.
@@ -17,7 +18,7 @@ vectors, lists, sets and values. Custom data can also be handled if you implemen
 
 ## :satisfied: Status
 
-This library is stable and has been in production use to power the core product of [Juji](https://juji.io) for several years now. If you are also using Editscript, please drop a line at issue #17, so we may make a list of users here.
+This library is stable and has been in production use to power the core product of [Juji](https://juji.io) for several years now. If you are also using Editscript, please drop a line at issue #17 so we may make a list of users here.
 
 ## :tada: Usage
 
