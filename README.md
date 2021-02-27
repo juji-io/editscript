@@ -12,9 +12,12 @@ Editscript is a library designed to extract the differences between two Clojure/
 data structures as an "editscript", which represents the minimal modification
 necessary to transform one to another.
 
-Currently, the library can diff and patch any nested Clojure/Clojurescript data structures consisting of regular maps,
+Currently, this library can diff and patch any nested Clojure/Clojurescript data structures consisting of regular maps,
 vectors, lists, sets and values. Custom data can also be handled if you implement our protocols.
 
+## :satisfied: Status
+
+This library is stable and has been in production use to power the core product of [Juji](https://juji.io) for several years now. If you are also using Editscript, please drop a line at issue #17, so we may make a list of users here.
 
 ## :tada: Usage
 
