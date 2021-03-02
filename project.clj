@@ -1,11 +1,11 @@
-(defproject juji/editscript "0.5.4"
+(defproject juji/editscript "0.5.5"
   :description "A diff library for Clojure/ClojureScript data structures"
   :url "https://github.com/juji-io/editscript"
   :lein-release {:deploy-via :clojars}
   :deploy-repositories [["releases" :clojars]]
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.10.1"]]
+  :dependencies [[org.clojure/clojure "1.10.2"]]
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-doo "0.1.10"]]
   :doo {:build "node"

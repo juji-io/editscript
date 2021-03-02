@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.5.5] - 2021-03-01
+### Fixed
+- handle MapEntry [#18]
+
 ## [0.5.4] - 2020-12-29
 ### Improved
 - Enhanced A\* diff algorithm speed for cases of increased data size
