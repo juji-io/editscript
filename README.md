@@ -96,6 +96,8 @@ v
 
 ```
 
+## :green_book: Documentation
+
 Please see [API Documentation](https://cljdoc.org/d/juji/editscript/CURRENT) for more details.
 
 ## :shopping: Alternatives
