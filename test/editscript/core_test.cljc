@@ -37,6 +37,14 @@
     (is (= b (patch a d-q)))
     (is (= b (patch a d-a)))))
 
+(deftest map-entry-test
+  (let [a   (first {:a :c})
+        b   (first {:a :b})
+        d-a (diff a b {:algo :a-star})
+        d-q (diff a b {:algo :quick})]
+    (is (= b (patch a d-a)))
+    (is (= b (patch a d-q)))))
+
 ;; generative tests
 
 (def compound (fn [inner-gen]

@@ -13,7 +13,8 @@
             [editscript.patch :as p]
             [editscript.util.common :as c]
             [editscript.diff.quick]
-            [editscript.diff.a-star]))
+            [editscript.diff.a-star])
+  #?(:clj (:import [editscript.edit EditScript])))
 
 (defn diff
   "Create an editscript to represent the transformations needed to turn a

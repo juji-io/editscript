@@ -10,7 +10,8 @@
 
 (ns editscript.edit
   #?(:clj (:import [clojure.lang PersistentVector IPersistentList IPersistentMap
-                    IPersistentSet IPersistentVector])))
+                    IPersistentSet IPersistentVector MapEntry]
+                   [java.util Map$Entry])))
 
 (defprotocol ^:no-doc IEdit
   (auto-sizing [this path value])
@@ -53,6 +54,12 @@
      IPersistentSet
      (get-type [_] :set)
 
+     Map$Entry
+     (get-type [_] :lst)
+
+     MapEntry
+     (get-type [_] :lst)
+
      nil
      (get-type [_] :val)
 
@@ -89,7 +96,7 @@
      (get-type [_] :vec)
 
      MapEntry
-     (get-type [_] :vec)
+     (get-type [_] :lst)
 
      PersistentHashSet
      (get-type [_] :set)
