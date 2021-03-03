@@ -55,10 +55,10 @@
      (get-type [_] :set)
 
      Map$Entry
-     (get-type [_] :lst)
+     (get-type [_] :val)
 
      MapEntry
-     (get-type [_] :lst)
+     (get-type [_] :val)
 
      nil
      (get-type [_] :val)
@@ -96,7 +96,7 @@
      (get-type [_] :vec)
 
      MapEntry
-     (get-type [_] :lst)
+     (get-type [_] :val)
 
      PersistentHashSet
      (get-type [_] :set)
