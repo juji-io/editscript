@@ -25,17 +25,25 @@
              #?@(:cljs [:include-macros true])]))
 
 (deftest str-diff-test
-  (let [a   {:data ["hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2 3}]}
-        b   {:data ["Hello world!" 42 22 {:a [1 3]} 1 3 #{1 2 3}]}
-        d-q (diff a b {:algo :quick :str-diff? true})
-        d-a (diff a b {:algo :a-star :str-diff? true})]
-    (is (= (e/get-edits d-q)
-           (e/get-edits d-a)
+  (let [a    {:data ["hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2 3}]}
+        b    {:data ["Hello world!" 42 22 {:a [1 3]} 1 3 #{1 2 3}]}
+        d-q  (diff a b {:algo :quick :str-diff? true})
+        d-a  (diff a b {:algo :a-star :str-diff? true})
+        e-q  (e/get-edits d-q)
+        e-a  (e/get-edits d-a)
+        d-q' (e/edits->script e-q)
+        d-a' (e/edits->script e-a)]
+    (is (e/valid-edits? e-q))
+    (is (e/valid-edits? e-a))
+    (is (= e-q
+           e-a
            [[[:data 0] :s [[:r "H"] 8 [:+ "l"] 1 [:+ "!"]]]
             [[:data 1] :r 42]
             [[:data 3 :a 1] :-]]))
     (is (= b (patch a d-q)))
-    (is (= b (patch a d-a)))))
+    (is (= b (patch a d-a)))
+    (is (= b (patch a d-q')))
+    (is (= b (patch a d-a')))))
 
 (deftest map-entry-test
   (let [a   (first {:a :c})

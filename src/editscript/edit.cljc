@@ -8,12 +8,12 @@
 ;; You must not remove this notice, or any other, from this software.
 ;;
 
-(ns editscript.edit
+(ns ^:no-doc editscript.edit
   #?(:clj (:import [clojure.lang PersistentVector IPersistentList IPersistentMap
                     IPersistentSet IPersistentVector MapEntry]
                    [java.util Map$Entry])))
 
-(defprotocol ^:no-doc IEdit
+(defprotocol IEdit
   (auto-sizing [this path value])
   (add-data [this path value])
   (delete-data [this path])
@@ -24,17 +24,17 @@
   (combine [this that]
     "Concate that editscript onto this editscript, return the new editscript")
   (get-size [this] "Report the size of the editscript")
-  (^:no-doc set-size [this size] "Set the size, return the script")
+  (set-size [this size] "Set the size, return the script")
   (edit-distance [this] "Report the edit distance, i.e number of operations")
   (get-edits [this] "Report the edits as a vector")
   (get-adds-num [this] "Report the number of additions")
   (get-dels-num [this] "Report the number of deletions")
   (get-reps-num [this] "Report the number of replacements"))
 
-(defprotocol ^:no-doc IType
+(defprotocol IType
   (get-type [this] "Return a type keyword, :val, :map, :lst, etc."))
 
-(defn ^:no-doc nada
+(defn nada
   "A special type means 'not present'"
   []
   (reify IType
@@ -208,24 +208,32 @@
                  true)))))))
 
 (defn valid-edits?
-  "Check if the given vector represents valid edits that can be turned into an
-  EditScript"
   [edits]
   (when (vector? edits)
     (if (seq edits)
       (every? valid-edit? edits)
       true)))
 
+(defn- count-str-ops
+  [data adds dels reps]
+  (doseq [d     data
+          :when (vector? d)]
+    (case (first d)
+      :+ (vswap! adds inc)
+      :- (vswap! dels inc)
+      :r (vswap! reps inc))))
+
 (defn- count-ops
   [edits]
   (let [adds (volatile! 0)
         dels (volatile! 0)
         reps (volatile! 0)]
-    (doseq [[_ op _] edits]
+    (doseq [[_ op data] edits]
       (case op
         :+ (vswap! adds inc)
         :- (vswap! dels inc)
-        :r (vswap! reps inc)))
+        :r (vswap! reps inc)
+        :s (count-str-ops data adds dels reps)))
     [@adds @dels @reps]))
 
 (defn edits->script

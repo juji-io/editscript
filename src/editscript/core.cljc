@@ -59,3 +59,43 @@
     #(p/patch* %1 %2)
     a
     (e/get-edits script)))
+
+(def ^{:arglists '([edits])
+       :doc      "Check if the given vector represents valid edits that can be turned
+into an EditScript"}
+  valid-edits? e/valid-edits?)
+
+(def ^{:arglists '([this that])
+       :doc      "Concate that editscript onto this editscript, return the new
+editscript"}
+  combine e/combine)
+
+(def ^{:arglists '([es])
+       :doc      "Report the size of the editscript"}
+  get-sizee e/get-size)
+
+(def ^{:arglists '([es])
+       :doc      "Report the edit distance of the editscript, i.e. number of
+operations"}
+  edit-distance e/edit-distance)
+
+(def ^{:arglists '([es])
+       :doc      "Report the edits of the editscript as a vector"}
+  get-edits e/get-edits)
+
+(def ^{:arglists '([es])
+       :doc      "Report the number of additions in the editscript"}
+  get-adds-num e/get-adds-num)
+
+(def ^{:arglists '([es])
+       :doc      "Report the number of deletes in the editscript"}
+  get-dels-num e/get-dels-num)
+
+(def ^{:arglists '([es])
+       :doc      "Report the edits of replacements in the editscript"}
+  get-reps-num e/get-reps-num)
+
+(def ^{:arglists '([edits])
+       :doc      "Create an EditScript instance from a vector of edits, like those
+obtained through calling `get-edits` on an EditScript"}
+  edits->script e/edits->script)
