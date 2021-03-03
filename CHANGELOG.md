@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.5.6] - 2021-03-02
+### Improved
+- Better handling of MapEntry [Thanks @lnostdal]
+
 ## [0.5.5] - 2021-03-01
 ### Fixed
 - handle MapEntry [#18]
