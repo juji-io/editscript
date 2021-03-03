@@ -1,0 +1,24 @@
+name: build
+
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+  pull_request:
+    paths-ignore:
+      - '*.md'
+
+jobs:
+
+   test:
+     runs-on: ubuntu-latest
+     steps:
+       - name: Git checkout
+         uses: actions/checkout@v1
+
+       - name: Run JVM tests
+         run: lein test
+
+       - name: Run node tests
+         run: lein doo node
+
