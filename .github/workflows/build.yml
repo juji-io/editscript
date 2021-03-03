@@ -20,5 +20,5 @@ jobs:
          run: lein test
 
        - name: Run node tests
-         run: lein doo node
+         run: lein doo node once
 
