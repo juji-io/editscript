@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.5.7] - 2021-03-03
+### Fixed
+- Correct conversion of edits to editscript for string diffs 
+### Improved
+- Consolidate all public functions in core
+
 ## [0.5.6] - 2021-03-02
 ### Improved
 - Better handling of MapEntry [Thanks @lnostdal]

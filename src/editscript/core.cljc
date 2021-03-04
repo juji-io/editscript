@@ -72,7 +72,7 @@ editscript"}
 
 (def ^{:arglists '([es])
        :doc      "Report the size of the editscript"}
-  get-sizee e/get-size)
+  get-size e/get-size)
 
 (def ^{:arglists '([es])
        :doc      "Report the edit distance of the editscript, i.e. number of

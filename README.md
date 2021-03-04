@@ -27,15 +27,14 @@ This library is stable and has been in production use to power the core product 
 See my [Clojure/north 2020 Talk](https://youtu.be/n-avEZHEHg8): Data Diffing Based Software Architecture Patterns.
 
 ```Clojure
-(require '[editscript.core :as c])
-(require '[editscript.edit :as e])
+(require '[editscript.core :as e])
 
 ;; Here are two pieces of data, a and b
 (def a ["Hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2}])
 (def b ["Hello world" 24 23 {:a [2 3]} 1 3 #{1 2 3}])
 
 ;; compute the editscript between a and b using the default options
-(def d (c/diff a b))
+(def d (e/diff a b))
 
 ;; look at the editscript
 (e/get-edits d)
@@ -43,7 +42,7 @@ See my [Clojure/north 2020 Talk](https://youtu.be/n-avEZHEHg8): Data Diffing Bas
 ;; [[[0] :r "Hello world"] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]
 
 ;; diff using the quick algorithm and diff the strings
-(def d-q (c/diff a b {:algo :quick :str-diff? true}))
+(def d-q (e/diff a b {:algo :quick :str-diff? true}))
 
 (e/get-edits d-q)
 ;;=>
@@ -58,9 +57,9 @@ See my [Clojure/north 2020 Talk](https://youtu.be/n-avEZHEHg8): Data Diffing Bas
 ;;==> 23
 
 ;; patch a with the editscript to get back b, so that
-(= b (c/patch a d))
+(= b (e/patch a d))
 ;;==> true
-(= b (c/patch a d-q))
+(= b (e/patch a d-q))
 ;;==> true
 
 ```
@@ -93,7 +92,7 @@ v
 (def d' (e/edits->script v))
 
 ;; the new EditScript works the same as the old one
-(= b (c/patch a d'))
+(= b (e/patch a d'))
 ;;==> true
 
 ```
