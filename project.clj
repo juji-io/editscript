@@ -5,7 +5,7 @@
   :deploy-repositories [["releases" :clojars]]
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.10.2"]]
+  :dependencies [[org.clojure/clojure "1.10.3"]]
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-doo "0.1.10"]]
   :doo {:build "node"
