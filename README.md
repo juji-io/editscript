@@ -23,6 +23,7 @@ vectors, lists, sets and values. Custom data can also be handled if you implemen
 This library is stable and has been in production use to power the core product of [Juji](https://juji.io) for several years now. If you are also using Editscript, please drop a line at issue [#17](https://github.com/juji-io/editscript/issues/17) so we may make a list of users here:
 
 * [Oche](https://oche.com) uses Editscript to sync game state between client and server.
+* [Streetlinx](https://streetlinx.com) uses Editscript to capture deltas to drive a newsfeed and generate alerts.
 
 ## :tada: Usage
 
