@@ -253,7 +253,6 @@ There are a few things I have some interest in exploring with this library. Of c
 suggestions and contributions are very welcome.
 
 * Further speed up of the algorithms, e.g. better heuristic, hashing, and so on.
-* Support other data types as collection types, e.g. strings.
 * Globally optimize an editscript stream.
 
 ## :green_book: References
