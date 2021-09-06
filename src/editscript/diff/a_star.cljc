@@ -12,7 +12,7 @@
   (:require [editscript.edit :as e]
             [editscript.util.pairing :as pa]
             [editscript.util.common :as co]
-            #?(:cljs [goog.math.Long]))
+            #?(:cljs [goog.math.Long :refer (getMaxValue)]))
   #?(:clj (:import [clojure.lang PersistentVector Keyword]
                    [java.io Writer]
                    [java.lang Comparable])))
@@ -239,7 +239,7 @@
 (defn- access-g
   [g cur]
   (get g cur #?(:clj Long/MAX_VALUE
-                :cljs (goog.math.Long/getMaxValue))))
+                :cljs (getMaxValue))))
 
 (defn ^:declared diff* [ra rb came])
 
