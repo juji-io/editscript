@@ -1,8 +1,12 @@
 # Change Log
 
+## WIP
+### Improved
+- Remove a warning in certain cljs environment [Thanks @Outrovurt]
+
 ## [0.5.7] - 2021-03-03
 ### Fixed
-- Correct conversion of edits to editscript for string diffs 
+- Correct conversion of edits to editscript for string diffs
 ### Improved
 - Consolidate all public functions in core
 

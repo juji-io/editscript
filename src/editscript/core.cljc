@@ -14,7 +14,8 @@
             [editscript.util.common :as c]
             [editscript.diff.quick]
             [editscript.diff.a-star])
-  #?(:clj (:import [editscript.edit EditScript])))
+  #?(:clj (:import [editscript.edit EditScript]
+                   [clojure.lang MapEntry])))
 
 (defn diff
   "Create an editscript to represent the transformations needed to turn a
@@ -99,3 +100,7 @@ operations"}
        :doc      "Create an EditScript instance from a vector of edits, like those
 obtained through calling `get-edits` on an EditScript"}
   edits->script e/edits->script)
+
+
+;; (diff (MapEntry/create 1 (MapEntry/create 2 (MapEntry/create 3 4)))
+;;       (MapEntry/create 1 (MapEntry/create 2 (MapEntry/create 3 "ok"))))
