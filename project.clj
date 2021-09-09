@@ -48,7 +48,7 @@
              {:aot      [#"editscript\.*"]
               :jvm-opts ["-Dclojure.compiler.direct-linking=true"] }
              :dev
-             {:dependencies [[org.clojure/clojurescript "1.10.866"
+             {:dependencies [[org.clojure/clojurescript "1.10.879"
                               :exclusions [org.clojure/core.rrb-vector]]
                              ;;see https://github.com/emezeske/lein-cljsbuild/issues/469
                              [quantum/org.clojure.core.rrb-vector "0.0.12"]

@@ -12,7 +12,7 @@
   (:require [editscript.edit :as e]
             [editscript.util.pairing :as pa]
             [editscript.util.common :as co]
-            #?(:cljs [goog.math.Long :refer (getMaxValue)]))
+            #?(:cljs [goog.math.Long :refer [getMaxValue]]))
   #?(:clj (:import [clojure.lang PersistentVector Keyword]
                    [java.io Writer]
                    [java.lang Comparable])))
