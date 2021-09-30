@@ -71,10 +71,10 @@
                              (recur (dec k) (fp-fn fp k))
                              fp))
                       fp (fp-fn fp delta)]
-                  (if-not (= n (first (get fp delta)))
+                  (if-not (= n (nth (get fp delta) 0))
                     (recur (inc p) fp)
                     (persistent! fp))))]
-    (-> fp (get delta) second rest)))
+    (-> fp (get delta) (#(nth % 1)) rest)))
 
 (defn- swap-ops
   [edits]
@@ -88,7 +88,7 @@
           (partition-by integer?)
           (mapcat
             (fn [coll]
-              (let [m (first coll)]
+              (let [m (nth coll 0)]
                 (if (or (integer? m) (= 1 (count coll)))
                   coll
                   (let [p       (if (= m :-) :+ :-)
@@ -119,7 +119,7 @@
             (partition-by identity)
             (mapcat
               (fn [coll]
-                (let [x (first coll)
+                (let [x (nth coll 0)
                       c (count coll)]
                   (cond
                     (integer? x) (do (vswap! i (partial + x)) coll)

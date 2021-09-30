@@ -10,7 +10,8 @@
 
 (ns editscript.core-test
   (:require [clojure.test :refer [is are testing deftest]]
-            [editscript.core :as c :refer [patch diff]]
+            [editscript.core :refer [patch diff get-edits edits->script
+                                     edit-distance get-size]]
             [editscript.edit :as e]
             ;; [editscript.diff.quick :as q]
             ;; [editscript.diff.a-star :as a]
@@ -27,19 +28,19 @@
 (deftest readme-test
   (let [a   ["Hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2}]
         b   ["Hello world" 24 23 {:a [2 3]} 1 3 #{1 2 3}]
-        d   (c/diff a b)
-        d-q (c/diff a b {:algo :quick :str-diff? true})
-        v   (c/get-edits d)
-        d'  (c/edits->script v)]
-    (is (= (c/get-edits d) [[[0] :r "Hello world"]
-                            [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]))
-    (is (= (c/get-edits d-q)
+        d   (diff a b)
+        d-q (diff a b {:algo :quick :str-diff? true})
+        v   (get-edits d)
+        d'  (edits->script v)]
+    (is (= (get-edits d) [[[0] :r "Hello world"]
+                          [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]))
+    (is (= (get-edits d-q)
            [[[0] :s [9 [:+ "l"] 1]] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]))
-    (is (= 4 (c/edit-distance d)))
-    (is (= 23 (c/get-size d)))
-    (is (= b (c/patch a d)))
-    (is (= b (c/patch a d-q)))
-    (is (= b (c/patch a d')))))
+    (is (= 4 (edit-distance d)))
+    (is (= 23 (get-size d)))
+    (is (= b (patch a d)))
+    (is (= b (patch a d-q)))
+    (is (= b (patch a d')))))
 
 (deftest str-diff-test
   (let [a    {:data ["hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2 3}]}

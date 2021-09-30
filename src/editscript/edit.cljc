@@ -218,7 +218,7 @@
   [data adds dels reps]
   (doseq [d     data
           :when (vector? d)]
-    (case (first d)
+    (case (nth d 0)
       :+ (vswap! adds inc)
       :- (vswap! dels inc)
       :r (vswap! reps inc))))

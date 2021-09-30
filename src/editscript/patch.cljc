@@ -30,7 +30,7 @@
     :vec (into (subvec x 0 p) (subvec x (inc ^long p)))
     :set (set/difference x #{p})
     :lst (->> (split-at p x)
-              (#(concat (first %) (next (second %))))
+              (#(concat (nth % 0) (next (nth % 1))))
               (apply list))))
 
 (defn- vadd
@@ -40,7 +40,7 @@
     :vec (into (conj (subvec x 0 p) v) (subvec x p))
     :set (conj x v)
     :lst (->> (split-at p x)
-              (#(concat (first %) (conj (second %) v)))
+              (#(concat (nth % 0) (conj (nth % 1) v)))
               (apply list))))
 
 (defn- sreplace
@@ -48,19 +48,19 @@
   (let [i (volatile! 0)]
     (apply str
            (persistent!
-            (reduce
-             (fn [ss e]
-               (cond
-                 (integer? e)     (let [s (subs x @i (+ ^long @i ^long e))]
-                                    (vswap! i (partial + e))
-                                    (conj! ss s))
-                 (= (first e) :-) (do (vswap! i (partial + (second e))) ss)
-                 (= (first e) :r) (let [s (second e)]
-                                    (vswap! i (partial + (count s)))
-                                    (conj! ss s))
-                 (= (first e) :+) (conj! ss (second e))))
-             (transient [])
-             edits)))))
+             (reduce
+               (fn [ss e]
+                 (cond
+                   (integer? e)     (let [s (subs x @i (+ ^long @i ^long e))]
+                                      (vswap! i (partial + e))
+                                      (conj! ss s))
+                   (= (nth e 0) :-) (do (vswap! i (partial + (nth e 1))) ss)
+                   (= (nth e 0) :r) (let [s (nth e 1)]
+                                      (vswap! i (partial + (count s)))
+                                      (conj! ss s))
+                   (= (nth e 0) :+) (conj! ss (nth e 1))))
+               (transient [])
+               edits)))))
 
 (defn- vreplace
   [x p v]
@@ -69,7 +69,7 @@
     :vec (into (conj (subvec x 0 p) v) (subvec x (inc ^long p)))
     :set (-> x (set/difference #{p}) (conj v))
     :lst (->> (split-at p x)
-              (#(concat (first %) (conj (rest (second %)) v)))
+              (#(concat (nth % 0) (conj (rest (nth % 1)) v)))
               (apply list))))
 
 (defn- valter
