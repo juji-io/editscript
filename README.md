@@ -24,6 +24,7 @@ This library is stable and has been in production use to power the core product 
 * [Oche](https://oche.com) uses Editscript to sync game state between client and server.
 * [Streetlinx](https://streetlinx.com) uses Editscript to capture deltas to drive a newsfeed and generate alerts.
 * [microdata.no](https://microdata.no) uses Editscript to sync client state to server so users can pick up their work where they left it.
+* [Evident Systems](https://https://www.evidentsystems.com/) uses Editscript as the main way of evaluating changes within the convergent reference type in their CRDT library, [Converge](https://github.com/evidentsystems/converge).
 
 ## :tada: Usage
 
