@@ -1,8 +1,8 @@
 # Change Log
 
-## WIP
+## [0.5.8] - 2021-12-30
 ### Improved
-- Remove a warning in certain cljs environment [Thanks @Outrovurt]
+- Remove a warning in certain cljs environment, and it's an error in latest cljs [Thanks @Outrovurt]
 
 ## [0.5.7] - 2021-03-03
 ### Fixed
