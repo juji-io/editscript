@@ -48,13 +48,13 @@
              {:aot      [#"editscript\.*"]
               :jvm-opts ["-Dclojure.compiler.direct-linking=true"] }
              :dev
-             {:dependencies [[org.clojure/clojurescript "1.10.879"
+             {:dependencies [[org.clojure/clojurescript "1.11.4"
                               :exclusions [org.clojure/core.rrb-vector]]
                              ;;see https://github.com/emezeske/lein-cljsbuild/issues/469
                              [quantum/org.clojure.core.rrb-vector "0.0.12"]
                              [criterium "0.4.6"]
                              [doo "0.1.11"]
-                             [org.clojure/test.check "1.1.0"]
+                             [org.clojure/test.check "1.1.1"]
                              ;; [cider/piggieback "0.5.2"]
                              ]
               :source-paths ["src" "test" "dev"]
