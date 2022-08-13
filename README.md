@@ -203,17 +203,14 @@ sequence, the generated editscript can be large. For example:
 
 (diff a b)
 ;;==>
-;;[[[0] :-]
-;; [[0 :a] :r 5]
-;; [[1] :-]
-;; [[1 :b] :r 5]
-;; [[2] :-]]
+;; [[[] :r [{:a 5} {:b 5}]]]
 
 ```
 In this case, the quick algorithm seems to delete the original and then add
 new ones back. The reason is that the quick algorithm does not drill down
 (i.e. do replacement) at the correct places. It currently drills down wherever it
-can. An optimizing algorithm is needed if minimal diffs are desired.
+can. In this particular case, replacing the whole thing produces a smaller diff.
+An optimizing algorithm is needed if minimal diffs are desired.
 
 ## :station: Platform
 

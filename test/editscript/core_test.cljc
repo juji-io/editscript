@@ -33,14 +33,37 @@
         v   (get-edits d)
         d'  (edits->script v)]
     (is (= (get-edits d) [[[0] :r "Hello world"]
-                          [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]))
+                          [[2] :r 23]
+                          [[3 :a 0] :-]
+                          [[6 3] :+ 3]]))
     (is (= (get-edits d-q)
-           [[[0] :s [9 [:+ "l"] 1]] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]))
+           [[[0] :s [9 [:+ "l"] 1]]
+            [[2] :r 23]
+            [[3 :a 0] :-]
+            [[6 3] :+ 3]]))
     (is (= 4 (edit-distance d)))
     (is (= 23 (get-size d)))
+    (is (= 4 (edit-distance d-q)))
+    (is (= 23 (get-size d-q)))
     (is (= b (patch a d)))
     (is (= b (patch a d-q)))
-    (is (= b (patch a d')))))
+    (is (= b (patch a d'))))
+  (let [a   [2 {:a 42} 3 {:b 4} {:c 29}]
+        b   [{:a 5} {:b 5}]
+        d   (diff a b)
+        d-q (diff a b {:algo :quick})]
+    (is (= 1 (edit-distance d)))
+    (is (= 9 (get-size d)))
+    (is (= (get-edits d) [[[] :r [{:a 5} {:b 5}]]]))
+    (is (= 7 (edit-distance d-q)))
+    (is (= 35 (get-size d-q)))
+    (is (= (get-edits d-q) [[[0] :-]
+                            [[0] :-]
+                            [[0] :-]
+                            [[0 :b] :-]
+                            [[0 :a] :+ 5]
+                            [[1 :c] :-]
+                            [[1 :b] :+ 5]]))))
 
 (deftest str-diff-test
   (let [a    {:data ["hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2 3}]}
