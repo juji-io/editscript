@@ -99,8 +99,8 @@
   (let [a   (vec (range 3000))
         b   (vec (concat (range 100) [213 222 223 224 123] (range 300 800)
                          [100 950 221 897 1232] (range 990 2810)))
-        d   (time (diff a b))
-        d-o (time (diff a b {:vec-timeout 1}))
+        d   (diff a b)
+        d-o (diff a b {:vec-timeout 1})
         ]
     (is (= b (patch a d)))
     (is (= (e/edit-distance d) 575))

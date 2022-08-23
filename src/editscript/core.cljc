@@ -33,8 +33,7 @@
   However, editscript path works for all above four collection types, not just
   associative ones. For `:+` and `:r`, a new value is also required.
 
-
-  The following options are supported in the option map:
+  The following options are supported in the option map of the last argument:
 
   * `:algo`  chooses the diff algorithm. The value can be `:a-star` (default) or
   `:quick`; `:a-star` algorithm minimize the size of the resulting editscript,
@@ -44,7 +43,15 @@
   result size for small changes in long strings, but will incur a slight computation
   cost. The value is a boolean: `true` or `false` (default). When enabled, the diff
   algorithm will perform string diff if the changes are less than 30 percent of the
-  string length; otherwise, whole string replacement will be used."
+  string length; otherwise, whole string replacement will be used.
+
+  * `:str-change-limit`, a less than `1.0` and greater than `0.0` double value,
+  representing percentage (default `0.2`). Only diff string when less than given
+  percentage is changed, otherwise replace the string.
+
+  * `:vec-timeout` specifies a timeout in milliseconds (default `1000`),
+  for diffing vectors, as it has O(n^2) running time. When timed-out, a replacement
+  operation will be used."
   [a b & {:keys [algo]
           :or   {algo :a-star}
           :as   opts}]
