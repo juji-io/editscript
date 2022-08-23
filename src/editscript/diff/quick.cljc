@@ -50,7 +50,7 @@
                [(inc ia) (inc ia') (inc ib)])
         [(+ ia ^long op) (+ ia' ^long op) (+ ib ^long op)]))
     (transient [0 0 0])
-    (c/vec-edits a b)))
+    (c/vec-edits a b (:vec-timeout opts))))
 
 (defn- diff-set
   [script path a b opts]
@@ -70,7 +70,9 @@
     (e/replace-data script path b)))
 
 (defn diff*
-  [script path a b opts]
+  [script path a b {:keys [str-diff?]
+                    :or   {str-diff? false}
+                    :as   opts}]
   (when-not (= a b)
     (case (e/get-type a)
       :nil (e/add-data script path b)
@@ -78,7 +80,7 @@
       :vec (c/coll-case a b script path :vec #'diff-vec opts)
       :set (c/coll-case a b script path :set #'diff-set opts)
       :lst (c/coll-case a b script path :lst #'diff-lst opts)
-      :str (if (:str-diff? opts)
+      :str (if str-diff?
              (c/coll-case a b script path :str
                           #'editscript.util.common/diff-str opts)
              (diff-val script path a b))
@@ -88,13 +90,7 @@
   "Create an EditScript that represents the difference between `b` and `a`
   This algorithm is fast, but it does not attempt to generate an EditScript
   that is minimal in size"
-  ([a b]
-   (diff a b {:str-diff? false}))
-  ([a b opts]
-   (let [script (e/edits->script [])]
-     (diff* script [] a b opts)
-     script)))
-
-(defmethod c/diff-algo :quick
-  [a b opts]
-  (diff a b opts))
+  [a b & opts]
+  (let [script (e/edits->script [])]
+    (diff* script [] a b opts)
+    script))

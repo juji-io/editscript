@@ -37,44 +37,52 @@
   number of edits. Very fast. However, it does not have replacement operations,
   so it is not very useful for nested trees. It can also only do unit cost for
   addition and deletion. "
-  [a b ^long n ^long m]
-  (let [delta (- n m)
-        snake (fn [^long k ^long x]
-                (loop [x x y (- x k)]
-                  (let [ax (get a x) by (get b y)]
-                    (if (and (< x n)
-                             (< y m)
-                             (= (type ax) (type by))
-                             (= ax by))
-                      (recur (inc x) (inc y))
-                      x))))
-        fp-fn (fn [fp ^long k]
-                (let [[dk-1 vk-1] (get fp (dec k) [-1 []])
-                      dk-1        (inc ^long dk-1)
-                      [dk+1 vk+1] (get fp (inc k) [-1 []])
-                      x           (max dk-1 ^long dk+1)
-                      ^long sk    (snake k x)
-                      ops         (let [es (if (> dk-1 ^long dk+1)
-                                             (conj vk-1 :-)
-                                             (conj vk+1 :+))]
-                                    (if (> sk x)
-                                      (conj es (- sk x))
-                                      es))]
-                  (assoc! fp k [sk ops])))
-        fp    (loop [p 0 fp (transient {})]
-                (let [fp (loop [k (* -1 p) fp fp]
-                           (if (< k delta)
-                             (recur (inc k) (fp-fn fp k))
-                             fp))
-                      fp (loop [k (+ delta p) fp fp]
-                           (if (< delta k)
-                             (recur (dec k) (fp-fn fp k))
-                             fp))
-                      fp (fp-fn fp delta)]
-                  (if-not (= n (nth (get fp delta) 0))
-                    (recur (inc p) fp)
-                    (persistent! fp))))]
-    (-> fp (get delta) (#(nth % 1)) rest)))
+  [a b n m timeout]
+  (let [^long n n
+        ^long m m
+        delta   (- n m)
+        snake   (fn [^long k ^long x]
+                  (loop [x x y (- x k)]
+                    (let [ax (get a x) by (get b y)]
+                      (if (and (< x n)
+                               (< y m)
+                               (= (type ax) (type by))
+                               (= ax by))
+                        (recur (inc x) (inc y))
+                        x))))
+        fp-fn   (fn [fp ^long k]
+                  (let [[dk-1 vk-1] (get fp (dec k) [-1 []])
+                        dk-1        (inc ^long dk-1)
+                        [dk+1 vk+1] (get fp (inc k) [-1 []])
+                        x           (max dk-1 ^long dk+1)
+                        ^long sk    (snake k x)
+                        ops         (let [es (if (> dk-1 ^long dk+1)
+                                               (conj vk-1 :-)
+                                               (conj vk+1 :+))]
+                                      (if (> sk x)
+                                        (conj es (- sk x))
+                                        es))]
+                    (assoc! fp k [sk ops])))
+        begin   (System/currentTimeMillis)]
+    (loop [p 0 fp (transient {})]
+      (let [fp (loop [k (* -1 p) fp fp]
+                 (if (< k delta)
+                   (recur (inc k) (fp-fn fp k))
+                   fp))
+            fp (loop [k (+ delta p) fp fp]
+                 (if (< delta k)
+                   (recur (dec k) (fp-fn fp k))
+                   fp))
+            fp (fp-fn fp delta)]
+        (cond
+          (and timeout
+               (< ^long timeout
+                  (- (System/currentTimeMillis) begin)))
+          :timeout
+          (= n (nth (get fp delta) 0))
+          (-> (persistent! fp) (get delta) (#(nth % 1)) rest)
+          :else
+          (recur (inc p) fp))))))
 
 (defn- swap-ops
   [edits]
@@ -104,12 +112,21 @@
         v))
 
 (defn vec-edits
-  [a b]
-  (let [n (count a)
-        m (count b)]
-    (min+plus->replace (if (< n m)
-                         (swap-ops (vec-edits* b a m n))
-                         (vec-edits* a b n m)))))
+  [a b {:keys [vec-timeout]}]
+  (let [a (vec a)
+        b (vec b)
+        n (count a)
+        m (count b)
+        e (if (< n m)
+            (swap-ops (vec-edits* b a m n vec-timeout))
+            (vec-edits* a b n m vec-timeout))]
+    (if (= e :timeout)
+      e
+      (min+plus->replace e))))
+
+#_(time (vec-edits "The A* star algorithm chose to replace the whole thing, because the diff size is smaller that way. Our definition of diff size has been changed to reflect strictly the object count (in the past, we only count the number of operations, which may give the results you find desirable), replacing the whole thing is often smaller than having a diff data structure, with its additional operations, paths (the path is a vector, so it includes lots of objects of its own), and so on. The PATCH format in that JSON tool you show somehow does not contain path for those 'remove' operations, for example, I am not sure how it could be used to patch things correctly in a general case. What if not all the maps have the same operation? how does it know which map to change without such path? If paths are included, the object count is going to be larger than just replacing the whole thing. Our diff format can be concatenated, so each diff operation must include enough context to be applied on its own."
+                   "The quick algorithm is extremely slow diffing two huge strings, because you enabled :str-diff?"
+                   5))
 
 (defn- group-str
   [edits b]
@@ -133,18 +150,20 @@
           edits)))
 
 (defn diff-str
-  [script path a b _]
-  (let [edits     (vec-edits a b)
-        cb        (count b)
-        unchanged (double (transduce (filter integer?) + edits))]
-    (if (< (* cb 0.7) unchanged)
-      (let [edits' (group-str edits b)]
-        (e/replace-str script path edits'))
-      (e/replace-data script path b))))
+  [script path a b & {:keys [vec-timeout str-change-limit]
+                      :or   {vec-timeout      1000
+                             str-change-limit 0.2}}]
+  (let [edits (vec-edits a b vec-timeout)]
+    (if (= edits :timeout)
+      (e/replace-data script path b)
+      (let [ca        (count a)
+            unchanged (double (transduce (filter integer?) + edits))]
+        (if (and (< 0 str-change-limit 1.0)
+                 (< (* ca (- 1.0 ^double str-change-limit)) unchanged))
+          (let [edits' (group-str edits b)]
+            (e/replace-str script path edits'))
+          (e/replace-data script path b))))))
 
 #?(:clj (defmacro vslurp
           [file]
           (clojure.core/slurp file)))
-
-
-(defmulti diff-algo (fn [_ _ opts] (:algo opts)))

@@ -12,8 +12,8 @@
   (:require [editscript.edit :as e]
             [editscript.patch :as p]
             [editscript.util.common :as c]
-            [editscript.diff.quick]
-            [editscript.diff.a-star])
+            [editscript.diff.quick :as q]
+            [editscript.diff.a-star :as a])
   #?(:clj (:import [editscript.edit EditScript]
                    [clojure.lang MapEntry])))
 
@@ -45,10 +45,12 @@
   cost. The value is a boolean: `true` or `false` (default). When enabled, the diff
   algorithm will perform string diff if the changes are less than 30 percent of the
   string length; otherwise, whole string replacement will be used."
-  ([a b]
-   (diff a b {:algo :a-star :str-diff? false}))
-  ([a b {:keys [algo str-diff?] :or {algo :a-star str-diff? false}}]
-   (c/diff-algo a b {:algo algo :str-diff? str-diff?})))
+  [a b & {:keys [algo]
+          :or   {algo :a-star}
+          :as   opts}]
+  (if (= algo :a-star)
+    (a/diff a b opts)
+    (q/diff a b opts)))
 
 (defn patch
   "Apply the editscript `script` on `a` to produce `b`, assuming the

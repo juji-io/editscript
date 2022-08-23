@@ -21,8 +21,8 @@
           b (vec (seq "acebdabbabed"))
           c [0 0]
           d [1 -1 -1 nil -1 1 -1 -1 -1]]
-      (is (= (vec-edits a b) [2 :+ 2 :- 1 :- 1 :+ :+ :+ 2]))
-      (is (= (vec-edits c d) [:+ :+ :+ :+ :+ :+ :+ :r :r])))))
+      (is (= (vec-edits a b {}) [2 :+ 2 :- 1 :- 1 :+ :+ :+ 2]))
+      (is (= (vec-edits c d {}) [:+ :+ :+ :+ :+ :+ :+ :r :r])))))
 
 (deftest min+plus->replace-test
   (testing "Replacement of consecutive :- :+ with :r"
@@ -131,7 +131,7 @@
 	;; low-mild	 1 (1.6667 %)
   ;; Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
 
-  (c/bench (vec-edits as bs))
+  (c/bench (vec-edits as bs {}))
   ;; ==>
   ;; Evaluation count : 1920 in 60 samples of 32 calls.
   ;; Execution time mean : 32.714460 ms
