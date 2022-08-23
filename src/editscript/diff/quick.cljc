@@ -39,18 +39,21 @@
 (defn- diff-vec
   "Adjust the indices to have a correct editscript"
   [script path a b opts]
-  (reduce
-    (fn [[^long ia ^long ia' ^long ib] op]
-      (case op
-        :- (do (diff* script (conj path ia') (get a ia) (e/nada) opts)
-               [(inc ia) ia' ib])
-        :+ (do (diff* script (conj path ia') (e/nada) (get b ib) opts)
-               [ia (inc ia') (inc ib)])
-        :r (do (diff* script (conj path ia') (get a ia) (get b ib) opts)
-               [(inc ia) (inc ia') (inc ib)])
-        [(+ ia ^long op) (+ ia' ^long op) (+ ib ^long op)]))
-    (transient [0 0 0])
-    (c/vec-edits a b (:vec-timeout opts))))
+  (let [edits (c/vec-edits a b opts)]
+    (if (= edits :timeput)
+      (e/replace-data script path b)
+      (reduce
+        (fn [[^long ia ^long ia' ^long ib] op]
+          (case op
+            :- (do (diff* script (conj path ia') (get a ia) (e/nada) opts)
+                   [(inc ia) ia' ib])
+            :+ (do (diff* script (conj path ia') (e/nada) (get b ib) opts)
+                   [ia (inc ia') (inc ib)])
+            :r (do (diff* script (conj path ia') (get a ia) (get b ib) opts)
+                   [(inc ia) (inc ia') (inc ib)])
+            [(+ ia ^long op) (+ ia' ^long op) (+ ib ^long op)]))
+        (transient [0 0 0])
+        edits))))
 
 (defn- diff-set
   [script path a b opts]
@@ -64,7 +67,7 @@
   (diff-vec script path (vec a) (vec b) opts))
 
 (defn- diff-val
-  [script path a b]
+  [script path _ b]
   (if (= (e/get-type b) :nil)
     (e/delete-data script path)
     (e/replace-data script path b)))
@@ -90,7 +93,9 @@
   "Create an EditScript that represents the difference between `b` and `a`
   This algorithm is fast, but it does not attempt to generate an EditScript
   that is minimal in size"
-  [a b & opts]
-  (let [script (e/edits->script [])]
-    (diff* script [] a b opts)
-    script))
+  ([a b]
+   (diff a b nil))
+  ([a b opts]
+   (let [script (e/edits->script [])]
+     (diff* script [] a b opts)
+     script)))

@@ -7,15 +7,16 @@
   (diff by word) or `:character` (diff by character, original string diff, very
   expensive).
 ## Added
-- `:vec-timeout` option, to specify a timeout in milliseconds (default 1000),
+- `:vec-timeout` option for `diff`, to specify a timeout in milliseconds (default 1000),
   for it is sometimes too expensive to diff vectors. It is O(n^2), after all.
   When timed-out, a replacement will be used.
-- `:str-change-limit`, a less than `1.0` and greater than `0.0` double,
+- `:str-change-limit` option for `diff`, a less than `1.0` and greater than `0.0` double,
   representing percentage (default `0.2`). Only diff string when less than given
   percentage is changed, otherwise replace the string. Because string diff is
   expensive, it may be cheaper to replace the whole string.
 ## Improved
 - Speed up string diff by coercing into vector first.
+- Bump Clojure version
 
 ## [0.5.8] - 2021-12-30
 ### Improved

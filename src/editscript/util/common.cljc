@@ -114,7 +114,8 @@
         v))
 
 (defn vec-edits
-  [a b {:keys [vec-timeout]}]
+  [a b {:keys [vec-timeout]
+        :or   {vec-timeout 1000}}]
   (let [a (vec a)
         b (vec b)
         n (count a)
@@ -125,10 +126,6 @@
     (if (= e :timeout)
       e
       (min+plus->replace e))))
-
-#_(time (vec-edits "The A* star algorithm chose to replace the whole thing, because the diff size is smaller that way. Our definition of diff size has been changed to reflect strictly the object count (in the past, we only count the number of operations, which may give the results you find desirable), replacing the whole thing is often smaller than having a diff data structure, with its additional operations, paths (the path is a vector, so it includes lots of objects of its own), and so on. The PATCH format in that JSON tool you show somehow does not contain path for those 'remove' operations, for example, I am not sure how it could be used to patch things correctly in a general case. What if not all the maps have the same operation? how does it know which map to change without such path? If paths are included, the object count is going to be larger than just replacing the whole thing. Our diff format can be concatenated, so each diff operation must include enough context to be applied on its own."
-                   "The quick algorithm is extremely slow diffing two huge strings, because you enabled :str-diff?"
-                   5))
 
 (defn- group-str
   [edits b]
@@ -152,10 +149,10 @@
           edits)))
 
 (defn diff-str
-  [script path a b & {:keys [vec-timeout str-change-limit]
-                      :or   {vec-timeout      1000
-                             str-change-limit 0.2}}]
-  (let [edits (vec-edits a b vec-timeout)]
+  [script path a b {:keys [str-change-limit]
+                    :or   {str-change-limit 0.2}
+                    :as   opts}]
+  (let [edits (vec-edits a b opts)]
     (if (= edits :timeout)
       (e/replace-data script path b)
       (let [ca        (count a)

@@ -378,36 +378,39 @@
       (vec v))))
 
 (defn- use-quick
-  ^long [ra rb came opts]
-  (loop [[op & ops] (co/vec-edits (vec-fn ra) (vec-fn rb) opts)
-         na         (get-first ra)
-         nb         (get-first rb)
-         m          (transient {})
-         cost       0]
-    (if op
-      (let [na' (next-node na ra)
-            nb' (next-node nb rb)
-            cur (->Coord na nb)
-            sb  (get-size nb)]
-        (if (integer? op)
-          (recur (if (> ^long op 1) `[~(dec ^long op) ~@ops] ops)
-                 na' nb'
-                 (assoc! m (->Coord na' nb') [cur :=])
-                 (long cost))
-          (case op
-            :- (recur ops na' nb
-                      (assoc! m (->Coord na' nb) [cur op])
-                      (inc (long cost)))
-            :+ (recur ops na nb'
-                      (assoc! m (->Coord na nb')
-                              [cur (if (identical? na ra) :a :i)])
-                      (+ (long cost) 1 (long sb)))
-            :r (recur ops na' nb'
-                      (assoc! m (->Coord na' nb') [cur op])
-                      (+ (long cost) 1 (long sb))))))
-      (let [root (->Coord ra rb)]
-        (vswap! came assoc root (persistent! m))
-        cost))))
+  [ra rb came opts]
+  (let [edits (co/vec-edits (vec-fn ra) (vec-fn rb) opts)]
+    (if (= edits :timeout)
+      edits
+      (loop [[op & ops] edits
+             na         (get-first ra)
+             nb         (get-first rb)
+             m          (transient {})
+             cost       0]
+        (if op
+          (let [na' (next-node na ra)
+                nb' (next-node nb rb)
+                cur (->Coord na nb)
+                sb  (get-size nb)]
+            (if (integer? op)
+              (recur (if (> ^long op 1) `[~(dec ^long op) ~@ops] ops)
+                     na' nb'
+                     (assoc! m (->Coord na' nb') [cur :=])
+                     (long cost))
+              (case op
+                :- (recur ops na' nb
+                          (assoc! m (->Coord na' nb) [cur op])
+                          (inc (long cost)))
+                :+ (recur ops na nb'
+                          (assoc! m (->Coord na nb')
+                                  [cur (if (identical? na ra) :a :i)])
+                          (+ (long cost) 1 (long sb)))
+                :r (recur ops na' nb'
+                          (assoc! m (->Coord na' nb') [cur op])
+                          (+ (long cost) 1 (long sb))))))
+          (let [root (->Coord ra rb)]
+            (vswap! came assoc root (persistent! m))
+            cost))))))
 
 (defn- diff*
   ^long [ra rb came opts]
@@ -432,17 +435,17 @@
       (= typea (e/get-type vb))
       (if (= va vb)
         (do (update) 0)
-        (let [a (if (and (#{:vec :lst} typea)
+        (let [r (inc ^long sb)
+              a (if (and (#{:vec :lst} typea)
                          (let [cc+1 #(-> % get-children count inc)]
                            (or (= sa (cc+1 ra)) (= sb (cc+1 rb)))))
                   ;; vec or lst contains leaves only, safe to use quick algo.
-                  (use-quick ra rb came opts)
+                  (let [res (use-quick ra rb came opts)]
+                    (if (= res :timeout) (inc r) res))
                   ;; otherwise run A*
-                  (A* typea ra rb came opts))
-              r (inc ^long sb)]
+                  (A* typea ra rb came opts))]
           (if (< r ^long a)
-            (do (update)
-                r)
+            (do (update) r)
             a)))
       ;; types differ, can only replace
       :else
@@ -542,18 +545,20 @@
 
 (defn diff
   "Create an EditScript that represents the minimal difference between `b` and `a`"
-  [a b & opts]
-  (let [script (e/edits->script [])]
-    (when-not (= a b)
-      (let [roota (index a)
-            rootb (index b)
-            came  (volatile! {})
-            cost  (diff* roota rootb came opts)]
-        ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))
-        ;;               ^long explored (reduce + (map count (vals @came)))]
-        ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
-        ;;                   cost explored total
-        ;;                   (* 100 (double (/ explored total))))))
-        (trace @came (->Coord roota rootb) script opts)
-        script))
-    script))
+  ([a b]
+   (diff a b nil))
+  ([a b opts]
+   (let [script (e/edits->script [])]
+     (when-not (= a b)
+       (let [roota (index a)
+             rootb (index b)
+             came  (volatile! {})
+             cost  (diff* roota rootb came opts)]
+         ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))
+         ;;               ^long explored (reduce + (map count (vals @came)))]
+         ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
+         ;;                   cost explored total
+         ;;                   (* 100 (double (/ explored total))))))
+         (trace @came (->Coord roota rootb) script opts)
+         script))
+     script)))
