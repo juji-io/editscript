@@ -17,7 +17,7 @@
 #?(:clj (set! *warn-on-reflection* true))
 #?(:clj (set! *unchecked-math* :warn-on-boxed))
 
-(defn ^:declared diff* [script path a b opts])
+(declare diff*)
 
 (defn- diff-map
   [script path a b opts]

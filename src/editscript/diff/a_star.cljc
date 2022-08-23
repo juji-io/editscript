@@ -77,8 +77,7 @@
                     :children (get-children x)}
                    writer)))
 
-;; using defn instead of declare, see http://dev.clojure.org/jira/browse/CLJS-1871
-(defn ^:declared index* [order path data parent])
+(declare index*)
 
 (defn- associative-children
   "map and vector are associative"
@@ -241,7 +240,7 @@
   (get g cur #?(:clj Long/MAX_VALUE
                 :cljs (getMaxValue))))
 
-(defn ^:declared diff* [ra rb came opts])
+(declare diff*)
 
 (defn- compute-cost
   [^Coord cur came g op opts]

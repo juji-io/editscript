@@ -29,6 +29,10 @@
      ~type (~diff-fn ~script ~path ~a ~b ~opts)
      (e/replace-data ~script ~path ~b)))
 
+(defn current-time
+  ^long []
+  #?(:clj (System/currentTimeMillis) :cljs (.getTime (js/Date.))))
+
 (defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
   Information Processing Letters, 35:6, p317-23.'
@@ -63,7 +67,7 @@
                                         (conj es (- sk x))
                                         es))]
                     (assoc! fp k [sk ops])))
-        begin   (System/currentTimeMillis)]
+        begin   (current-time)]
     (loop [p 0 fp (transient {})]
       (let [fp (loop [k (* -1 p) fp fp]
                  (if (< k delta)
@@ -75,9 +79,7 @@
                    fp))
             fp (fp-fn fp delta)]
         (cond
-          (and timeout
-               (< ^long timeout
-                  (- (System/currentTimeMillis) begin)))
+          (and timeout (< ^long timeout (- (current-time) begin)))
           :timeout
           (= n (nth (get fp delta) 0))
           (-> (persistent! fp) (get delta) (#(nth % 1)) rest)
