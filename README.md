@@ -45,8 +45,8 @@ See my [Clojure/north 2020 Talk](https://youtu.be/n-avEZHEHg8): Data Diffing Bas
 ;;==>
 ;; [[[0] :r "Hello world"] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]
 
-;; diff using the quick algorithm and diff the strings
-(def d-q (e/diff a b {:algo :quick :str-diff? true}))
+;; diff using the quick algorithm and diff the strings by character
+(def d-q (e/diff a b {:algo :quick :str-diff :character}))
 
 (e/get-edits d-q)
 ;;=>

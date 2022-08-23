@@ -39,7 +39,7 @@
   `:quick`; `:a-star` algorithm minimize the size of the resulting editscript,
   `:quick` algorithm is much faster, but does not producing diff with minimal size.
 
-  * `:str-diff?` indicates a desire to perform string diff. It  may reduce the
+  * `:str-diff` indicates a desire to perform string diff. It  may reduce the
   result size for small changes in long strings, but will incur a slight computation
   cost. The value is a boolean: `true` or `false` (default). When enabled, the diff
   algorithm will perform string diff if the changes are less than 30 percent of the

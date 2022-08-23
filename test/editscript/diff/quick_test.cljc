@@ -63,8 +63,8 @@
           k-l (diff l k)
           m   "hello world, this is our first visit to your planet. we come in peace."
           n   "hello worldhis is our first visit to your planet. We come in peace. haha"
-          n-m (diff m n {:str-diff? true})
-          m-n (diff n m {:str-diff? true})]
+          n-m (diff m n {:str-diff :character})
+          m-n (diff n m {:str-diff :character})]
       (is (= (get-edits b-a)
              [[[:a :o] :r 3]
               [[:b] :r 'c]

@@ -29,9 +29,9 @@
   (let [a   ["Hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2}]
         b   ["Hello world" 24 23 {:a [2 3]} 1 3 #{1 2 3}]
         d   (diff a b)
-        d-q (diff a b {:algo :quick :str-diff? true})
+        d-q (diff a b {:algo :quick :str-diff :character})
         v   (get-edits d)
-        d'  (edits->script v)]
+        ds  (edits->script v)]
     (is (= (get-edits d) [[[0] :r "Hello world"]
                           [[2] :r 23]
                           [[3 :a 0] :-]
@@ -47,7 +47,7 @@
     (is (= 23 (get-size d-q)))
     (is (= b (patch a d)))
     (is (= b (patch a d-q)))
-    (is (= b (patch a d'))))
+    (is (= b (patch a ds))))
   (let [a   [2 {:a 42} 3 {:b 4} {:c 29}]
         b   [{:a 5} {:b 5}]
         d   (diff a b)
@@ -68,12 +68,12 @@
 (deftest str-diff-test
   (let [a    {:data ["hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2 3}]}
         b    {:data ["Hello world!" 42 22 {:a [1 3]} 1 3 #{1 2 3}]}
-        d-q  (diff a b {:algo :quick :str-diff? true})
-        d-a  (diff a b {:algo :a-star :str-diff? true})
+        d-q  (diff a b {:algo :quick :str-diff :character})
+        d-a  (diff a b {:algo :a-star :str-diff :character})
         e-q  (e/get-edits d-q)
         e-a  (e/get-edits d-a)
-        d-q' (e/edits->script e-q)
-        d-a' (e/edits->script e-a)]
+        d-q1 (e/edits->script e-q)
+        d-a1 (e/edits->script e-a)]
     (is (e/valid-edits? e-q))
     (is (e/valid-edits? e-a))
     (is (= e-q
@@ -83,8 +83,8 @@
             [[:data 3 :a 1] :-]]))
     (is (= b (patch a d-q)))
     (is (= b (patch a d-a)))
-    (is (= b (patch a d-q')))
-    (is (= b (patch a d-a')))
+    (is (= b (patch a d-q1)))
+    (is (= b (patch a d-a1)))
     ))
 
 (deftest map-entry-test

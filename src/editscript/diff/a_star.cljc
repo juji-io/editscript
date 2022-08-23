@@ -498,8 +498,8 @@
        (adjust-append trie op na nb path)))
 
 (defn- write-script
-  [steps roota script {:keys [str-diff?]
-                       :or   {str-diff? false}
+  [steps roota script {:keys [str-diff]
+                       :or   {str-diff :none}
                        :as   opts}]
   (reduce
     (fn [trie [op na nb]]
@@ -508,7 +508,8 @@
             vb   (get-value nb)]
         (case op
           :-      (e/delete-data script path)
-          :r      (if (and (= :str (e/get-type va) (e/get-type vb)) str-diff?)
+          :r      (if (and (= :str (e/get-type va) (e/get-type vb))
+                           (not= str-diff :none))
                     (co/diff-str script path va vb opts)
                     (e/replace-data script path vb))
           (:a :i) (e/add-data script path vb)

@@ -10,7 +10,8 @@
 
 (ns ^:no-doc editscript.util.common
   (:refer-clojure :exclude [slurp])
-  (:require [editscript.edit :as e]))
+  (:require [editscript.edit :as e]
+            [clojure.string :as s]))
 
 #?(:clj (set! *warn-on-reflection* true))
 #?(:clj (set! *unchecked-math* :warn-on-boxed))
@@ -148,20 +149,30 @@
                                    [[x s]]))))))
           edits)))
 
+(defn- transform
+  [s level]
+  (case level
+    :character s
+    :word      (s/split s #" ")
+    :line      (s/split-lines s)
+    (throw (ex-info "Unknown string diff level" {:str-diff level}))))
+
 (defn diff-str
-  [script path a b {:keys [str-change-limit]
+  [script path a b {:keys [str-change-limit str-diff]
                     :or   {str-change-limit 0.2}
                     :as   opts}]
-  (let [edits (vec-edits a b opts)]
+  (let [a'    (transform a str-diff)
+        b'    (transform b str-diff)
+        edits (vec-edits a' b' opts)]
     (if (= edits :timeout)
       (e/replace-data script path b)
-      (let [ca        (count a)
+      (let [ca        (count a')
             unchanged (double (transduce (filter integer?) + edits))]
         (if (and (< 0 str-change-limit 1.0)
                  (< (* ca (- 1.0 ^double str-change-limit)) unchanged))
-          (let [edits' (group-str edits b)]
+          (let [edits' (group-str edits b')]
             (e/replace-str script path edits'))
-          (e/replace-data script path b))))))
+          (e/replace-data script path b'))))))
 
 #?(:clj (defmacro vslurp
           [file]

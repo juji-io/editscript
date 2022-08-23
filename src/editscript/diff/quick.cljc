@@ -73,8 +73,8 @@
     (e/replace-data script path b)))
 
 (defn diff*
-  [script path a b {:keys [str-diff?]
-                    :or   {str-diff? false}
+  [script path a b {:keys [str-diff]
+                    :or   {str-diff :none}
                     :as   opts}]
   (when-not (= a b)
     (case (e/get-type a)
@@ -83,10 +83,10 @@
       :vec (c/coll-case a b script path :vec #'diff-vec opts)
       :set (c/coll-case a b script path :set #'diff-set opts)
       :lst (c/coll-case a b script path :lst #'diff-lst opts)
-      :str (if str-diff?
+      :str (if (= str-diff :none)
+             (diff-val script path a b)
              (c/coll-case a b script path :str
-                          #'editscript.util.common/diff-str opts)
-             (diff-val script path a b))
+                          #'editscript.util.common/diff-str opts))
       :val (diff-val script path a b))))
 
 (defn diff
