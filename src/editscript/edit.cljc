@@ -18,7 +18,7 @@
   (add-data [this path value])
   (delete-data [this path])
   (replace-data [this path value])
-  (replace-str [this path ops]))
+  (replace-str [this path ops level]))
 
 (defprotocol IEditScript
   (combine [this that]
@@ -155,10 +155,15 @@
       (set! reps-num (inc reps-num))
       (set! edits (conj edits [path :r value]))
       (auto-sizing this path value)))
-  (replace-str [this path ops]
+  (replace-str [this path ops level]
     (locking this
       (set! reps-num (inc reps-num))
-      (set! edits (conj edits [path :s ops]))
+      (set! edits (conj edits [path
+                               (case level
+                                 :character :s
+                                 :word      :sw
+                                 :line      :sl)
+                               ops]))
       (auto-sizing this path "")))
 
   IEditScript
@@ -178,7 +183,7 @@
   (edit-distance [_] (+ adds-num dels-num reps-num)))
 
 (defn- valid-str-edits?
-  [data]
+  [data level]
   (and (vector? data)
        (every? (fn [x]
                  (or (nat-int? x)
@@ -189,7 +194,9 @@
                               (#{:- :r :+} op)
                               (case op
                                 :-      (nat-int? y)
-                                (:+ :r) (string? y)))))))
+                                (:+ :r) (case level
+                                          :s        (string? y)
+                                          (:sl :sw) (vector? y))))))))
                data)))
 
 (defn- valid-edit?
@@ -199,12 +206,10 @@
       (when (< 1 c 4)
         (let [[path op data] edit]
           (and (vector? path)
-               (#{:- :r :+ :s} op)
-               (if (= :- op)
-                 (nil? data)
-                 (= c 3))
-               (if (= :s op)
-                 (valid-str-edits? data)
+               (#{:- :r :+ :s :sw :sl} op)
+               (if (= :- op) (nil? data) (= c 3))
+               (if (#{:s :sw :sl} op)
+                 (valid-str-edits? data op)
                  true)))))))
 
 (defn valid-edits?
@@ -230,10 +235,10 @@
         reps (volatile! 0)]
     (doseq [[_ op data] edits]
       (case op
-        :+ (vswap! adds inc)
-        :- (vswap! dels inc)
-        :r (vswap! reps inc)
-        :s (count-str-ops data adds dels reps)))
+        :+           (vswap! adds inc)
+        :-           (vswap! dels inc)
+        :r           (vswap! reps inc)
+        (:s :sw :sl) (count-str-ops data adds dels reps)))
     [@adds @dels @reps]))
 
 (defn edits->script

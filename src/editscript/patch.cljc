@@ -10,7 +10,9 @@
 
 (ns ^:no-doc editscript.patch
   (:require [clojure.set :as set]
-            [editscript.edit :as e]))
+            [editscript.edit :as e]
+            [editscript.util.common :as c]
+            [clojure.string :as s]))
 
 #?(:clj (set! *warn-on-reflection* true))
 #?(:clj (set! *unchecked-math* :warn-on-boxed))
@@ -44,14 +46,15 @@
               (apply list))))
 
 (defn- sreplace
-  [x edits]
-  (let [i (volatile! 0)]
-    (apply str
-           (persistent!
+  [x edits level]
+  (let [x  (c/transform-str x level)
+        sf (if (= level :character) subs subvec)
+        i  (volatile! 0)
+        ss (persistent!
              (reduce
                (fn [ss e]
                  (cond
-                   (integer? e)     (let [s (subs x @i (+ ^long @i ^long e))]
+                   (integer? e)     (let [s (sf x @i (+ ^long @i ^long e))]
                                       (vswap! i (partial + e))
                                       (conj! ss s))
                    (= (nth e 0) :-) (do (vswap! i (partial + (nth e 1))) ss)
@@ -60,7 +63,11 @@
                                       (conj! ss s))
                    (= (nth e 0) :+) (conj! ss (nth e 1))))
                (transient [])
-               edits)))))
+               edits))]
+    (case level
+      :character (apply str ss)
+      :word      (s/join " " (flatten ss))
+      :line      (s/join "\n" (flatten ss)))))
 
 (defn- vreplace
   [x p v]
@@ -75,10 +82,12 @@
 (defn- valter
   [x p o v]
   (case o
-    :- (vdelete x p)
-    :+ (vadd x p v)
-    :r (vreplace x p v)
-    :s (vreplace x p (sreplace (vget x p) v))))
+    :-  (vdelete x p)
+    :+  (vadd x p v)
+    :r  (vreplace x p v)
+    :s  (vreplace x p (sreplace (vget x p) v :character))
+    :sw (vreplace x p (sreplace (vget x p) v :word))
+    :sl (vreplace x p (sreplace (vget x p) v :line))))
 
 (defn patch*
   [old [path op value]]
@@ -88,7 +97,9 @@
                 (valter x f :r (up (vget x f) r o v))
                 (if (seq p)
                   (valter x f o v)
-                  (if (= o :s)
-                    (sreplace x v)
+                  (case o
+                    :s  (sreplace x v :character)
+                    :sw (sreplace x v :word)
+                    :sl (sreplace x v :line)
                     v)))))]
     (up old path op value)))

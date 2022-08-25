@@ -65,7 +65,7 @@
                             [[1 :c] :-]
                             [[1 :b] :+ 5]]))))
 
-(deftest str-diff-test
+(deftest char-str-diff-test
   (let [a    {:data ["hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2 3}]}
         b    {:data ["Hello world!" 42 22 {:a [1 3]} 1 3 #{1 2 3}]}
         d-q  (diff a b {:algo :quick :str-diff :character})
@@ -84,8 +84,65 @@
     (is (= b (patch a d-q)))
     (is (= b (patch a d-a)))
     (is (= b (patch a d-q1)))
-    (is (= b (patch a d-a1)))
-    ))
+    (is (= b (patch a d-a1)))))
+
+(deftest word-str-diff-test
+  (let [a  "You know, it does not matter how slowly you go as long as you do not stop."
+        b  "Hey, do you know, it does not matter how fast you go as long as you don't stop."
+        d  (diff a b {:str-diff :word :str-change-limit 0.5})
+        e  (e/get-edits d)
+        ds (e/edits->script e)]
+    (is (e/valid-edits? e))
+    (is (= e [[[]
+               :sw
+               [[:+ ["Hey," "do"]]
+                [:r ["you"]]
+                6
+                [:r ["fast"]]
+                6
+                [:r ["don't"]]
+                [:- 1]
+                1]]]))
+    (is (= b (patch a d)))
+    (is (= b (patch a ds)))))
+
+(deftest line-str-diff-test
+  (let [a
+        "侠客行
+        唐 李白
+        赵客缦胡缨，吴钩霜雪明。
+        银鞍照白马，飒沓如流星。
+        十步杀一人，千里不留行。
+        事了拂衣去，深藏身与名。
+        闲过信陵饮，脱剑膝前横。
+        将炙啖朱亥，持觞劝侯嬴。
+        三杯吐然诺，五岳倒为轻。
+        眼花耳热后，意气素霓生。
+        救赵挥金槌，邯郸先震惊。
+        千秋二壮士，烜赫大梁城。
+        纵死侠骨香，不惭世上英。
+        谁能书阁下，白首太玄经。"
+        b  "侠客行
+        赵客缦胡缨，吴钩霜雪明。
+        银鞍照白马，飒沓如流星。
+        十步杀百人，千里不留行。
+        事了拂衣去，深藏身与名。
+        闲过信陵饮，脱剑膝前横。
+        将炙啖朱亥，持觞劝侯嬴。
+        三杯吐然诺，五岳倒为轻。
+        眼花耳热后，意气素霓生。
+        救赵挥金槌，邯郸先震惊。
+        千秋二壮士，烜赫大梁城。
+        纵死侠骨香，不惭世上英。
+        谁能书阁下，白首太玄经。"
+        d  (diff a b {:str-diff :line :str-change-limit 0.5})
+        e  (e/get-edits d)
+        ds (e/edits->script e)]
+    (is (e/valid-edits? e))
+    (is (= e [[[] :sl [1 [:- 1]
+                       2 [:r ["        十步杀百人，千里不留行。"]] 9]]]))
+    (is (= b (patch a d)))
+    (is (= b (patch a ds)))))
 
 (deftest map-entry-test
   (let [a   (first {:a :c})

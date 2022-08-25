@@ -128,9 +128,10 @@
       e
       (min+plus->replace e))))
 
-(defn- group-str
-  [edits b]
-  (let [i (volatile! 0)]
+(defn- group-strs
+  [edits b level]
+  (let [sf (if (= level :character) subs subvec)
+        i  (volatile! 0)]
     (into []
           (comp
             (partition-by identity)
@@ -141,28 +142,28 @@
                   (cond
                     (integer? x) (do (vswap! i (partial + x)) coll)
                     (= :- x)     [[x c]]
-                    (= :r x)     (let [s (subs b @i (+ ^long @i c))]
+                    (= :r x)     (let [s (sf b @i (+ ^long @i c))]
                                    (vswap! i (partial + c))
                                    [[x s]])
-                    (= :+ x)     (let [s (subs b @i (+ ^long @i c))]
+                    (= :+ x)     (let [s (sf b @i (+ ^long @i c))]
                                    (vswap! i (partial + c))
                                    [[x s]]))))))
           edits)))
 
-(defn- transform
+(defn transform-str
   [s level]
   (case level
     :character s
-    :word      (s/split s #" ")
-    :line      (s/split-lines s)
+    :word      (vec (s/split s #" "))
+    :line      (vec (s/split-lines s))
     (throw (ex-info "Unknown string diff level" {:str-diff level}))))
 
 (defn diff-str
   [script path a b {:keys [str-change-limit str-diff]
                     :or   {str-change-limit 0.2}
                     :as   opts}]
-  (let [a'    (transform a str-diff)
-        b'    (transform b str-diff)
+  (let [a'    (transform-str a str-diff)
+        b'    (transform-str b str-diff)
         edits (vec-edits a' b' opts)]
     (if (= edits :timeout)
       (e/replace-data script path b)
@@ -170,8 +171,8 @@
             unchanged (double (transduce (filter integer?) + edits))]
         (if (and (< 0 str-change-limit 1.0)
                  (< (* ca (- 1.0 ^double str-change-limit)) unchanged))
-          (let [edits' (group-str edits b')]
-            (e/replace-str script path edits'))
+          (let [edits' (group-strs edits b' str-diff)]
+            (e/replace-str script path edits' str-diff))
           (e/replace-data script path b'))))))
 
 #?(:clj (defmacro vslurp
