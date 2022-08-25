@@ -2,7 +2,7 @@
 
 ## [0.6.1] - 2022-08-24
 ## Changed
-- **Breaking** Change `:diff-str?` option for `diff` to `:diff-str`, whose value
+- **Breaking** Change `:str-diff?` option for `diff` to `:str-diff`, whose value
   could be `:none` (default, no diff inside string), `:line` (diff by line),
   `:word` (diff by word) or `:character` (diff by character, original string
   diff, very expensive).

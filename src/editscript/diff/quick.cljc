@@ -40,7 +40,7 @@
   "Adjust the indices to have a correct editscript"
   [script path a b opts]
   (let [edits (c/vec-edits a b opts)]
-    (if (= edits :timeput)
+    (if (= edits :timeout)
       (e/replace-data script path b)
       (reduce
         (fn [[^long ia ^long ia' ^long ib] op]

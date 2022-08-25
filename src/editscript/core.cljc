@@ -53,12 +53,14 @@
   * `:vec-timeout` specifies a timeout in milliseconds (default `1000`),
   for diffing vectors, lists or strings, as it has O(n^2) running time. When
   timed-out, a replacement operation will be used."
-  [a b & {:keys [algo]
-          :or   {algo :a-star}
-          :as   opts}]
-  (if (= algo :a-star)
-    (a/diff a b opts)
-    (q/diff a b opts)))
+  ([a b]
+   (diff a b nil))
+  ([a b {:keys [algo]
+         :or   {algo :a-star}
+         :as   opts}]
+   (if (= algo :a-star)
+     (a/diff a b opts)
+     (q/diff a b opts))))
 
 (defn patch
   "Apply the editscript `script` on `a` to produce `b`, assuming the

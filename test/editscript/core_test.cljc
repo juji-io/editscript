@@ -158,11 +158,14 @@
                          [100 950 221 897 1232] (range 990 2810)))
         d   (diff a b)
         d-o (diff a b {:vec-timeout 1})
+        d-q (diff a b {:vec-timeout 1 :algo :quick})
         ]
     (is (= b (patch a d)))
     (is (= (e/edit-distance d) 575))
     (is (= b (patch a d-o)))
     (is (= (e/edit-distance d-o) 1))
+    (is (= b (patch a d-q)))
+    (is (= (e/edit-distance d-q) 1))
     ))
 
 ;; generative tests
@@ -358,7 +361,7 @@
   (def new (-> "resources/new.edn"
                #?(:clj slurp :cljs com/vslurp)
                #?(:clj read-string :cljs reader/read-string)))
-  (time (diff old new {:str-diff :word :algo :quick}))
+  (diff old new {:str-diff :word :algo :quick})
 
 
 
