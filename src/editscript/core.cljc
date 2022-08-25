@@ -39,19 +39,20 @@
   `:quick`; `:a-star` algorithm minimize the size of the resulting editscript,
   `:quick` algorithm is much faster, but does not producing diff with minimal size.
 
-  * `:str-diff` indicates a desire to perform string diff. It  may reduce the
-  result size for small changes in long strings, but will incur a slight computation
-  cost. The value is a boolean: `true` or `false` (default). When enabled, the diff
-  algorithm will perform string diff if the changes are less than 30 percent of the
-  string length; otherwise, whole string replacement will be used.
+  * `:str-diff` specifies the granularity of string diffing. It may have one of
+  the following values:
+       - `:none`  (default), do not perform string diffing, the fastest.
+       - `:line`, diff by line.
+       - `:word`, diff by word,
+       - `:character`, diff by character, the slowest.
 
   * `:str-change-limit`, a less than `1.0` and greater than `0.0` double value,
   representing percentage (default `0.2`). Only diff string when less than given
   percentage is changed, otherwise replace the string.
 
   * `:vec-timeout` specifies a timeout in milliseconds (default `1000`),
-  for diffing vectors, as it has O(n^2) running time. When timed-out, a replacement
-  operation will be used."
+  for diffing vectors, lists or strings, as it has O(n^2) running time. When
+  timed-out, a replacement operation will be used."
   [a b & {:keys [algo]
           :or   {algo :a-star}
           :as   opts}]
