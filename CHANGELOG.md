@@ -1,26 +1,27 @@
 # Change Log
 
-## [0.6.0] - 2022-08-23
+## [0.6.0] - 2022-08-24
 ## Changed
-- **Breaking** Change `:diff-str?` option to `:diff-str`, whose value could be
-  `:none` (default, no diff inside string), `:line` (diff by line), `:word`
-  (diff by word) or `:character` (diff by character, original string diff, very
-  expensive).
+- **Breaking** Change `:diff-str?` option for `diff` to `:diff-str`, whose value
+  could be `:none` (default, no diff inside string), `:line` (diff by line),
+  `:word` (diff by word) or `:character` (diff by character, original string
+  diff, very expensive).
 ## Added
-- `:vec-timeout` option for `diff`, to specify a timeout in milliseconds (default 1000),
-  for it is sometimes too expensive to diff vectors. It is O(n^2), after all.
-  When timed-out, a replacement will be used.
-- `:str-change-limit` option for `diff`, a less than `1.0` and greater than `0.0` double,
-  representing percentage (default `0.2`). Only diff string when less than given
-  percentage is changed, otherwise replace the string. Because string diff is
-  expensive, it may be cheaper to replace the whole string.
+- `:vec-timeout` option for `diff`, to specify a timeout in milliseconds
+  (default 1000), for it is sometimes too expensive to diff vectors. It is
+  O(n^2), after all. When timed-out, a replacement will be used.
+- `:str-change-limit` option for `diff`, a less than `1.0` and greater than
+  `0.0` double, representing percentage (default `0.2`). Only diff string when
+  less than given percentage is changed, otherwise replace the string. Because
+  string diff is expensive, it may be cheaper to replace the whole string.
 ## Improved
 - Speed up string diff by coercing into vector first.
 - Bump Clojure version
 
 ## [0.5.8] - 2021-12-30
 ### Improved
-- Remove a warning in certain cljs environment, and it's an error in latest cljs [Thanks @Outrovurt]
+- Remove a warning in certain cljs environment, and it's an error in latest cljs
+  [Thanks @Outrovurt]
 
 ## [0.5.7] - 2021-03-03
 ### Fixed
