@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.6.2] - 2022-08-25
+## Fixed
+- A couple of typos in code and documentation.
+
 ## [0.6.1] - 2022-08-24
 ## Changed
 - **Breaking** Change `:str-diff?` option for `diff` to `:str-diff`, whose value
