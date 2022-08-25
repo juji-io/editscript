@@ -56,6 +56,7 @@ Based Software Architecture Patterns.
 ;; [[[0] :r "Hello world"] [[2] :r 23] [[3 :a 0] :-] [[6 3] :+ 3]]
 
 ;; diff using the quick algorithm and diff the strings by character
+;; there are other string diff levels: :word, :line, or :none (default)
 (def d-q (e/diff a b {:algo :quick :str-diff :character}))
 
 (e/get-edits d-q)
