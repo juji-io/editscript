@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.6.0] - 2022-08-24
+## [0.6.1] - 2022-08-24
 ## Changed
 - **Breaking** Change `:diff-str?` option for `diff` to `:diff-str`, whose value
   could be `:none` (default, no diff inside string), `:line` (diff by line),

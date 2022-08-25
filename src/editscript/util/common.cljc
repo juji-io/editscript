@@ -122,11 +122,11 @@
         n (count a)
         m (count b)
         e (if (< n m)
-            (swap-ops (vec-edits* b a m n vec-timeout))
+            (vec-edits* b a m n vec-timeout)
             (vec-edits* a b n m vec-timeout))]
     (if (= e :timeout)
       e
-      (min+plus->replace e))))
+      (min+plus->replace (if (< n m) (swap-ops e) e)))))
 
 (defn- group-strs
   [edits b level]
