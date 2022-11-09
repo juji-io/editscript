@@ -26,14 +26,18 @@ Editscript, please drop a line at issue
 [#17](https://github.com/juji-io/editscript/issues/17) so we may make a list of
 users here:
 
-* [Oche](https://oche.com) uses Editscript to sync game state between client and server.
-* [Streetlinx](https://streetlinx.com) uses Editscript to capture deltas to
-  drive a newsfeed and generate alerts.
-* [microdata.no](https://microdata.no) uses Editscript to sync client state to
-  server so users can pick up their work where they left it.
+* [clerk](https://github.com/nextjournal/clerk) uses Editscript to improves
+  usability of synchronised atom by sending a minimal diff from the JVM to the
+  browser, achieving 60fps sync for updates from the browser to the JVM and
+  back.
 * [Evident Systems](https://www.evidentsystems.com/) uses Editscript as the main
   way of evaluating changes within the convergent reference type in their CRDT
   library, [Converge](https://github.com/evidentsystems/converge).
+* [microdata.no](https://microdata.no) uses Editscript to sync client state to
+  server so users can pick up their work where they left it.
+* [Oche](https://oche.com) uses Editscript to sync game state between client and server.
+* [Streetlinx](https://streetlinx.com) uses Editscript to capture deltas to
+  drive a newsfeed and generate alerts.
 
 ## :tada: Usage
 
