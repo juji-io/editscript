@@ -3,6 +3,7 @@
 <p align="center">🔦  Diff and patch for Clojure/Clojurescript data. 🧩	</p>
 
 <p align="center">
+<a href="https://cljdoc.org/d/juji/editscript"><img src="https://cljdoc.org/badge/juji/editscript" alt="editscript on cljdoc"></img></a>
 <a href="https://badge.fury.io/js/clj-editscript"><img src="https://badge.fury.io/js/clj-editscript.svg" alt="npm"></img></a>
 <a href="https://clojars.org/juji/editscript"><img src="https://img.shields.io/clojars/v/juji/editscript.svg?color=sucess" alt="clojars"></img></a>
 <a href="https://github.com/juji-io/editscript/actions"><img src="https://github.com/juji-io/editscript/actions/workflows/build.yml/badge.svg?branch=master" alt="editscript build status"></img></a>
