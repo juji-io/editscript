@@ -277,39 +277,39 @@
 
   (c/quick-bench (diff data1 data2))
   ;; ==>
-  ;; Evaluation count : 1488 in 6 samples of 248 calls.
-  ;; Execution time mean : 410.897795 µs
-  ;; Execution time std-deviation : 10.096453 µs
-  ;; Execution time lower quantile : 404.292758 µs ( 2.5%)
-  ;; Execution time upper quantile : 425.510606 µs (97.5%)
-  ;; Overhead used : 21.259063 ns
+  ;; Evaluation count : 1752 in 6 samples of 292 calls.
+  ;; Execution time mean : 358.745200 µs
+  ;; Execution time std-deviation : 20.783677 µs
+  ;; Execution time lower quantile : 344.041945 µs ( 2.5%)
+  ;; Execution time upper quantile : 383.072120 µs (97.5%)
+  ;; Overhead used : 14.553786 ns
 
   (c/quick-bench (diff data1 data3))
   ;; ==>
-  ;; Evaluation count : 1332 in 6 samples of 222 calls.
-  ;; Execution time mean : 451.414935 µs
-  ;; Execution time std-deviation : 16.621996 µs
-  ;; Execution time lower quantile : 440.475234 µs ( 2.5%)
-  ;; Execution time upper quantile : 477.355909 µs (97.5%)
-  ;; Overhead used : 21.259063 ns
+  ;; Evaluation count : 1638 in 6 samples of 273 calls.
+  ;; Execution time mean : 391.184907 µs
+  ;; Execution time std-deviation : 23.452044 µs
+  ;; Execution time lower quantile : 371.116374 µs ( 2.5%)
+  ;; Execution time upper quantile : 423.216158 µs (97.5%)
+  ;; Overhead used : 14.553786 ns
 
   (c/quick-bench (diff data1 data4))
   ;; ==>
-  ;; Evaluation count : 210 in 6 samples of 35 calls.
-  ;; Execution time mean : 2.978602 ms
-  ;; Execution time std-deviation : 109.198185 µs
-  ;; Execution time lower quantile : 2.871433 ms ( 2.5%)
-  ;; Execution time upper quantile : 3.134244 ms (97.5%)
-  ;; Overhead used : 21.259063 ns
+  ;; Evaluation count : 246 in 6 samples of 41 calls.
+  ;; Execution time mean : 2.147089 ms
+  ;; Execution time std-deviation : 18.701984 µs
+  ;; Execution time lower quantile : 2.132857 ms ( 2.5%)
+  ;; Execution time upper quantile : 2.179175 ms (97.5%)
+  ;; Overhead used : 14.553786 ns
 
   (c/quick-bench (diff data4 data1))
   ;; ==>
-  ;; Evaluation count : 216 in 6 samples of 36 calls.
-  ;; Execution time mean : 2.810354 ms
-  ;; Execution time std-deviation : 102.475210 µs
-  ;; Execution time lower quantile : 2.756376 ms ( 2.5%)
-  ;; Execution time upper quantile : 2.987457 ms (97.5%)
-  ;; Overhead used : 21.259063 ns
+  ;; Evaluation count : 624 in 6 samples of 104 calls.
+  ;; Execution time mean : 1.044390 ms
+  ;; Execution time std-deviation : 35.679732 µs
+  ;; Execution time lower quantile : 1.006069 ms ( 2.5%)
+  ;; Execution time upper quantile : 1.097140 ms (97.5%)
+  ;; Overhead used : 14.553786 ns
 
   (e/edit-distance (diff data1 data4))
   ;; ==> 13

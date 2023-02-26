@@ -149,9 +149,7 @@
 
 ;; diffing
 
-(defn- coord-hash
-  [a b]
-  (co/szudzik (get-order a) (get-order b)))
+(defn- coord-hash [a b] (co/szudzik (get-order a) (get-order b)))
 
 #?(:clj
    (deftype Coord [^Node a
@@ -160,8 +158,9 @@
      ;; overriding hashCode significantly speeds things up
      Object
      (hashCode [_] (coord-hash a b))
-     (equals [this that]
-       (= (.hashCode this) (.hashCode that)))
+     (equals [_ that]
+       (and (= (get-order a) (get-order (.-a ^Coord that)))
+            (= (get-order b) (get-order (.-b ^Coord that)))))
      (toString [_]
        (str "[" (get-value a) "," (get-value b) "]"))
 
@@ -177,15 +176,14 @@
 
      IEquiv
      (-equiv [this that]
-       (= (-hash this) (-hash that)))
+       (and (= (get-order a) (get-order (.-a ^Coord that)))
+            (= (get-order b) (get-order (.-b ^Coord that)))))
 
      IComparable
      (-compare [this that]
        (- (-hash this) (-hash that)))))
 
-(defn- get-coord
-  [^Coord coord]
-  [(.-a coord) (.-b coord)])
+(defn- get-coord [^Coord coord] [(.-a coord) (.-b coord)])
 
 (defprotocol IStep
   (operator [this] "Operator to try")
