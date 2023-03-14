@@ -1,6 +1,6 @@
 # Change Log
 
-## WIP
+## [0.6.3] - 2023-03-14
 ## Improved
 - Simplify equality test for A* algorithm, increasing diff speed up to 60% for
   some data sets.
