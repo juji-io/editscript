@@ -315,7 +315,7 @@ distance between trees and related problems. SIAM Journal of Computing,
 
 ## License
 
-Copyright © 2018-2023 [Juji, Inc.](https://juji.io)
+Copyright © 2018-2024 [Juji, Inc.](https://juji.io)
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
