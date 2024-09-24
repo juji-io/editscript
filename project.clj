@@ -1,4 +1,4 @@
-(defproject juji/editscript "0.6.3"
+(defproject juji/editscript "0.6.4"
   :description "A diff library for Clojure/ClojureScript data structures"
   :url "https://github.com/juji-io/editscript"
   :lein-release {:deploy-via :clojars}
@@ -8,7 +8,7 @@
                                     :sign-releases false}]]
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.11.1"]]
+  :dependencies [[org.clojure/clojure "1.12.0"]]
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-doo "0.1.10"]]
   :doo {:build "node"
@@ -51,7 +51,7 @@
              {:aot      [#"editscript\.*"]
               :jvm-opts ["-Dclojure.compiler.direct-linking=true"] }
              :dev
-             {:dependencies [[org.clojure/clojurescript "1.11.60"
+             {:dependencies [[org.clojure/clojurescript "1.11.132"
                               :exclusions [org.clojure/core.rrb-vector]]
                              ;;see https://github.com/emezeske/lein-cljsbuild/issues/469
                              [quantum/org.clojure.core.rrb-vector "0.0.12"]

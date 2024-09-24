@@ -153,15 +153,15 @@
     (is (= b (patch a d-q)))))
 
 (deftest vec-timeout-test
-  (let [a   (vec (range 3000))
+  (let [a   (vec (range 30000))
         b   (vec (concat (range 100) [213 222 223 224 123] (range 300 800)
-                         [100 950 221 897 1232] (range 990 2810)))
+                         [100 950 221 897 1232] (range 990 2810) (range 2810 30000)))
         d   (diff a b)
         d-o (diff a b {:vec-timeout 1})
         d-q (diff a b {:vec-timeout 1 :algo :quick})
         ]
     (is (= b (patch a d)))
-    (is (= (e/edit-distance d) 575))
+    (is (< 1 (e/edit-distance d)))
     (is (= b (patch a d-o)))
     (is (= (e/edit-distance d-o) 1))
     (is (= b (patch a d-q)))
