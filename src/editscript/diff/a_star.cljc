@@ -34,10 +34,8 @@
   (get-next [this] "Get the next sibling node")
   (set-next [this node] "Set the next sibling node")
   (set-order [this o] "Set the traversal order of this node")
-  #?(:clj  (get-order ^long [this] "Get the order of this node in traversal")
-     :cljs (^number get-order [this] "Get the order of this node in traversal"))
-  #?(:clj  (get-size ^long [this] "Get the size of sub-tree, used to estimate cost")
-     :cljs (^number get-size [this] "Get the size of sub-tree, used to estimate cost"))
+  (get-order [this] "Get the order of this node in traversal")
+  (get-size [this] "Get the size of sub-tree, used to estimate cost")
   (set-size [this s] "Set the size of sub-tree"))
 
 (deftype Node [^PersistentVector path
@@ -120,7 +118,7 @@
       :set        (set-children order path data node)
       :lst        (list-children order path data node))
     (let [^long cs (->> (get-children node) vals (map get-size) (reduce +))
-          size     (+ (get-size node) cs)]
+          size     (+ (long (get-size node)) cs)]
       (doto node
         (set-order @order)
         (set-size size))
