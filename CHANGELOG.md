@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.6.4] - 2024-09-24
+## Improved
+- Fix boxed math warning. [thx @tonsky]
+- Update deps
+
 ## [0.6.3] - 2023-03-14
 ## Improved
 - Simplify equality test for A* algorithm, increasing diff speed up to 60% for
