@@ -1,26 +1,32 @@
 # Change Log
 
+## [0.6.5] - 2025-01-24
+### Added
+- `data-nodes` to return the number of nodes of a piece of data.
+- `change-ratio` to return an approximation of an editscript's ratio of change
+  in term of the original data.
+
 ## [0.6.4] - 2024-09-24
-## Improved
+### Improved
 - Fix boxed math warning. [thx @tonsky]
 - Update deps
 
 ## [0.6.3] - 2023-03-14
-## Improved
+### Improved
 - Simplify equality test for A* algorithm, increasing diff speed up to 60% for
   some data sets.
 
 ## [0.6.2] - 2022-08-25
-## Fixed
+### Fixed
 - A couple of typos in code and documentation.
 
 ## [0.6.1] - 2022-08-24
-## Changed
+### Changed
 - **Breaking** Change `:str-diff?` option for `diff` to `:str-diff`, whose value
   could be `:none` (default, no diff inside string), `:line` (diff by line),
   `:word` (diff by word) or `:character` (diff by character, original string
   diff, very expensive).
-## Added
+### Added
 - `:vec-timeout` option for `diff`, to specify a timeout in milliseconds
   (default 1000), for it is sometimes too expensive to diff vectors. It is
   O(n^2), after all. When timed-out, a replacement will be used.
@@ -28,7 +34,7 @@
   `0.0` double, representing percentage (default `0.2`). Only diff string when
   less than given percentage is changed, otherwise replace the string. Because
   string diff is expensive, it may be cheaper to replace the whole string.
-## Improved
+### Improved
 - Speed up string diff by coercing into vector first.
 - Bump Clojure version
 

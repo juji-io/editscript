@@ -11,7 +11,7 @@
 (ns editscript.core
   (:require [editscript.edit :as e]
             [editscript.patch :as p]
-            [editscript.util.common :as c]
+            [editscript.util.index :as i]
             [editscript.diff.quick :as q]
             [editscript.diff.a-star :as a])
   #?(:clj (:import [editscript.edit EditScript]
@@ -113,6 +113,29 @@ operations"}
 obtained through calling `get-edits` on an EditScript"}
   edits->script e/edits->script)
 
+(defn data-nodes
+  "Return the number of nodes of a piece of data."
+  [data]
+  (i/get-size (i/index data)))
 
-;; (diff (MapEntry/create 1 (MapEntry/create 2 (MapEntry/create 3 4)))
-;;       (MapEntry/create 1 (MapEntry/create 2 (MapEntry/create 3 "ok"))))
+(defn- get-data
+  [data path]
+  (loop [[f & r] path
+         v       data]
+    (let [c (p/vget v f)]
+      (if r
+        (recur r c)
+        c))))
+
+(defn change-ratio
+  "Return an approximation of the ratio of changes of an editscript, a double"
+  [origin editscript]
+  (double
+    (/ (reduce
+         (fn [^long sum [path op v]]
+           (+ sum (case op
+                    (:r :+) (data-nodes v)
+                    :s      1
+                    :-      (data-nodes (get-data origin path)))))
+         0 (get-edits editscript))
+       (data-nodes origin))))

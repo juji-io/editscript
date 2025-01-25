@@ -17,7 +17,7 @@
 #?(:clj (set! *warn-on-reflection* true))
 #?(:clj (set! *unchecked-math* :warn-on-boxed))
 
-(defn- vget
+(defn vget
   [x p]
   (case (e/get-type x)
     (:map :vec :set) (get x p)

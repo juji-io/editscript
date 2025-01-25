@@ -11,7 +11,7 @@
 (ns editscript.core-test
   (:require [clojure.test :refer [is are testing deftest]]
             [editscript.core :refer [patch diff get-edits edits->script
-                                     edit-distance get-size]]
+                                     edit-distance get-size change-ratio]]
             [editscript.edit :as e]
             ;; [editscript.diff.quick :as q]
             ;; [editscript.diff.a-star :as a]
@@ -23,7 +23,8 @@
             [clojure.test.check.clojure-test :as test
              #?@(:cljs [:refer-macros [defspec] :include-macros true])]
             [clojure.test.check.properties :as prop
-             #?@(:cljs [:include-macros true])]))
+             #?@(:cljs [:include-macros true])]
+            [editscript.util.index :as i]))
 
 (deftest readme-test
   (let [a   ["Hello word" 24 22 {:a [1 2 3]} 1 3 #{1 2}]
@@ -122,7 +123,8 @@
         千秋二壮士，烜赫大梁城。
         纵死侠骨香，不惭世上英。
         谁能书阁下，白首太玄经。"
-        b  "侠客行
+        b
+        "侠客行
         赵客缦胡缨，吴钩霜雪明。
         银鞍照白马，飒沓如流星。
         十步杀百人，千里不留行。
@@ -167,6 +169,17 @@
     (is (= b (patch a d-q)))
     (is (= (e/edit-distance d-q) 1))
     ))
+
+(deftest change-ratio-test
+  (are [a b r] (is (= (change-ratio a (diff a b)) r))
+    {:a {:b 2 :c 3}} {:a {:b 3 :c 2}} 0.5
+    1                2                1.0
+    [:a :b]          [:a :c]          (double (/ 1 3))
+    [:a]             [:b]             0.5
+    [:a]             [:a :b]          0.5
+    []               [:a]             2.0
+    [:a]             []               0.5
+    [:a]             nil              0.5))
 
 ;; generative tests
 
