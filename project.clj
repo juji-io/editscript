@@ -16,6 +16,7 @@
         :karma {:config {"browserDisconnectTimeout" 30000
                          "browserNoActivityTimeout" 90000}}}
   :clean-targets  ^{:protect false} [:target-path "out" "target"]
+  :jar-exclusions [#"\.edn"]
   :cljsbuild {:builds
               {:dev
                {:source-paths ["src" "test" "dev"]
