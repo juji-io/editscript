@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.6.5] - 2025-01-24
+## [0.6.6] - 2025-01-24
 ### Added
 - `data-nodes` to return the number of nodes of a piece of data.
 - `change-ratio` to return an approximation of an editscript's ratio of change
