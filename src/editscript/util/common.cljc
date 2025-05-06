@@ -32,7 +32,9 @@
 
 (defn current-time
   ^long []
-  #?(:clj (System/currentTimeMillis) :cljs (.getTime (js/Date.))))
+  #?(:clj (System/currentTimeMillis) 
+     :cljr (.ToUnixTimeMilliseconds (DateTimeOffset/Now))
+  :cljs (.getTime (js/Date.))))
 
 (defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
@@ -106,7 +108,7 @@
                         [ms ps] (split-with #(= % m) coll)
                         mc      (count ms)
                         pc      (count ps)
-                        delta   (Math/abs (- mc pc))
+                        delta   (#?(:cljr Math/Abs :default Math/abs) (- mc pc))
                         rs      (repeat (- (max mc pc) delta) :r)]
                     (cond
                       (< mc pc) (concat rs (repeat delta p))

@@ -17,9 +17,12 @@
   #?(:clj (:import [clojure.lang Keyword]
                    [java.io Writer]
                    [java.lang Comparable]
+                   [editscript.util.index Node])
+	 :cljr  (:import [clojure.lang Keyword]
                    [editscript.util.index Node])))
 
 #?(:clj (set! *warn-on-reflection* true))
+#?(:cljr (set! *warn-on-reflection* true))
 #?(:clj (set! *unchecked-math* :warn-on-boxed))
 
 ;; diffing
@@ -42,6 +45,22 @@
      Comparable
      (compareTo [this that]
        (- (.hashCode this) (.hashCode that))))
+   :cljr
+   (deftype Coord [^Node a
+                   ^Node b]
+     ;; Java's native hash is too slow,
+     ;; overriding hashCode significantly speeds things up
+     Object
+     (GetHashCode [_] (coord-hash a b))
+     (Equals  [_ that]
+       (and (= (i/get-order a) (i/get-order (.-a ^Coord that)))
+            (= (i/get-order b) (i/get-order (.-b ^Coord that)))))
+     (ToString [_]
+       (str "[" (i/get-value a) "," (i/get-value b) "]"))
+
+     IComparable
+     (CompareTo [this that]
+       (- (.GetHashCode this) (.GetHashCode that))))
 
    :cljs
    (deftype Coord [^Node a
@@ -111,6 +130,7 @@
 (defn- access-g
   [g cur]
   (get g cur #?(:clj Long/MAX_VALUE
+                :cljr Int64/MaxValue
                 :cljs (getMaxValue))))
 
 (declare diff*)
