@@ -1,0 +1,12 @@
+{:paths ["src"]
+ :deps
+ {io.github.clojure/clr.data.generators {:git/tag "v1.1.0" :git/sha "d25d292"}
+  }
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+   :extra-deps {io.github.dmiller/test-runner {:git/tag "v0.5.1clr" :git/sha "814e06f"}
+   io.github.clojure/clr.test.check {:git/tag "v1.1.2"  :git/sha "26f34e6"}}
+   :exec-fn cognitect.test-runner.api/test
+   :exec-args {:dirs ["test"]}}}}

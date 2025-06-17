@@ -15,6 +15,8 @@
             [editscript.diff.quick :as q]
             [editscript.diff.a-star :as a])
   #?(:clj (:import [editscript.edit EditScript]
+                   [clojure.lang MapEntry])
+     :cljr (:import [editscript.edit EditScript]
                    [clojure.lang MapEntry])))
 
 (defn diff

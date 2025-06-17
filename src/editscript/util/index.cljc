@@ -12,7 +12,8 @@
   (:require [editscript.edit :as e]
             #?(:cljs [goog.math.Long :refer [getMaxValue]]))
   #?(:clj (:import [clojure.lang PersistentVector]
-                   [java.io Writer])) )
+                   [java.io Writer])
+				   :cljr (:import [clojure.lang PersistentVector])) )
 
 ;; indexing
 

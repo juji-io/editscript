@@ -12,6 +12,7 @@
   (:require [editscript.edit :as e]
             [editscript.core :as c]
             #?(:clj [clojure.test :refer [is are deftest ]]
+			   :cljr [clojure.test :refer [is are deftest ]]
                :cljs [cljs.test :refer [is are deftest] :include-macros true])))
 
 (deftest edits-equality-test
