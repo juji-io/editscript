@@ -40,7 +40,9 @@
   [x p v]
   (case (e/get-type x)
     :map (assoc x p v)
-    :vec (into (conj (subvec x 0 p) v) (subvec x p))
+    :vec (if (= p (count x))
+           (conj x v)
+           (into (conj (subvec x 0 p) v) (subvec x p)))
     :set (conj x v)
     :lst (->> (split-at p x)
               (#(concat (nth % 0) (conj (nth % 1) v)))
@@ -74,7 +76,7 @@
   [x p v]
   (case (e/get-type x)
     :map (assoc x p v)
-    :vec (into (conj (subvec x 0 p) v) (subvec x (inc ^long p)))
+    :vec (assoc x p v)
     :set (-> x (set/difference #{p}) (conj v))
     :lst (->> (split-at p x)
               (#(concat (nth % 0) (conj (rest (nth % 1)) v)))
