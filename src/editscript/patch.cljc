@@ -9,8 +9,7 @@
 ;;
 
 (ns ^:no-doc editscript.patch
-  (:require [clojure.set :as set]
-            [editscript.edit :as e]
+  (:require [editscript.edit :as e]
             [editscript.util.common :as c]
             [clojure.string :as s]))
 
@@ -31,7 +30,7 @@
     ;;if p is ##NaN, then p cannot be found in x, for (= ##NaN ##NaN) is false!
     :map (dissoc x p)
     :vec (into (subvec x 0 p) (subvec x (inc ^long p)))
-    :set (set/difference x #{p})
+    :set (disj x p)
     :lst (->> (split-at p x)
               (#(concat (nth % 0) (next (nth % 1))))
               (apply list))))
@@ -40,7 +39,9 @@
   [x p v]
   (case (e/get-type x)
     :map (assoc x p v)
-    :vec (into (conj (subvec x 0 p) v) (subvec x p))
+    :vec (if (= p (count x))
+           (conj x v)
+           (into (conj (subvec x 0 p) v) (subvec x p)))
     :set (conj x v)
     :lst (->> (split-at p x)
               (#(concat (nth % 0) (conj (nth % 1) v)))
@@ -74,8 +75,8 @@
   [x p v]
   (case (e/get-type x)
     :map (assoc x p v)
-    :vec (into (conj (subvec x 0 p) v) (subvec x (inc ^long p)))
-    :set (-> x (set/difference #{p}) (conj v))
+    :vec (assoc x p v)
+    :set (-> x (disj p) (conj v))
     :lst (->> (split-at p x)
               (#(concat (nth % 0) (conj (rest (nth % 1)) v)))
               (apply list))))
