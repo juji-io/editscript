@@ -1,4 +1,4 @@
-(defproject juji/editscript "0.6.6"
+(defproject juji/editscript "0.7.0"
   :description "A diff library for Clojure/ClojureScript data structures"
   :url "https://github.com/juji-io/editscript"
   :lein-release {:deploy-via :clojars}
@@ -8,7 +8,7 @@
                                     :sign-releases false}]]
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.0"]]
+  :dependencies [[org.clojure/clojure "1.12.4"]]
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-doo "0.1.10"]]
   :doo {:build "node"
@@ -52,15 +52,11 @@
              {:aot      [#"editscript\.*"]
               :jvm-opts ["-Dclojure.compiler.direct-linking=true"] }
              :dev
-             {:dependencies [[org.clojure/clojurescript "1.11.132"
+             {:dependencies [[org.clojure/clojurescript "1.12.134"
                               :exclusions [org.clojure/core.rrb-vector]]
                              ;;see https://github.com/emezeske/lein-cljsbuild/issues/469
                              [quantum/org.clojure.core.rrb-vector "0.0.12"]
                              [criterium "0.4.6"]
                              [doo "0.1.11"]
-                             [org.clojure/test.check "1.1.1"]
-                             ;; [cider/piggieback "0.5.2"]
-                             ]
-              :source-paths ["src" "test" "dev"]
-              ;; :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
-              }})
+                             [org.clojure/test.check "1.1.3"]]
+              :source-paths ["src" "test" "dev"]}})

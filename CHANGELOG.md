@@ -1,5 +1,15 @@
 # Change Log
 
+## [0.7.0] - 2026-01-13
+
+### Added
+- Cljr support [thx Arjen van Elteren]
+- Babashka support [thx @borkdude]
+
+### Improved
+- More efficient patch [thx @radarroark]
+- Update deps
+
 ## [0.6.6] - 2025-01-24
 ### Added
 - `data-nodes` to return the number of nodes of a piece of data.
