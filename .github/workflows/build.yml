@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-   test:
+   clj-test:
      runs-on: ubuntu-latest
      steps:
        - name: Git checkout
@@ -26,20 +26,52 @@ jobs:
          uses: DeLaGuardo/setup-clojure@13.0
          with:
           lein: 2.9.1
+
+       - name: Run JVM tests
+         run: lein test
+
+   bb-test:
+     runs-on: ubuntu-latest
+     steps:
+       - name: Git checkout
+         uses: actions/checkout@v1
+
+       - name: Prepare java
+         uses: actions/setup-java@v3
+         with:
+          distribution: 'temurin'
+          java-version: '8'
+
+       - name: Install clojure tools
+         uses: DeLaGuardo/setup-clojure@13.0
+         with:
           bb: latest
+
+       - name: Run babashka tests
+         run: |
+           bb test:bb
+
+
+   cljs-test:
+     runs-on: ubuntu-latest
+     steps:
+       - name: Git checkout
+         uses: actions/checkout@v1
+
+       - name: Prepare java
+         uses: actions/setup-java@v3
+         with:
+          distribution: 'temurin'
+          java-version: '21'
+
+       - name: Install clojure tools
+         uses: DeLaGuardo/setup-clojure@13.0
+         with:
+          lein: 2.9.1
 
        - uses: actions/setup-node@v4
          with:
           node-version: '20'
 
-       - name: Run JVM tests
-         run: lein test
-
        - name: Run node tests
          run: lein doo node once
-
-       - name: Run babashka tests
-         run: |
-           # This installs a bb dev build. Once bb is released, we can remove this and run bb test:bb instead
-           bash <(curl https://raw.githubusercontent.com/babashka/babashka/master/install)  --dev-build --dir .
-           ./bb test:bb
