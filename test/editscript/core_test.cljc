@@ -230,17 +230,17 @@
 ;; sample data tests
 
 (def data1 (-> "resources/drawing1.edn"
-               #?(:default slurp :cljs com/vslurp)
-               #?(:default read-string :cljs reader/read-string)))
+               #?(:cljs com/vslurp :default slurp)
+               #?(:cljs reader/read-string :default read-string)))
 (def data2 (-> "resources/drawing2.edn"
-               #?(:default slurp :cljs com/vslurp)
-               #?(:default read-string :cljs reader/read-string)))
+               #?(:cljs com/vslurp :default slurp)
+               #?(:cljs reader/read-string :default read-string)))
 (def data3 (-> "resources/drawing3.edn"
-               #?(:default slurp :cljs com/vslurp)
-               #?(:default read-string :cljs reader/read-string)))
+               #?(:cljs com/vslurp :default slurp)
+               #?(:cljs reader/read-string :default read-string)))
 (def data4 (-> "resources/drawing4.edn"
-               #?(:default slurp :cljs com/vslurp)
-               #?(:default read-string :cljs reader/read-string)))
+               #?(:cljs com/vslurp :default slurp)
+               #?(:cljs reader/read-string :default read-string)))
 
 (deftest drawing-sample-test
   (testing "A sample JSON data of a drawing program from https://github.com/justsml/json-diff-performance, converted to edn using https://github.com/peterschwarz/json-to-edn"
