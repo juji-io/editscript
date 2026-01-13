@@ -40,6 +40,4 @@ jobs:
 
        - name: Run babashka tests
          run: |
-           # This installs a bb dev build. Once bb is released, we can remove this and run bb test:bb instead
-           bash <(curl https://raw.githubusercontent.com/babashka/babashka/master/install)  --dev-build --dir .
-           ./bb test:bb
+           bb test:bb
