@@ -35,16 +35,17 @@
      ;; Java's native hash is too slow,
      ;; overriding hashCode significantly speeds things up
      Object
-     (hashCode [_] (coord-hash a b))
+     #?@(:clj [(hashCode [_] (coord-hash a b))])
      (equals [_ that]
        (and (= (i/get-order a) (i/get-order (.-a ^Coord that)))
             (= (i/get-order b) (i/get-order (.-b ^Coord that)))))
      (toString [_]
        (str "[" (i/get-value a) "," (i/get-value b) "]"))
 
-     Comparable
-     (compareTo [this that]
-       (- (.hashCode this) (.hashCode that))))
+     #?@(:bb []
+         :clj [Comparable
+               (compareTo [this that]
+                          (- (.hashCode this) (.hashCode that)))]))
    :cljr
    (deftype Coord [^Node a
                    ^Node b]

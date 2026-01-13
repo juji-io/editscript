@@ -9,7 +9,8 @@
 ;;
 
 (ns ^:no-doc editscript.util.pairing
-  #?(:clj
+  #?(:bb (:require [clojure.data.priority-map])
+     :clj
      (:import [clojure.lang IPersistentStack IPersistentMap IPersistentCollection]
               [java.io Writer])
 	  :cljr
@@ -68,7 +69,8 @@
       (set-right b nil)
       (merge-nodes (merge-nodes a b) (two-pass n)))))
 
-#?(:clj
+#?(:bb nil
+   :clj
    (deftype PriorityMap [^:unsynchronized-mutable ^HeapNode heap
                          ^:unsynchronized-mutable map]
      IPersistentCollection
@@ -175,13 +177,15 @@
          (set! heap n)
          this))))
 
-(defn priority-map
-  "A priority queue that also functions as a map.
+#?(:bb (def priority-map clojure.data.priority-map/priority-map)
+   :default
+   (defn priority-map
+     "A priority queue that also functions as a map.
   Backed by a pairing heap implementation, and a regular map.
   NB. We do not implement `decrease-key` for the pairing heap,
   instead just insert the item again with a new priority."
-  ([]
-   (->PriorityMap nil {}))
-  ([& keyvals]
-   {:pre [(even? (count keyvals))]}
-   (reduce conj (priority-map) (partition 2 keyvals))))
+     ([]
+      (->PriorityMap nil {}))
+     ([& keyvals]
+      {:pre [(even? (count keyvals))]}
+      (reduce conj (priority-map) (partition 2 keyvals)))))
