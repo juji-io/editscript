@@ -251,10 +251,12 @@ new ones back. The reason is that the quick algorithm does not drill down
 can. In this particular case, replacing the whole thing produces a smaller diff.
 An optimizing algorithm is needed if minimal diffs are desired.
 
-## :station: Platform
+## :station: Platforms
 
-The library supports JVM Clojure and Clojurescript. The later has been tested
-with node, nashorn, chrome, safari, firefox and lumo. E.g. run our test suite:
+This library supports JVM Clojure, Clojurescript, .NET Clojure and Babashka.
+
+Clojurescript library has been tested with node, nashorn, chrome, safari,
+firefox and lumo. E.g. run our test suite:
 
 ```bash
 # Run Clojure tests
@@ -315,7 +317,8 @@ distance between trees and related problems. SIAM Journal of Computing,
 
 ## License
 
-Copyright © 2018-2025 [Juji, Inc.](https://juji.io)
+Copyright © 2018-2026 [Huahai Yang](https://huahaiy.github.io/) and
+contributions.
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
