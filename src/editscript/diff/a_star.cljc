@@ -381,7 +381,8 @@
 
 (defn- index-key?
   [node]
-  (#{:vec :lst} (-> node i/get-value e/get-type)))
+  (and node
+       (#{:vec :lst} (-> node i/get-value e/get-type))))
 
 (defn- adjust-delete-insert
   [trie op root path]
