@@ -11,7 +11,8 @@
 (ns editscript.core-test
   (:require [clojure.test :refer [is are testing deftest]]
             [editscript.core :refer [patch diff get-edits edits->script
-                                     edit-distance get-size change-ratio]]
+                                     edit-distance get-size change-ratio
+                                     data-nodes]]
             [editscript.edit :as e]
             ;; [editscript.diff.quick :as q]
             ;; [editscript.diff.a-star :as a]
@@ -170,6 +171,22 @@
     (is (= (e/edit-distance d-q) 1))
     ))
 
+(deftest nested-vec-timeout-test
+  (let [a       (mapv vector (range 30))
+        b       (conj (subvec a 1) (first a))
+        complete (diff a b {:vec-timeout nil})
+        timed    (diff a b {:vec-timeout 0})]
+    (is (= b (patch a complete)))
+    (is (< 1 (e/edit-distance complete)))
+    (is (= [[[] :r b]] (e/get-edits timed)))
+    (is (= 1 (e/edit-distance timed)))
+    (is (= b (patch a timed))))
+  (let [a     (mapv vector (range 1000))
+        b     (conj (subvec a 1) (first a))
+        timed (diff a b {:vec-timeout 1})]
+    (is (= [[[] :r b]] (e/get-edits timed)))
+    (is (= b (patch a timed)))))
+
 (deftest change-ratio-test
   (are [a b r] (is (= (change-ratio a (diff a b)) r))
     {:a {:b 2 :c 3}} {:a {:b 3 :c 2}} 0.5
@@ -213,6 +230,26 @@
                       s' (e/edits->script e)]
                   (and (= b (patch a s))
                        (= b (patch a s'))))))
+
+(defn- a-star-search-cost
+  [script]
+  (reduce (fn [cost [_ op value]]
+            (+ cost
+               (case op
+                 :- 1
+                 (:+ :r) (inc (data-nodes value))
+                 (:s :sw :sl) 2)))
+          0
+          (e/get-edits script)))
+
+(test/defspec a-star-replacement-bound-generative-test
+  #?(:cljs 100 :cljr 100 :default 500)
+  (prop/for-all [a (gen/recursive-gen compound scalars)
+                 b (gen/recursive-gen compound scalars)]
+                (let [script (diff a b)]
+                  (and (= b (patch a script))
+                       (<= (a-star-search-cost script)
+                           (inc (data-nodes b)))))))
 
 (test/defspec combine-edits-generative-test
   2000

@@ -36,6 +36,25 @@
      :cljr (.ToUnixTimeMilliseconds (DateTimeOffset/Now))
   :cljs (.getTime (js/Date.))))
 
+(defn with-vec-deadline
+  "Attach one absolute vector-diff deadline to an options map.
+
+  Recursive vector, list, and string searches reuse this deadline instead of
+  restarting the timeout for every nested comparison. A nil `:vec-timeout`
+  continues to disable the timeout."
+  [opts]
+  (let [opts    (or opts {})
+        timeout (get opts :vec-timeout 1000)]
+    (if (or (contains? opts ::vec-deadline) (nil? timeout))
+      opts
+      (assoc opts ::vec-deadline
+             (+ (current-time) (long timeout))))))
+
+(defn vec-timed-out?
+  [opts]
+  (when-let [deadline (::vec-deadline opts)]
+    (<= ^long deadline (current-time))))
+
 (defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
   Information Processing Letters, 35:6, p317-23.'
@@ -44,7 +63,7 @@
   number of edits. Very fast. However, it does not have replacement operations,
   so it is not very useful for nested trees. It can also only do unit cost for
   addition and deletion. "
-  [a b n m timeout]
+  [a b n m deadline]
   (let [^long n n
         ^long m m
         delta   (- n m)
@@ -69,8 +88,7 @@
                                       (if (> sk x)
                                         (conj es (- sk x))
                                         es))]
-                    (assoc! fp k [sk ops])))
-        begin   (current-time)]
+                    (assoc! fp k [sk ops])))]
     (loop [p 0 fp (transient {})]
       (let [fp (loop [k (* -1 p) fp fp]
                  (if (< k delta)
@@ -82,7 +100,7 @@
                    fp))
             fp (fp-fn fp delta)]
         (cond
-          (and timeout (< ^long timeout (- (current-time) begin)))
+          (and deadline (<= ^long deadline (current-time)))
           :timeout
           (= n (nth (get fp delta) 0))
           (-> (persistent! fp) (get delta) (#(nth % 1)) rest)
@@ -117,15 +135,16 @@
         v))
 
 (defn vec-edits
-  [a b {:keys [vec-timeout]
-        :or   {vec-timeout 1000}}]
-  (let [a (vec a)
+  [a b opts]
+  (let [opts (with-vec-deadline opts)
+        deadline (::vec-deadline opts)
+        a (vec a)
         b (vec b)
         n (count a)
         m (count b)
         e (if (< n m)
-            (vec-edits* b a m n vec-timeout)
-            (vec-edits* a b n m vec-timeout))]
+            (vec-edits* b a m n deadline)
+            (vec-edits* a b n m deadline))]
     (if (= e :timeout)
       e
       (min+plus->replace (if (< n m) (swap-ops e) e)))))

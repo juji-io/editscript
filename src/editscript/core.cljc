@@ -53,8 +53,8 @@
   percentage is changed, otherwise replace the string.
 
   * `:vec-timeout` specifies a timeout in milliseconds (default `1000`),
-  for diffing vectors, lists or strings, as it has O(n^2) running time. When
-  timed-out, a replacement operation will be used."
+  shared by nested vector, list, and string comparisons, as they have O(n^2)
+  running time. When timed-out, a replacement operation will be used."
   ([a b]
    (diff a b nil))
   ([a b {:keys [algo]

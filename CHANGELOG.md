@@ -5,6 +5,11 @@
 - Batch patch, applying patches in vector/list in one pass, can be orders of
   magnitude faster in some cases, e.g. vector/list prefix delete.
 - Lazily prune stale nodes in PriorityQueue to prevent expanding explored nodes.
+- Prune A* states above the whole-subtree replacement cost and memoize repeated
+  recursive cost calculations.
+
+### Fixed
+- Apply `:vec-timeout` as one deadline across nested A* and quick searches.
 
 ## [0.7.0] - 2026-01-13
 

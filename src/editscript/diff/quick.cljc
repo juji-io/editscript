@@ -98,5 +98,6 @@
    (diff a b nil))
   ([a b opts]
    (let [script (e/edits->script [])]
-     (diff* script [] a b opts)
+     (when-not (= a b)
+       (diff* script [] a b (c/with-vec-deadline opts)))
      script)))

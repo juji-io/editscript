@@ -171,16 +171,18 @@
                     :else     2))))
 
 (defn- explore
-  [type end came goal state step opts]
+  [type end came goal state step opts upper-bound]
   (let [[came' open g] (get-state state)
         [op cur nbr]   (get-step step)
-        tmp-g          (compute-cost cur came g op opts)]
-    (if (>= ^long tmp-g ^long (access-g g nbr))
+        tmp-g          (compute-cost cur came g op opts)
+        estimate       (+ ^long tmp-g
+                          ^long (heuristic type nbr end goal))]
+    (if (or (>= ^long tmp-g ^long (access-g g nbr))
+            (> ^long estimate ^long upper-bound))
       state
       (doto state
         (set-came (assoc! came' nbr [cur op]))
-        (set-open (assoc open nbr
-                         (+ ^long tmp-g ^long (heuristic type nbr end goal))))
+        (set-open (assoc open nbr estimate))
         (set-g (assoc! g nbr tmp-g))))))
 
 (defn- next-node
@@ -245,24 +247,40 @@
     (:map :set) (map-frontier init end cur)))
 
 (defn- A*
-  [type ra rb came opts]
+  [type ra rb came opts upper-bound]
   (let [end  (->Coord ra rb)
         init (->Coord (i/get-first ra) (i/get-first rb))
-        goal [(i/get-order ra) (i/get-order rb)]]
-    (loop [state (->State (transient {})
-                          (pa/priority-map init (heuristic type init end goal))
-                          (transient {init 0}))]
-      (let [[came' open _] (get-state state)]
-        (if (empty? open)
-          (throw (ex-info "A* diff fails to find a solution" {:ra ra :rb rb}))
-          (let [[cur cost] (peek open)]
-            (if (= cur end)
-              (do (vswap! came assoc end (persistent! came'))
-                  cost)
-              (recur (reduce
-                       #(explore type end came goal %1 %2 opts)
-                       (set-open state (pop open))
-                       (frontier type init end cur))))))))))
+        goal [(i/get-order ra) (i/get-order rb)]
+        initial-estimate (heuristic type init end goal)
+        sequence? (#{:vec :lst} type)]
+    (if (> ^long initial-estimate ^long upper-bound)
+      ::bounded
+      (loop [state (->State (transient {})
+                            (pa/priority-map init initial-estimate)
+                            (transient {init 0}))]
+        (let [[came' open _] (get-state state)]
+          (cond
+            (empty? open)
+            ::bounded
+
+            (and sequence? (co/vec-timed-out? opts))
+            ::timeout
+
+            :else
+            (let [[cur cost] (peek open)]
+              (cond
+                (> ^long cost ^long upper-bound)
+                ::bounded
+
+                (= cur end)
+                (do (vswap! came assoc end (persistent! came'))
+                    cost)
+
+                :else
+                (recur (reduce
+                         #(explore type end came goal %1 %2 opts upper-bound)
+                         (set-open state (pop open))
+                         (frontier type init end cur)))))))))))
 
 (defn- vec-fn
   [node]
@@ -306,29 +324,30 @@
             (vswap! came assoc root (persistent! m))
             cost))))))
 
-(defn- diff*
+(defn- compute-diff
   ^long [ra rb came opts]
-  (let [sa     ^long (i/get-size ra)
-        sb     ^long (i/get-size rb)
-        va     (i/get-value ra)
-        vb     (i/get-value rb)
-        typea  (e/get-type va)
-        update #(vswap! came assoc (->Coord ra rb) {})]
+  (let [sa      ^long (i/get-size ra)
+        sb      ^long (i/get-size rb)
+        va      (i/get-value ra)
+        vb      (i/get-value rb)
+        typea   (e/get-type va)
+        coord   (->Coord ra rb)
+        replace #(do (vswap! came assoc coord {})
+                     (inc ^long sb))]
     (cond
       ;; both are leaves, skip or replace
       (= 1 sa sb)
-      (do (update)
+      (do (vswap! came assoc coord {})
           (if (= va vb)
             0
             2))
       ;; one of them is leaf, replace
       (or (= 1 sa) (= 1 sb))
-      (do (update)
-          (inc ^long sb))
+      (replace)
       ;; non-empty coll with same type, drill down
       (= typea (e/get-type vb))
       (if (= va vb)
-        (do (update) 0)
+        (do (vswap! came assoc coord {}) 0)
         (let [r (inc ^long sb)
               a (if (and (#{:vec :lst} typea)
                          (let [cc+1 #(-> % i/get-children count inc)]
@@ -337,14 +356,26 @@
                   (let [res (use-quick ra rb came opts)]
                     (if (= res :timeout) (inc r) res))
                   ;; otherwise run A*
-                  (A* typea ra rb came opts))]
-          (if (< r ^long a)
-            (do (update) r)
-            a)))
+                  (A* typea ra rb came opts r))]
+          (cond
+            (or (= a ::bounded) (= a ::timeout)) (replace)
+            (< r (long a))                       (replace)
+            :else                                (long a))))
       ;; types differ, can only replace
       :else
-      (do (update)
-          (inc ^long sb)))))
+      (replace))))
+
+(defn- diff*
+  ^long [ra rb came opts]
+  (if-let [memo (::cost-memo opts)]
+    (let [coord  (->Coord ra rb)
+          cached (find @memo coord)]
+      (if cached
+        (long (val cached))
+        (let [cost (compute-diff ra rb came opts)]
+          (vswap! memo assoc! coord cost)
+          cost)))
+    (compute-diff ra rb came opts)))
 
 ;; generating editscript
 
@@ -445,7 +476,10 @@
   ([a b opts]
    (let [script (e/edits->script [])]
      (when-not (= a b)
-       (let [roota (i/index a)
+       (let [opts  (-> opts
+                       co/with-vec-deadline
+                       (assoc ::cost-memo (volatile! (transient {}))))
+             roota (i/index a)
              rootb (i/index b)
              came  (volatile! {})
              cost  (diff* roota rootb came opts)]
