@@ -1,5 +1,11 @@
 # Change Log
 
+## WIP
+### Improved
+- Batch patch, applying patches in vector/list in one pass, can be orders of
+  magnitude faster in some cases, e.g. vector/list prefix delete.
+- Lazily prune stale nodes in PriorityQueue to prevent expanding explored nodes.
+
 ## [0.7.0] - 2026-01-13
 
 ### Added
