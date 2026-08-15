@@ -70,10 +70,7 @@
   `(= b (patch a (diff a b)))` is true"
   [a script]
   {:pre [(instance? editscript.edit.EditScript script)]}
-  (reduce
-    #(p/patch* %1 %2)
-    a
-    (e/get-edits script)))
+  (p/patch-edits a (e/get-edits script)))
 
 (def ^{:arglists '([edits])
        :doc      "Check if the given vector represents valid edits that can be turned
