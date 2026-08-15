@@ -149,6 +149,22 @@
                        [path (i/get-order node) (i/get-size node)]))
                    expected))))))
 
+#?(:clj
+   (deftest identity-metadata-cache-test
+     (let [context    (i/index-context)
+           shared     [:same-value]
+           equal-copy (mapv identity shared)]
+       (is (= shared equal-copy))
+       (is (not (identical? shared equal-copy)))
+       (i/index [shared shared] context)
+       (testing "the same subtree object reuses one metadata entry"
+         (is (= 2 (.size ^java.util.IdentityHashMap context)))
+         (i/index shared context)
+         (is (= 2 (.size ^java.util.IdentityHashMap context))))
+       (testing "an equal but independently allocated value does not alias"
+         (i/index equal-copy context)
+         (is (= 3 (.size ^java.util.IdentityHashMap context)))))))
+
 (def scalars
   (gen/one-of [gen/int gen/string gen/boolean (gen/return nil)]))
 

@@ -11,7 +11,8 @@
 (ns editscript.util.index
   (:require [editscript.edit :as e])
   #?(:clj (:import [java.io Writer]
-                   [java.util IdentityHashMap])))
+                   [java.util IdentityHashMap])
+     :cljr (:import [System.Runtime.CompilerServices RuntimeHelpers])))
 
 ;; indexing
 
@@ -30,16 +31,29 @@
   [context data]
   #?(:clj  (.get ^IdentityHashMap context data)
      :cljs (.get context data)
-     :cljr (get @context data)))
+     :cljr (some (fn [[candidate metadata]]
+                   (when (identical? candidate data) metadata))
+                 (get @context (RuntimeHelpers/GetHashCode data)))))
 
 (defn- cache-metadata!
   [context data metadata]
   #?(:clj  (.put ^IdentityHashMap context data metadata)
      :cljs (.set context data metadata)
-     :cljr (vswap! context assoc data metadata))
+     :cljr (vswap! context update (RuntimeHelpers/GetHashCode data)
+                   (fnil conj []) [data metadata]))
   metadata)
 
-(def ^:private leaf-metadata [1 1])
+(deftype Metadata [^long size ^long span])
+
+(defn- metadata-size
+  ^long [^Metadata metadata]
+  (.-size metadata))
+
+(defn- metadata-span
+  ^long [^Metadata metadata]
+  (.-span metadata))
+
+(def ^:private leaf-metadata (->Metadata 1 1))
 
 (declare data-metadata)
 
@@ -55,12 +69,12 @@
                              (clojure.core/val entry)
                              entry)
             child-metadata (data-metadata context child-value)
-            child-size     (long (nth child-metadata 0))
-            child-span     (long (nth child-metadata 1))]
+            child-size     (metadata-size child-metadata)
+            child-span     (metadata-span child-metadata)]
         (recur (next entries)
                (+ size child-size)
                (+ span child-span)))
-      [size (+ span size)])))
+      (->Metadata size (+ span size)))))
 
 (defn- data-metadata
   [context data]
@@ -135,7 +149,7 @@
     (let [type (e/get-type value)]
       (when (and (nil? children) (collection-type? type))
         (let [metadata (data-metadata context value)
-              span     (long (nth metadata 1))
+              span     (metadata-span metadata)
               start    (- order (- span size))]
           (loop [entries    (seq value)
                  lookup     (empty-children type)
@@ -153,7 +167,7 @@
                                      (clojure.core/val entry)
                                      entry)
                     child-metadata (data-metadata context child-value)
-                    child-span     (long (nth child-metadata 1))
+                    child-span     (metadata-span child-metadata)
                     child           (make-node context child-key child-value
                                                this child-start child-metadata)
                     lookup'         (case type
@@ -182,8 +196,8 @@
 
 (defn- make-node
   [context key value parent start metadata]
-  (let [size (long (nth metadata 0))
-        span (long (nth metadata 1))]
+  (let [size (metadata-size metadata)
+        span (metadata-span metadata)]
     (->Node key value parent context nil nil nil nil
             (+ (long start) (- span size)) size)))
 
