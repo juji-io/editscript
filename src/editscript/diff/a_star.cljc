@@ -480,8 +480,9 @@
        (let [opts  (-> opts
                        co/with-vec-deadline
                        (assoc ::cost-memo (volatile! (transient {}))))
-             roota (i/index a)
-             rootb (i/index b)
+             index-context (i/index-context)
+             roota (i/index a index-context)
+             rootb (i/index b index-context)
              came  (volatile! {})
              cost  (diff* roota rootb came opts)]
          ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))

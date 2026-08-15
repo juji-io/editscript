@@ -10,36 +10,101 @@
 
 (ns editscript.util.index
   (:require [editscript.edit :as e])
-  #?(:clj (:import [java.io Writer])))
+  #?(:clj (:import [java.io Writer]
+                   [java.util IdentityHashMap])))
 
 ;; indexing
+
+(defn- collection-type?
+  [type]
+  (contains? #{:map :set :vec :lst} type))
+
+(defn index-context
+  "Create metadata storage that can be shared by indexes over shared data."
+  []
+  #?(:clj  (IdentityHashMap.)
+     :cljs (js/WeakMap.)
+     :cljr (volatile! {})))
+
+(defn- cached-metadata
+  [context data]
+  #?(:clj  (.get ^IdentityHashMap context data)
+     :cljs (.get context data)
+     :cljr (get @context data)))
+
+(defn- cache-metadata!
+  [context data metadata]
+  #?(:clj  (.put ^IdentityHashMap context data metadata)
+     :cljs (.set context data metadata)
+     :cljr (vswap! context assoc data metadata))
+  metadata)
+
+(def ^:private leaf-metadata [1 1])
+
+(declare data-metadata)
+
+(defn- collection-metadata
+  "Return [subtree-size traversal-span] without constructing index nodes."
+  [context type data]
+  (loop [entries       (seq data)
+         size          1
+         span          0]
+    (if entries
+      (let [entry          (first entries)
+            child-value    (if (= type :map)
+                             (clojure.core/val entry)
+                             entry)
+            child-metadata (data-metadata context child-value)
+            child-size     (long (nth child-metadata 0))
+            child-span     (long (nth child-metadata 1))]
+        (recur (next entries)
+               (+ size child-size)
+               (+ span child-span)))
+      [size (+ span size)])))
+
+(defn- data-metadata
+  [context data]
+  (let [type (e/get-type data)]
+    (if (collection-type? type)
+      (or (cached-metadata context data)
+          (cache-metadata! context data
+                           (collection-metadata context type data)))
+      leaf-metadata)))
+
+(defn- empty-children
+  [type]
+  (transient
+    (case type
+      (:vec :lst) []
+      (:map :set) {})))
 
 (defprotocol INode
   (get-path [this] "Get the path to the node from root")
   (get-value [this] "Get the actual data")
   (get-children [this] "Get child nodes in their keyed lookup collection")
-  (add-child [this node] "Add a child node")
   (get-key [this] "Get the key of this node")
   (get-parent [this] "Get the parent node")
   (get-first [this] "Get the first child node")
   (get-last [this] "Get the last child node")
   (get-next [this] "Get the next sibling node")
   (set-next [this node] "Set the next sibling node")
-  (set-order [this o] "Set the traversal order of this node")
   (get-order [this] "Get the order of this node in traversal")
   (get-size [this] "Get the size of sub-tree, used to estimate cost")
-  (set-size [this s] "Set the size of sub-tree")
-  (finish-children [this] "Finish transient construction of child lookup"))
+  (children-realized? [this] "Whether this node has realized its children")
+  (realize-children [this] "Realize this node's immediate children"))
+
+(declare make-node)
 
 (deftype Node [key
                value
                parent
+               context
                ^:unsynchronized-mutable children
                ^:unsynchronized-mutable first
                ^:unsynchronized-mutable last
                ^:unsynchronized-mutable next
-               ^:unsynchronized-mutable ^long order
-               ^:unsynchronized-mutable ^long size]
+               ^long order
+               ^long size]
   INode
   (get-path [this]
     (loop [node this
@@ -50,26 +115,61 @@
   (get-key [_] key)
   (get-value [_] value)
   (get-parent [_] parent)
-  (get-children [_] children)
-  (get-first [_] first)
-  (get-last [_] last)
+  (get-children [this]
+    (realize-children this)
+    children)
+  (get-first [this]
+    (realize-children this)
+    first)
+  (get-last [this]
+    (realize-children this)
+    last)
   (get-next [_] next)
   (set-next [_ n] (set! next n))
   (get-order [_] order)
-  (set-order [this o] (set! order (long o)) this)
   (get-size [_] size)
-  (set-size [this s] (set! size (long s)) this)
-  (add-child [_ node]
-    (set! children
-          (case (e/get-type value)
-            (:vec :lst) (conj! children node)
-            (:map :set) (assoc! children (get-key node) node)))
-    (when last (set-next last node))
-    (when-not first (set! first node))
-    (set! last node)
-    node)
-  (finish-children [this]
-    (set! children (persistent! children))
+  (children-realized? [_]
+    (or (not (collection-type? (e/get-type value)))
+        (some? children)))
+  (realize-children [this]
+    (let [type (e/get-type value)]
+      (when (and (nil? children) (collection-type? type))
+        (let [metadata (data-metadata context value)
+              span     (long (nth metadata 1))
+              start    (- order (- span size))]
+          (loop [entries    (seq value)
+                 lookup     (empty-children type)
+                 first-node nil
+                 last-node  nil
+                 child-start start
+                 child-index 0]
+            (if entries
+              (let [entry          (clojure.core/first entries)
+                    child-key      (case type
+                                     :map (clojure.core/key entry)
+                                     :set entry
+                                     (:vec :lst) child-index)
+                    child-value    (if (= type :map)
+                                     (clojure.core/val entry)
+                                     entry)
+                    child-metadata (data-metadata context child-value)
+                    child-span     (long (nth child-metadata 1))
+                    child           (make-node context child-key child-value
+                                               this child-start child-metadata)
+                    lookup'         (case type
+                                      (:vec :lst) (conj! lookup child)
+                                      (:map :set) (assoc! lookup child-key child))]
+                (when last-node (set-next last-node child))
+                (recur (clojure.core/next entries)
+                       lookup'
+                       (or first-node child)
+                       child
+                       (+ (long child-start) child-span)
+                       (inc (long child-index))))
+              (do
+                (set! children (persistent! lookup))
+                (set! first first-node)
+                (set! last last-node)))))))
     this))
 
 #?(:clj
@@ -80,91 +180,18 @@
                     :children (get-children x)}
                    writer)))
 
-(declare index*)
-
-(defn- associative-children
-  "map and vector are associative"
-  [order data parent]
-  (reduce-kv
-    (fn [_ k v]
-      (index* order k v parent))
-    nil
-    data))
-
-(defn- set-children
-  "set is a map of keys to themselves"
-  [order data parent]
-  (doseq [x data]
-    (index* order x x parent)))
-
-(defn- list-children
-  "add index as key"
-  [order data parent]
-  (reduce
-    (fn [i x]
-      (index* order i x parent)
-      (inc ^long i))
-    0
-    data))
-
-(defn- inc-order
-  "order value reflects the size of elements"
-  [order ^long size]
-  (vswap! order (fn [o] (+ size ^long o))))
-
-(defn- empty-children
-  [type]
-  (transient
-    (case type
-      (:vec :lst) []
-      (:map :set) {})))
-
-(defn- child-nodes
-  [children]
-  (if (vector? children)
-    children
-    (vals children)))
-
-(defn- index-collection
-  [type order key data parent]
-  (let [node (->Node key data parent (empty-children type)
-                     nil nil nil 0 1)]
-    (when parent (add-child parent node))
-    (case type
-      (:map :vec) (associative-children order data node)
-      :set        (set-children order data node)
-      :lst        (list-children order data node))
-    (finish-children node)
-    (let [^long cs (reduce (fn [^long total child]
-                             (+ total ^long (get-size child)))
-                           0
-                           (child-nodes (get-children node)))
-          size     (+ (long (get-size node)) cs)]
-      (doto node
-        (set-order @order)
-        (set-size size))
-      (inc-order order size))
-    node))
-
-(defn- index-value
-  [order key data parent]
-  (let [node (->Node key data parent nil nil nil nil @order 1)]
-    (when parent (add-child parent node))
-    (inc-order order 1)
-    node))
-
-(defn- index*
-  [order key data parent]
-  (let [type (e/get-type data)]
-    (if (or (= type :val) (= type :str))
-      (index-value order key data parent)
-      (index-collection type order key data parent))))
+(defn- make-node
+  [context key value parent start metadata]
+  (let [size (long (nth metadata 0))
+        span (long (nth metadata 1))]
+    (->Node key value parent context nil nil nil nil
+            (+ (long start) (- span size)) size)))
 
 (defn index
-  "Traverse data to build an indexing tree of Nodes,
-  compute sizes, traversal order, and sibling links for each Node. Paths are
-  reconstructed from parent/key links only when requested.
-  This takes little time"
-  [data]
-  (let [order (volatile! 0)]
-    (index* order nil data nil)))
+  "Build a lazy indexing tree. Subtree metadata is computed up front, while
+  child Nodes and sibling links are created only when their parent is explored.
+  A context may be shared when indexing structurally shared inputs."
+  ([data]
+   (index data (index-context)))
+  ([data context]
+   (make-node context nil data nil 0 (data-metadata context data))))

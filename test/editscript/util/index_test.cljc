@@ -95,6 +95,60 @@
       (is (nil? (i/get-parent root))))
     (is (valid-index? data))))
 
+(deftest lazy-child-realization-test
+  (let [root  (i/index [[{:deep [1 2]}]
+                        [{:untouched [3 4]}]])
+        empty (i/index [])]
+    (testing "indexing computes metadata without constructing children"
+      (is (= 11 (i/get-size root)))
+      (is (= [] (i/get-path root)))
+      (is (not (i/children-realized? root)))
+      (is (not (i/children-realized? empty))))
+    (testing "access realizes one immediate level only"
+      (let [first-branch  (i/get-first root)
+            second-branch (i/get-next first-branch)]
+        (is (i/children-realized? root))
+        (is (not (i/children-realized? first-branch)))
+        (is (not (i/children-realized? second-branch)))
+        (is (= [1] (i/get-path second-branch)))
+        (is (= 5 (i/get-size second-branch)))
+        (let [map-node (i/get-first first-branch)]
+          (is (i/children-realized? first-branch))
+          (is (not (i/children-realized? map-node)))
+          (is (not (i/children-realized? second-branch)))
+          (let [deep-node (i/get-first map-node)]
+            (is (i/children-realized? map-node))
+            (is (not (i/children-realized? deep-node)))
+            (is (= [0 0 :deep] (i/get-path deep-node)))))))
+    (testing "even an empty collection records realization"
+      (is (nil? (i/get-first empty)))
+      (is (i/children-realized? empty)))))
+
+(deftest traversal-order-compatibility-test
+  (let [root     (i/index [[:a :b]
+                           {:x [:c] :y :d}
+                           '(:e :f)])
+        expected [[[] 18 11]
+                  [[0] 2 3]
+                  [[0 0] 0 1]
+                  [[0 1] 1 1]
+                  [[1] 9 4]
+                  [[1 :x] 6 2]
+                  [[1 :x 0] 5 1]
+                  [[1 :y] 8 1]
+                  [[2] 15 3]
+                  [[2 0] 13 1]
+                  [[2 1] 14 1]]]
+    (testing "lazy nodes retain the eager index's size-weighted order"
+      (is (= expected
+             (mapv (fn [[path _ _]]
+                     (let [node (reduce (fn [parent child-key]
+                                          (get (i/get-children parent) child-key))
+                                        root
+                                        path)]
+                       [path (i/get-order node) (i/get-size node)]))
+                   expected))))))
+
 (def scalars
   (gen/one-of [gen/int gen/string gen/boolean (gen/return nil)]))
 

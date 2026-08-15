@@ -7,6 +7,7 @@
 - Lazily prune stale nodes in PriorityQueue to prevent expanding explored nodes.
 - Prune A* states above the whole-subtree replacement cost and memoize repeated
   recursive cost calculations.
+- Lazy indexing.
 
 ### Fixed
 - Apply `:vec-timeout` as one deadline across nested A* and quick searches.
