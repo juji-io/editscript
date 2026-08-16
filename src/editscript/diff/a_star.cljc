@@ -14,12 +14,9 @@
             [editscript.util.index :as i]
             [editscript.util.common :as co]
             #?(:cljs [goog.math.Long :refer [getMaxValue]]))
-  #?(:clj (:import [clojure.lang Keyword]
-                   [java.io Writer]
-                   [java.lang Comparable]
+  #?(:clj (:import [java.lang Comparable]
                    [editscript.util.index Node])
-	 :cljr  (:import [clojure.lang Keyword]
-                   [editscript.util.index Node])))
+     :cljr (:import [editscript.util.index Node])))
 
 #?(:clj (set! *warn-on-reflection* true))
 #?(:cljr (set! *warn-on-reflection* true))
@@ -27,70 +24,77 @@
 
 ;; diffing
 
-(defn- coord-hash [a b] (co/szudzik (i/get-order a) (i/get-order b)))
+(defn- coord-hash
+  ^long [a b]
+  (co/szudzik (i/get-order a) (i/get-order b)))
 
+;; Index nodes are canonical within one diff. Coordinate equality can therefore
+;; use node identity, while the stable traversal-order hash is computed once.
 #?(:clj
    (deftype Coord [^Node a
-                   ^Node b]
+                   ^Node b
+                   ^long h]
      ;; Java's native hash is too slow,
      ;; overriding hashCode significantly speeds things up
      Object
-     #?@(:clj [(hashCode [_] (coord-hash a b))])
+     #?@(:clj [(hashCode [_] (int h))])
      (equals [_ that]
-       (and (= (i/get-order a) (i/get-order (.-a ^Coord that)))
-            (= (i/get-order b) (i/get-order (.-b ^Coord that)))))
+       (and (instance? Coord that)
+            (identical? a (.-a ^Coord that))
+            (identical? b (.-b ^Coord that))))
      (toString [_]
        (str "[" (i/get-value a) "," (i/get-value b) "]"))
 
      #?@(:bb []
          :clj [Comparable
-               (compareTo [this that]
-                          (- (.hashCode this) (.hashCode that)))]))
+               (compareTo [_ that]
+                          (compare h (.-h ^Coord that)))]))
    :cljr
    (deftype Coord [^Node a
-                   ^Node b]
+                   ^Node b
+                   ^long h]
      ;; Java's native hash is too slow,
      ;; overriding hashCode significantly speeds things up
      Object
-     (GetHashCode [_] (coord-hash a b))
+     (GetHashCode [_] (int h))
      (Equals  [_ that]
-       (and (= (i/get-order a) (i/get-order (.-a ^Coord that)))
-            (= (i/get-order b) (i/get-order (.-b ^Coord that)))))
+       (and (instance? Coord that)
+            (identical? a (.-a ^Coord that))
+            (identical? b (.-b ^Coord that))))
      (ToString [_]
        (str "[" (i/get-value a) "," (i/get-value b) "]"))
 
      IComparable
-     (CompareTo [this that]
-       (- (.GetHashCode this) (.GetHashCode that))))
+     (CompareTo [_ that]
+       (compare h (.-h ^Coord that))))
 
    :cljs
    (deftype Coord [^Node a
-                   ^Node b]
+                   ^Node b
+                   ^long h]
      IHash
-     (-hash [_] (coord-hash a b))
+     (-hash [_] h)
 
      IEquiv
      (-equiv [_ that]
-       (and (= (i/get-order a) (i/get-order (.-a ^Coord that)))
-            (= (i/get-order b) (i/get-order (.-b ^Coord that)))))
+       (and (instance? Coord that)
+            (identical? a (.-a ^Coord that))
+            (identical? b (.-b ^Coord that))))
 
      IComparable
-     (-compare [this that]
-       (- (-hash this) (-hash that)))))
+     (-compare [_ that]
+       (compare h (.-h ^Coord that)))))
 
-(defn- get-coord [^Coord coord] [(.-a coord) (.-b coord)])
+(defn- coord
+  [a b]
+  (->Coord a b (coord-hash a b)))
 
-(deftype Step [^Keyword op
-               ^Coord cur
-               ^Coord nbr])
-
-#?(:clj
-   (defmethod print-method Step
-     [^Step x ^Writer writer]
-     (print-method {:op  (.-op x)
-                    :cur (.-cur x)
-                    :nbr (.-nbr x)}
-                   writer)))
+(defn- coord-or-end
+  [^Coord end a b]
+  (if (and (identical? a (.-a end))
+           (identical? b (.-b end)))
+    end
+    (coord a b)))
 
 (defprotocol IState
   (get-came [this] "Get the local succession map")
@@ -137,73 +141,92 @@
   For nested structure, multiple deletion may be merged into one.
   Also, because addition/replacement requires new value to be present in
   editscript, whereas deletion does not, we assign estimate differently. "
-  ^long [type cur end [gx gy]]
-  (case type
-    (:map :set) 0
-    (:vec :lst) (let [[na nb] (get-coord cur)
-                      [ra rb] (get-coord end)
-                      x       (if (identical? ra na) gx (i/get-order na))
-                      y       (if (identical? rb nb) gy (i/get-order nb))
-                      dy      (- ^long gy ^long y)
-                      dx      (- ^long gx ^long x)]
-                  (cond
-                    (== dx 0) dy
-                    (== dy 0) 1
-                    (> dx dy) 3
-                    (< dx dy) (- dy dx)
-                    :else     2))))
+  [type na nb ra rb gx gy]
+  (let [^long gx gx
+        ^long gy gy]
+    (case type
+      (:map :set) 0
+      (:vec :lst) (let [x  (if (identical? ra na) gx (i/get-order na))
+                        y  (if (identical? rb nb) gy (i/get-order nb))
+                        dy (- gy ^long y)
+                        dx (- gx ^long x)]
+                    (cond
+                      (== dx 0) dy
+                      (== dy 0) 1
+                      (> dx dy) 3
+                      (< dx dy) (- dy dx)
+                      :else     2)))))
 
 (defn- explore
-  [type end came goal ^State state ^Step step opts upper-bound]
+  [type ^Coord end came gx gy ^State state op ^Coord cur
+   na nb nbr opts upper-bound]
   (let [came'    (get-came state)
         open     (get-open state)
         g        (get-g state)
-        op       (.-op step)
-        cur      (.-cur step)
-        nbr      (.-nbr step)
+        ra       (.-a end)
+        rb       (.-b end)
         tmp-g    (compute-cost cur came g op opts)
         estimate (+ ^long tmp-g
-                    ^long (heuristic type nbr end goal))]
-    (if (or (>= ^long tmp-g ^long (access-g g nbr))
-            (> ^long estimate ^long upper-bound))
+                    ^long (heuristic type na nb ra rb gx gy))]
+    (if (> ^long estimate ^long upper-bound)
       state
-      (doto state
-        (set-came (assoc! came' nbr [cur op]))
-        (set-open (assoc open nbr estimate))
-        (set-g (assoc! g nbr tmp-g))))))
+      (let [^Coord nbr (or nbr (coord-or-end end na nb))]
+        (if (>= ^long tmp-g ^long (access-g g nbr))
+          state
+          (doto state
+            (set-came (assoc! came' nbr [cur op]))
+            (set-open (assoc open nbr estimate))
+            (set-g (assoc! g nbr tmp-g))))))))
 
 (defn- next-node
   [na ra]
   (or (i/get-next na) ra))
 
 (defn- vec-frontier
-  [end cur]
-  (let [[ra rb] (get-coord end)
-        [na nb] (get-coord cur)
-        a=b     (= (i/get-value na) (i/get-value nb))
-        x=gx    (identical? na ra)
-        x<gx    (not x=gx)
-        y<gy    (not (identical? nb rb))
-        na'     (next-node na ra)
-        nb'     (next-node nb rb)]
+  [type ^Coord end came gx gy ^State state ^Coord cur opts upper-bound]
+  (let [ra   (.-a end)
+        rb   (.-b end)
+        na   (.-a cur)
+        nb   (.-b cur)
+        a=b  (= (i/get-value na) (i/get-value nb))
+        x=gx (identical? na ra)
+        x<gx (not x=gx)
+        y<gy (not (identical? nb rb))
+        na'  (next-node na ra)
+        nb'  (next-node nb rb)]
     (if (and x<gx y<gy a=b)
-      [(->Step := cur (->Coord na' nb'))]
-      (cond-> []
-        x<gx            (conj (->Step :- cur (->Coord na' nb)))  ; delete
-        (and x<gx y<gy) (conj (->Step :r cur (->Coord na' nb'))) ; replace
-        (and x=gx y<gy) (conj (->Step :a cur (->Coord na nb')))  ; append
-        (and x<gx y<gy) (conj (->Step :i cur (->Coord na nb'))))))) ; insert
+      (explore type end came gx gy state := cur na' nb' nil opts upper-bound)
+      (let [state (if x<gx
+                    (explore type end came gx gy state :- cur na' nb nil
+                             opts upper-bound)
+                    state)
+            state (if (and x<gx y<gy)
+                    (explore type end came gx gy state :r cur na' nb' nil
+                             opts upper-bound)
+                    state)
+            state (if (and x=gx y<gy)
+                    (explore type end came gx gy state :a cur na nb' nil
+                             opts upper-bound)
+                    state)]
+        (if (and x<gx y<gy)
+          (explore type end came gx gy state :i cur na nb' nil
+                   opts upper-bound)
+          state)))))
 
 (defn- map-frontier
-  [^Coord init end cur]
-  (let [[ra rb] (get-coord end)
-        [na nb] (get-coord cur)
-        ka      (i/get-key na)
-        kb      (i/get-key nb)]
+  [type ^Coord init ^Coord end came gx gy ^State state ^Coord cur opts
+   upper-bound]
+  (let [ra (.-a end)
+        rb (.-b end)
+        na (.-a cur)
+        nb (.-b cur)
+        ka (i/get-key na)
+        kb (i/get-key nb)]
     (if (identical? na ra)
       ;; testing keys of b
-      [(->Step (if (contains? (i/get-value ra) kb) := :a)
-               cur (->Coord ra (next-node nb rb)))]
+      (explore type end came gx gy state
+               (if (contains? (i/get-value ra) kb) := :a)
+               cur ra (next-node nb rb) nil opts upper-bound)
       (let [va  (i/get-value na)
             vb  (i/get-value nb)
             mb  (i/get-value rb)
@@ -211,34 +234,44 @@
             cb  (i/get-children rb)]
         (if (identical? na' ra)
           ;; transition point from testing keys of a to that of b
-          (let [startb (->Coord ra (.-b init))
-                enda   (->Coord na (cb ka))]
+          (let [start-nb (.-b init)
+                enda-nb  (cb ka)]
             (if (contains? mb ka)
               (if (= ka kb)
-                [(->Step (if (= va vb) := :r) cur startb)]
-                [(->Step := cur enda)
-                 (->Step :r enda startb)])
-              [(->Step :- cur startb)]))
+                (explore type end came gx gy state (if (= va vb) := :r)
+                         cur ra start-nb nil opts upper-bound)
+                (let [enda  (coord na enda-nb)
+                      state (explore type end came gx gy state := cur
+                                     na enda-nb enda opts upper-bound)]
+                  (explore type end came gx gy state :r enda
+                           ra start-nb nil opts upper-bound)))
+              (explore type end came gx gy state :- cur
+                       ra start-nb nil opts upper-bound)))
           ;; testing keys of a
-          [(if (contains? mb ka)
-             (if (= ka kb)
-               (->Step (if (= va vb) := :r)
-                       cur (->Coord na' (or (cb (i/get-key na')) nb)))
-               (->Step := cur (->Coord na (cb ka))))
-             (->Step :- cur (->Coord na' nb)))])))))
+          (if (contains? mb ka)
+            (if (= ka kb)
+              (explore type end came gx gy state (if (= va vb) := :r) cur
+                       na' (or (cb (i/get-key na')) nb) nil opts upper-bound)
+              (explore type end came gx gy state := cur
+                       na (cb ka) nil opts upper-bound))
+            (explore type end came gx gy state :- cur
+                     na' nb nil opts upper-bound)))))))
 
 (defn- frontier
-  [type init end cur]
+  [type init end came gx gy state cur opts upper-bound]
   (case type
-    (:vec :lst) (vec-frontier end cur)
-    (:map :set) (map-frontier init end cur)))
+    (:vec :lst) (vec-frontier type end came gx gy state cur opts upper-bound)
+    (:map :set) (map-frontier type init end came gx gy state cur opts
+                              upper-bound)))
 
 (defn- A*
-  [type ra rb came opts upper-bound]
-  (let [end  (->Coord ra rb)
-        init (->Coord (i/get-first ra) (i/get-first rb))
-        goal [(i/get-order ra) (i/get-order rb)]
-        initial-estimate (heuristic type init end goal)
+  [type ^Coord end came opts upper-bound]
+  (let [ra   (.-a end)
+        rb   (.-b end)
+        ^Coord init (coord (i/get-first ra) (i/get-first rb))
+        gx   (i/get-order ra)
+        gy   (i/get-order rb)
+        initial-estimate (heuristic type (.-a init) (.-b init) ra rb gx gy)
         sequence? (#{:vec :lst} type)]
     (if (> ^long initial-estimate ^long upper-bound)
       ::bounded
@@ -265,10 +298,9 @@
                     cost)
 
                 :else
-                (recur (reduce
-                         #(explore type end came goal %1 %2 opts upper-bound)
-                         (set-open state (pop open))
-                         (frontier type init end cur)))))))))))
+                (recur (frontier type init end came gx gy
+                                 (set-open state (pop open)) cur opts
+                                 upper-bound))))))))))
 
 (defn- vec-fn
   [node]
@@ -278,50 +310,57 @@
       (vec v))))
 
 (defn- use-quick
-  [ra rb came opts]
+  [ra rb ^Coord root came opts]
   (let [edits (co/vec-edits (vec-fn ra) (vec-fn rb) opts)]
     (if (= edits :timeout)
       edits
-      (loop [[op & ops] edits
-             na         (i/get-first ra)
-             nb         (i/get-first rb)
-             m          (transient {})
-             cost       0]
-        (if op
-          (let [na' (next-node na ra)
-                nb' (next-node nb rb)
-                cur (->Coord na nb)
-                sb  (i/get-size nb)]
-            (if (integer? op)
-              (recur (if (> ^long op 1) `[~(dec ^long op) ~@ops] ops)
-                     na' nb'
-                     (assoc! m (->Coord na' nb') [cur :=])
-                     (long cost))
-              (case op
-                :- (recur ops na' nb
-                          (assoc! m (->Coord na' nb) [cur op])
-                          (inc (long cost)))
-                :+ (recur ops na nb'
-                          (assoc! m (->Coord na nb')
-                                  [cur (if (identical? na ra) :a :i)])
-                          (+ (long cost) 1 (long sb)))
-                :r (recur ops na' nb'
-                          (assoc! m (->Coord na' nb') [cur op])
-                          (+ (long cost) 1 (long sb))))))
-          (let [root (->Coord ra rb)]
-            (vswap! came assoc root (persistent! m))
-            cost))))))
+      (let [first-a (i/get-first ra)
+            first-b (i/get-first rb)]
+        (loop [[op & ops] edits
+               na         first-a
+               nb         first-b
+               cur        (coord first-a first-b)
+               m          (transient {})
+               cost       0]
+          (if op
+            (let [na' (next-node na ra)
+                  nb' (next-node nb rb)
+                  sb  (i/get-size nb)]
+              (if (integer? op)
+                (let [nbr (coord-or-end root na' nb')]
+                  (recur (if (> ^long op 1) `[~(dec ^long op) ~@ops] ops)
+                         na' nb' nbr
+                         (assoc! m nbr [cur :=])
+                         (long cost)))
+                (case op
+                  :- (let [nbr (coord-or-end root na' nb)]
+                       (recur ops na' nb nbr
+                              (assoc! m nbr [cur op])
+                              (inc (long cost))))
+                  :+ (let [nbr (coord-or-end root na nb')]
+                       (recur ops na nb' nbr
+                              (assoc! m nbr
+                                      [cur (if (identical? na ra) :a :i)])
+                              (+ (long cost) 1 (long sb))))
+                  :r (let [nbr (coord-or-end root na' nb')]
+                       (recur ops na' nb' nbr
+                              (assoc! m nbr [cur op])
+                              (+ (long cost) 1 (long sb)))))))
+            (do (vswap! came assoc cur (persistent! m))
+                cost)))))))
+
+(defn- replace-cost
+  ^long [came coord ^long target-size]
+  (vswap! came assoc coord {})
+  (inc target-size))
 
 (defn- compute-diff
-  ^long [ra rb came opts]
+  [ra rb ^Coord coord came opts]
   (let [sa      ^long (i/get-size ra)
         sb      ^long (i/get-size rb)
         va      (i/get-value ra)
         vb      (i/get-value rb)
-        typea   (e/get-type va)
-        coord   (->Coord ra rb)
-        replace #(do (vswap! came assoc coord {})
-                     (inc ^long sb))]
+        typea   (e/get-type va)]
     (cond
       ;; both are leaves, skip or replace
       (= 1 sa sb)
@@ -331,39 +370,42 @@
             2))
       ;; one of them is leaf, replace
       (or (= 1 sa) (= 1 sb))
-      (replace)
+      (replace-cost came coord sb)
       ;; non-empty coll with same type, drill down
       (= typea (e/get-type vb))
       (if (= va vb)
         (do (vswap! came assoc coord {}) 0)
         (let [r (inc ^long sb)
               a (if (and (#{:vec :lst} typea)
-                         (let [cc+1 #(-> % i/get-children count inc)]
-                           (or (= sa (cc+1 ra)) (= sb (cc+1 rb)))))
+                         (or (= sa (inc (count (i/get-children ra))))
+                             (= sb (inc (count (i/get-children rb))))))
                   ;; vec or lst contains leaves only, safe to use quick algo.
-                  (let [res (use-quick ra rb came opts)]
+                  (let [res (use-quick ra rb coord came opts)]
                     (if (= res :timeout) (inc r) res))
                   ;; otherwise run A*
-                  (A* typea ra rb came opts r))]
+                  (A* typea coord came opts r))]
           (cond
-            (or (= a ::bounded) (= a ::timeout)) (replace)
-            (< r (long a))                       (replace)
+            (or (= a ::bounded) (= a ::timeout)) (replace-cost came coord sb)
+            (< r (long a))                       (replace-cost came coord sb)
             :else                                (long a))))
       ;; types differ, can only replace
       :else
-      (replace))))
+      (replace-cost came coord sb))))
+
+(defn- diff-coord*
+  [ra rb ^Coord coord came opts]
+  (if-let [memo (::cost-memo opts)]
+    (let [cached (find @memo coord)]
+      (if cached
+        (long (val cached))
+        (let [cost (compute-diff ra rb coord came opts)]
+          (vswap! memo assoc! coord cost)
+          cost)))
+    (compute-diff ra rb coord came opts)))
 
 (defn- diff*
   ^long [ra rb came opts]
-  (if-let [memo (::cost-memo opts)]
-    (let [coord  (->Coord ra rb)
-          cached (find @memo coord)]
-      (if cached
-        (long (val cached))
-        (let [cost (compute-diff ra rb came opts)]
-          (vswap! memo assoc! coord cost)
-          cost)))
-    (compute-diff ra rb came opts)))
+  (diff-coord* ra rb (coord ra rb) came opts))
 
 ;; generating editscript
 
@@ -433,19 +475,21 @@
     steps))
 
 (defn- trace*
-  [came cur steps]
+  [came ^Coord cur steps]
   (if-let [m (came cur)]
     (if (seq m)
       (loop [v (m cur)]
         (if v
           (let [[prev op] v
-                [na nb]   (get-coord prev)]
+                na        (.-a ^Coord prev)
+                nb        (.-b ^Coord prev)]
             (if (and (came prev) (= op :r))
               (trace* came prev steps)
               (vswap! steps conj [op na nb]))
             (recur (m prev)))
           steps))
-      (let [[ra rb] (get-coord cur)]
+      (let [ra (.-a cur)
+            rb (.-b cur)]
         (vswap! steps conj [(if (= (i/get-value ra) (i/get-value rb)) := :r)
                             ra rb])
         steps))
@@ -471,13 +515,14 @@
              index-context (i/index-context)
              roota (i/index a index-context)
              rootb (i/index b index-context)
+             root-coord (coord roota rootb)
              came  (volatile! {})
-             cost  (diff* roota rootb came opts)]
+             cost  (diff-coord* roota rootb root-coord came opts)]
          ;; #?(:clj (let [total          (* (get-size roota) (get-size rootb))
          ;;               ^long explored (reduce + (map count (vals @came)))]
          ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
          ;;                   cost explored total
          ;;                   (* 100 (double (/ explored total))))))
-         (trace @came (->Coord roota rootb) script opts)
+         (trace @came root-coord script opts)
          script))
      script)))

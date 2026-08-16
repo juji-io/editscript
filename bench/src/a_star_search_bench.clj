@@ -49,40 +49,64 @@
 
 (defn- search-counts
   [origin target]
-  (let [diff-var       (ns-resolve 'editscript.diff.a-star 'diff*)
+  (let [diff-var       (or (ns-resolve 'editscript.diff.a-star 'diff-coord*)
+                           (ns-resolve 'editscript.diff.a-star 'diff*))
         compute-var    (ns-resolve 'editscript.diff.a-star 'compute-diff)
         frontier-var   (ns-resolve 'editscript.diff.a-star 'frontier)
+        coord-var      (ns-resolve 'editscript.diff.a-star '->Coord)
+        step-var       (ns-resolve 'editscript.diff.a-star '->Step)
         original-diff  @diff-var
         original-compute (when compute-var @compute-var)
         original-frontier @frontier-var
+        original-coord @coord-var
+        original-step  (when step-var @step-var)
         calls          (volatile! 0)
         pairs          (volatile! #{})
         computations   (volatile! 0)
         expansions     (volatile! 0)
-        diff-wrapper   (fn ^long [a b came opts]
+        frontier-vectors (volatile! 0)
+        coords         (volatile! 0)
+        steps          (volatile! 0)
+        diff-wrapper   (fn [& args]
                          (vswap! calls inc)
-                         (vswap! pairs conj [(index/get-order a)
-                                             (index/get-order b)])
-                         (original-diff a b came opts))
+                         (let [[a b] args]
+                           (vswap! pairs conj [(index/get-order a)
+                                               (index/get-order b)]))
+                         (apply original-diff args))
         compute-wrapper (when compute-var
-                          (fn ^long [a b came opts]
+                          (fn [& args]
                             (vswap! computations inc)
-                            (original-compute a b came opts)))
-        frontier-wrapper (fn [type init end cur]
+                            (apply original-compute args)))
+        frontier-wrapper (fn [& args]
                            (vswap! expansions inc)
-                           (original-frontier type init end cur))
+                           (let [result (apply original-frontier args)]
+                             (when (vector? result)
+                               (vswap! frontier-vectors inc))
+                             result))
+        coord-wrapper  (fn [& args]
+                         (vswap! coords inc)
+                         (apply original-coord args))
+        step-wrapper   (when step-var
+                         (fn [& args]
+                           (vswap! steps inc)
+                           (apply original-step args)))
         bindings       (cond-> {diff-var diff-wrapper
-                                frontier-var frontier-wrapper}
-                         compute-var (assoc compute-var compute-wrapper))
+                                frontier-var frontier-wrapper
+                                coord-var coord-wrapper}
+                         compute-var (assoc compute-var compute-wrapper)
+                         step-var (assoc step-var step-wrapper))
         script         (with-redefs-fn bindings
                          #(editscript/diff origin target))]
     (when-not (= target (editscript/patch origin script))
       (throw (ex-info "A* search benchmark failed its round trip" {})))
-    {:calls        @calls
-     :unique-pairs (count @pairs)
-     :computations (if compute-var @computations @calls)
-     :expansions   @expansions
-     :script-cost  (editscript/get-size script)}))
+    {:calls            @calls
+     :unique-pairs     (count @pairs)
+     :computations     (if compute-var @computations @calls)
+     :expansions       @expansions
+     :frontier-vectors @frontier-vectors
+     :coordinates      @coords
+     :steps            @steps
+     :script-cost      (editscript/get-size script)}))
 
 (defn- benchmark-workload
   [name [origin-delay target-delay]]
@@ -93,11 +117,14 @@
     (assoc counts :workload name :mean-us mean-us)))
 
 (defn- format-row
-  [{:keys [workload mean-us expansions calls unique-pairs computations
-           script-cost]}]
+  [{:keys [workload mean-us expansions frontier-vectors coordinates steps calls
+           unique-pairs computations script-cost]}]
   [workload
    (format "%.3f" mean-us)
    expansions
+   frontier-vectors
+   coordinates
+   steps
    calls
    unique-pairs
    computations
@@ -109,7 +136,8 @@
   (with-open [writer (io/writer output)]
     (csv/write-csv
       writer
-      (cons ["Workload" "Mean (us)" "State expansions" "Cost calls"
+      (cons ["Workload" "Mean (us)" "State expansions" "Frontier vectors"
+             "Coordinate allocations" "Step allocations" "Cost calls"
              "Unique pairs" "Actual computations" "Memo hits" "Script cost"]
             (map format-row results)))))
 
@@ -121,7 +149,8 @@
                         (benchmark-workload name workload))
                       workloads)]
     (doseq [result results]
-      (println (zipmap [:workload :mean-us :expansions :cost-calls
-                        :unique-pairs :computations :memo-hits :script-cost]
+      (println (zipmap [:workload :mean-us :expansions :frontier-vectors
+                        :coordinates :steps :cost-calls :unique-pairs
+                        :computations :memo-hits :script-cost]
                        (format-row result))))
     (write-results! output results)))

@@ -312,6 +312,36 @@
                        (<= (a-star-search-cost script)
                            (inc (data-nodes b)))))))
 
+(test/defspec large-a-star-frontier-generative-test
+  #?(:cljs 20 :cljr 20 :default 75)
+  (prop/for-all [values (gen/vector gen/small-integer 32 96)
+                 stride (gen/choose 5 13)]
+                (let [origin (mapv (fn [index value]
+                                     {:id index
+                                      :payload [value {:slot (mod index 7)}]})
+                                   (range)
+                                   values)
+                      target (reduce-kv
+                               (fn [result index item]
+                                 (if (zero? (mod index stride))
+                                   (case (long (mod (quot index stride) 3))
+                                     0 result
+                                     1 (conj result
+                                             (assoc-in item
+                                                       [:payload 1 :changed]
+                                                       true))
+                                     2 (conj result item
+                                             {:id [:inserted index]
+                                              :payload [index
+                                                        {:slot :inserted}]}))
+                                   (conj result item)))
+                               []
+                               origin)
+                      script (diff origin target)]
+                  (and (= target (patch origin script))
+                       (<= (a-star-search-cost script)
+                           (inc (data-nodes target)))))))
+
 (test/defspec combine-edits-generative-test
   2000
   (prop/for-all [a recursive-data
