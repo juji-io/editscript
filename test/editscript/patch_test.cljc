@@ -9,7 +9,8 @@
 ;;
 
 (ns editscript.patch-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :as test
              #?@(:cljs [:refer-macros [defspec] :include-macros true])]
             [clojure.test.check.generators :as gen]
@@ -83,6 +84,27 @@
       (is (= (sequential-patch origin script)
              (core/patch origin script))))))
 
+(deftest segment-aware-string-patch-test
+  (testing "character segments are appended directly"
+    (let [script (edit/edits->script
+                   [[[] :s [2 [:+ "XY"] [:- 1] [:r "ZZ"] 1]]])]
+      (is (= "abXYZZf" (core/patch "abcdef" script)))))
+
+  (testing "word segments retain separators, empty tokens, and nesting"
+    (let [script (edit/edits->script
+                   [[[] :sw [1 [:+ [["x"] ["y"]]] [:- 1]
+                             [:r ["z"]] 2]]])]
+      (is (= "a x y z d e" (core/patch "a b c d e" script))))
+    (let [script (edit/edits->script [[[] :sw [3]]])]
+      (is (= "a  b" (core/patch "a  b" script)))))
+
+  (testing "line segments receive exactly one newline between leaves"
+    (let [script (edit/edits->script
+                   [[[] :sl [1 [:+ ["x" "y"]] [:- 1]
+                             [:r ["z"]] 2]]])]
+      (is (= "a\nx\ny\nz\nd\ne"
+             (core/patch "a\nb\nc\nd\ne" script))))))
+
 (def large-row-gen
   (gen/let [id      gen/int
             scores  (gen/vector gen/int 8 24)
@@ -102,6 +124,51 @@
      :queue (apply list queue)
      :flags (set flags)
      :title title}))
+
+(defn- mutate-string-units
+  [units stride]
+  (reduce-kv
+    (fn [result index unit]
+      (if (zero? (mod index stride))
+        (case (long (mod (quot index stride) 3))
+          0 result
+          1 (conj result (str unit "-changed"))
+          2 (conj result unit (str "inserted-" index)))
+        (conj result unit)))
+    []
+    units))
+
+(defn- units->string
+  [level units]
+  (str/join (case level
+              :character ""
+              :word      " "
+              :line      "\n")
+            units))
+
+(test/defspec large-string-segment-patch-equivalence-test
+  #?(:cljs 10 :cljr 10 :default 30)
+  (prop/for-all [values (gen/vector gen/small-integer 128 384)
+                 stride (gen/choose 3 11)]
+    (let [origin-units (mapv (fn [index value]
+                               (str "unit-" index "-" value))
+                             (range)
+                             values)
+          target-units (mutate-string-units origin-units stride)]
+      (every?
+        (fn [[level edit-op]]
+          (let [origin (units->string level origin-units)
+                target (units->string level target-units)
+                script (core/diff origin target
+                                  {:algo             :quick
+                                   :str-diff         level
+                                   :str-change-limit 0.99
+                                   :vec-timeout      nil})]
+            (and (= target (core/patch origin script))
+                 (= target (sequential-patch origin script))
+                 (some #(= edit-op (nth % 1))
+                       (edit/get-edits script)))))
+        [[:character :s] [:word :sw] [:line :sl]]))))
 
 (test/defspec large-batched-patch-equivalence-test
   #?(:cljs 30 :cljr 30 :default 100)

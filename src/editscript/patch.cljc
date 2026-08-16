@@ -10,8 +10,11 @@
 
 (ns ^:no-doc editscript.patch
   (:require [editscript.edit :as e]
-            [editscript.util.common :as c]
-            [clojure.string :as s]))
+            [editscript.util.common :as c])
+  #?(:bb   (:import [java.lang StringBuilder])
+     :clj  (:import [java.lang StringBuilder]
+                    [java.util StringJoiner])
+     :cljr (:import [System.Text StringBuilder])))
 
 #?(:clj (set! *warn-on-reflection* true))
 #?(:cljr (set! *warn-on-reflection* true))
@@ -47,29 +50,190 @@
               (#(concat (nth % 0) (conj (nth % 1) v)))
               (apply list))))
 
+(defn- string-builder
+  [capacity]
+  #?(:clj  (StringBuilder. (int capacity))
+     :cljs (array)
+     :cljr (StringBuilder. (int capacity))))
+
+(defn- builder-string
+  [builder]
+  #?(:clj  (.toString ^StringBuilder builder)
+     :cljs (.join builder "")
+     :cljr (.ToString ^StringBuilder builder)))
+
+(declare append-delimited-value!)
+
+(defn- append-delimited-segment!
+  [builder separator appended? segment]
+  (if (vector? segment)
+    (let [length (long (count segment))]
+      (loop [index     (long 0)
+             appended? appended?]
+        (if (< index length)
+          (recur (long (inc index))
+                 (append-delimited-value! builder separator appended?
+                                          (nth segment index)))
+          appended?)))
+    (loop [values    (seq segment)
+           appended? appended?]
+      (if values
+        (recur (next values)
+               (append-delimited-value! builder separator appended?
+                                        (first values)))
+        appended?))))
+
+(defn- append-delimited-value!
+  [builder ^String separator appended? value]
+  (if (sequential? value)
+    (append-delimited-segment! builder separator appended? value)
+    (do
+      (when appended?
+        #?(:clj  (.append ^StringBuilder builder separator)
+           :cljs (.push builder separator)
+           :cljr (.Append ^StringBuilder builder separator)))
+      (let [^String string-value (if (string? value) value (str value))]
+        #?(:clj  (.append ^StringBuilder builder string-value)
+           :cljs (.push builder string-value)
+           :cljr (.Append ^StringBuilder builder string-value)))
+      true)))
+
+(defn- append-delimited-range!
+  [builder separator appended? values start end]
+  (loop [index     (long start)
+         appended? appended?]
+    (if (< index ^long end)
+      (recur (long (inc index))
+             (append-delimited-value! builder separator appended?
+                                      (nth values index)))
+      appended?)))
+
+#?(:bb
+   (defn- sreplace-character
+     [^String x edits]
+     (let [builder  (StringBuilder. (int (count x)))
+           source-i (volatile! (long 0))]
+       (reduce
+         (fn [^StringBuilder builder edit]
+           (cond
+             (integer? edit)
+             (let [segment (subs x @source-i
+                                 (+ ^long @source-i ^long edit))]
+               (vswap! source-i (partial + edit))
+               (.append builder ^String segment))
+
+             (= (nth edit 0) :-)
+             (do (vswap! source-i (partial + (nth edit 1))) builder)
+
+             (= (nth edit 0) :r)
+             (let [segment (nth edit 1)]
+               (vswap! source-i (partial + (count segment)))
+               (.append builder ^String segment))
+
+             (= (nth edit 0) :+)
+             (.append builder ^String (nth edit 1))))
+         builder
+         edits)
+       (.toString builder)))
+
+   :clj
+   (defn- sreplace-character
+     [^String x edits]
+     (let [sf       subs
+           source-i (volatile! (long 0))
+           joiner   (reduce
+                      (fn [^StringJoiner joiner edit]
+                        (cond
+                          (integer? edit)
+                          (let [segment (sf x @source-i
+                                            (+ ^long @source-i ^long edit))]
+                            (vswap! source-i (partial + edit))
+                            (.add joiner segment))
+
+                          (= (nth edit 0) :-)
+                          (do (vswap! source-i (partial + (nth edit 1)))
+                              joiner)
+
+                          (= (nth edit 0) :r)
+                          (let [segment (nth edit 1)]
+                            (vswap! source-i (partial + (count segment)))
+                            (.add joiner segment))
+
+                          (= (nth edit 0) :+)
+                          (.add joiner (nth edit 1))))
+                      (StringJoiner. "")
+                      edits)]
+       (.toString ^StringJoiner joiner)))
+
+   :default
+   (defn- sreplace-character
+     [x edits]
+     (let [builder    (string-builder (count x))
+           edit-count (long (count edits))]
+       (loop [edit-index (long 0)
+              source-i   (long 0)]
+         (if (< edit-index edit-count)
+           (let [edit       (nth edits edit-index)
+                 next-index (long (inc edit-index))]
+             (if (integer? edit)
+               (let [end (long (+ source-i (long edit)))]
+                 #?(:cljs (.push builder (subs x source-i end))
+                    :cljr (.Append ^StringBuilder builder ^String x
+                                   (int source-i) (int (- end source-i))))
+                 (recur next-index end))
+               (let [op      (nth edit 0)
+                     segment (nth edit 1)]
+                 (case op
+                   :- (recur next-index
+                             (long (+ source-i (long segment))))
+                   :r (do
+                        #?(:cljs (.push builder segment)
+                           :cljr (.Append ^StringBuilder builder ^String segment))
+                        (recur next-index
+                               (long (+ source-i
+                                        (long (count segment))))))
+                   :+ (do
+                        #?(:cljs (.push builder segment)
+                           :cljr (.Append ^StringBuilder builder ^String segment))
+                        (recur next-index source-i))))))
+           (builder-string builder))))))
+
+(defn- sreplace-delimited
+  [x edits separator capacity]
+  (let [builder    (string-builder capacity)
+        edit-count (long (count edits))]
+    (loop [edit-index (long 0)
+           source-i   (long 0)
+           appended?  false]
+      (if (< edit-index edit-count)
+        (let [edit       (nth edits edit-index)
+              next-index (long (inc edit-index))]
+          (if (integer? edit)
+            (let [end (long (+ source-i (long edit)))]
+              (recur next-index end
+                     (append-delimited-range! builder separator appended?
+                                              x source-i end)))
+            (let [op      (nth edit 0)
+                  segment (nth edit 1)]
+              (case op
+                :- (recur next-index
+                          (long (+ source-i (long segment)))
+                          appended?)
+                :r (recur next-index
+                          (long (+ source-i (long (count segment))))
+                          (append-delimited-value! builder separator appended?
+                                                   segment))
+                :+ (recur next-index source-i
+                          (append-delimited-value! builder separator appended?
+                                                   segment))))))
+        (builder-string builder)))))
+
 (defn- sreplace
   [x edits level]
-  (let [x  (c/transform-str x level)
-        sf (if (= level :character) subs subvec)
-        i  (volatile! 0)
-        ss (persistent!
-             (reduce
-               (fn [ss e]
-                 (cond
-                   (integer? e)     (let [s (sf x @i (+ ^long @i ^long e))]
-                                      (vswap! i (partial + e))
-                                      (conj! ss s))
-                   (= (nth e 0) :-) (do (vswap! i (partial + (nth e 1))) ss)
-                   (= (nth e 0) :r) (let [s (nth e 1)]
-                                      (vswap! i (partial + (count s)))
-                                      (conj! ss s))
-                   (= (nth e 0) :+) (conj! ss (nth e 1))))
-               (transient [])
-               edits))]
-    (case level
-      :character (apply str ss)
-      :word      (s/join " " (flatten ss))
-      :line      (s/join "\n" (flatten ss)))))
+  (case level
+    :character (sreplace-character x edits)
+    :word      (sreplace-delimited (c/transform-str x level) edits " " (count x))
+    :line      (sreplace-delimited (c/transform-str x level) edits "\n" (count x))))
 
 (defn- vreplace
   [x p v]
