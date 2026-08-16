@@ -9,8 +9,7 @@
 ;;
 
 (ns ^:no-doc editscript.diff.quick
-  (:require [clojure.set :as set]
-            [editscript.edit :as e]
+  (:require [editscript.edit :as e]
             [editscript.util.common :as c
              #?@(:cljs [:include-macros true])]))
 
@@ -58,10 +57,12 @@
 
 (defn- diff-set
   [script path a b opts]
-  (doseq [va (set/difference a b)]
-    (diff* script (conj path va) va (e/nada) opts))
-  (doseq [vb (set/difference b a)]
-    (diff* script (conj path vb) (e/nada) vb opts)))
+  (doseq [va a]
+    (when-not (contains? b va)
+      (diff* script (conj path va) va (e/nada) opts)))
+  (doseq [vb b]
+    (when-not (contains? a vb)
+      (diff* script (conj path vb) (e/nada) vb opts))))
 
 (defn- diff-lst
   [script path a b opts]

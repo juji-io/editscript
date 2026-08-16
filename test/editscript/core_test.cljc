@@ -362,6 +362,31 @@
                        (= (* 2 entry-count) (edit-distance script))
                        (e/valid-edits? (get-edits script))))))
 
+(test/defspec set-membership-large-generative-test
+  #?(:cljs 15 :cljr 15 :default 50)
+  (prop/for-all [values (gen/vector gen/small-integer 128 384)
+                 stride (gen/choose 3 11)]
+                (let [common          (mapv (fn [index value]
+                                              [:common index value])
+                                            (range)
+                                            values)
+                      changed-indexes (range 0 (count values) stride)
+                      origin          (into (set common)
+                                            (map (fn [index]
+                                                   [:removed index
+                                                    (nth values index)]))
+                                            changed-indexes)
+                      target          (into (set common)
+                                            (map (fn [index]
+                                                   [:added index
+                                                    (nth values index)]))
+                                            changed-indexes)
+                      script          (diff origin target {:algo :quick})]
+                  (and (= target (patch origin script))
+                       (= (* 2 (count changed-indexes))
+                          (edit-distance script))
+                       (e/valid-edits? (get-edits script))))))
+
 
 (test/defspec a-star-end-2-end-generative-test
   2000
