@@ -14,6 +14,7 @@
                                      edit-distance get-size change-ratio
                                      data-nodes]]
             [editscript.edit :as e]
+            [editscript.patch :as patch-util]
             ;; [editscript.diff.quick :as q]
             ;; [editscript.diff.a-star :as a]
             [editscript.util.common :as com
@@ -198,6 +199,15 @@
     [:a]             []               0.5
     [:a]             nil              0.5))
 
+(deftest data-nodes-test
+  (are [data size] (= size (data-nodes data))
+    nil                         1
+    []                          1
+    [1 2 3]                     4
+    {:a {:b 2 :c 3}}            4
+    #{[:a :b] [:c]}             6
+    '({:a [1 2]} {:b #{3 4}})   9))
+
 ;; generative tests
 
 (def compound (fn [inner-gen]
@@ -210,10 +220,61 @@
                                               gen/string])]
                              [1 (gen/return nil)]]))
 
+(def recursive-data
+  (gen/recursive-gen compound scalars))
+
+(defn- indexed-data-nodes
+  [data]
+  (i/get-size (i/index data)))
+
+(defn- indexed-get-data
+  [data path]
+  (reduce patch-util/vget data path))
+
+(defn- indexed-change-ratio
+  [origin editscript]
+  (double
+    (/ (reduce
+         (fn [sum [path op value]]
+           (+ sum (case op
+                    (:r :+) (indexed-data-nodes value)
+                    :s      1
+                    :-      (indexed-data-nodes
+                              (indexed-get-data origin path)))))
+         0
+         (get-edits editscript))
+       (indexed-data-nodes origin))))
+
+(test/defspec data-nodes-index-equivalence-generative-test
+  #?(:cljs 250 :cljr 250 :default 1000)
+  (prop/for-all [subtree recursive-data
+                 copies  (gen/choose 16 256)]
+                (let [shared [subtree]
+                      large  {:shared (vec (repeat copies shared))
+                              :tail   [nil "tail"]}]
+                  (and (= (indexed-data-nodes subtree)
+                          (data-nodes subtree))
+                       (= (indexed-data-nodes large)
+                          (data-nodes large))))))
+
+(test/defspec cached-change-ratio-generative-test
+  #?(:cljs 100 :cljr 100 :default 500)
+  (prop/for-all [subtree recursive-data
+                 copies  (gen/choose 32 512)]
+                (let [shared      [subtree]
+                      origin      (vec (repeat copies shared))
+                      replacement {:replacement shared}
+                      script      (edits->script
+                                    [[[0] :-]
+                                     [[1] :r replacement]
+                                     [[copies] :+ replacement]])]
+                  (= (indexed-change-ratio origin script)
+                     (change-ratio origin script)))))
+
 (test/defspec quick-end-2-end-generative-test
   2000
-  (prop/for-all [a (gen/recursive-gen compound scalars)
-                 b (gen/recursive-gen compound scalars)]
+  (prop/for-all [a recursive-data
+                 b recursive-data]
                 (let [s  (diff a b {:algo :quick})
                       e  (e/get-edits s)
                       s' (e/edits->script e)]
@@ -223,8 +284,8 @@
 
 (test/defspec a-star-end-2-end-generative-test
   2000
-  (prop/for-all [a (gen/recursive-gen compound scalars)
-                 b (gen/recursive-gen compound scalars)]
+  (prop/for-all [a recursive-data
+                 b recursive-data]
                 (let [s  (diff a b)
                       e  (e/get-edits s)
                       s' (e/edits->script e)]
@@ -244,8 +305,8 @@
 
 (test/defspec a-star-replacement-bound-generative-test
   #?(:cljs 100 :cljr 100 :default 500)
-  (prop/for-all [a (gen/recursive-gen compound scalars)
-                 b (gen/recursive-gen compound scalars)]
+  (prop/for-all [a recursive-data
+                 b recursive-data]
                 (let [script (diff a b)]
                   (and (= b (patch a script))
                        (<= (a-star-search-cost script)
@@ -253,9 +314,9 @@
 
 (test/defspec combine-edits-generative-test
   2000
-  (prop/for-all [a (gen/recursive-gen compound scalars)
-                 b (gen/recursive-gen compound scalars)
-                 c (gen/recursive-gen compound scalars)]
+  (prop/for-all [a recursive-data
+                 b recursive-data
+                 c recursive-data]
                 (let [d-ab (diff a b {:algo :quick})
                       d-bc (diff b c {:algo :quick})
                       d-ac (diff a c {:algo :quick})]

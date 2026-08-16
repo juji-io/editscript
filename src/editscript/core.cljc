@@ -11,13 +11,14 @@
 (ns editscript.core
   (:require [editscript.edit :as e]
             [editscript.patch :as p]
-            [editscript.util.index :as i]
             [editscript.diff.quick :as q]
             [editscript.diff.a-star :as a])
   #?(:clj (:import [editscript.edit EditScript]
-                   [clojure.lang MapEntry])
+                   [clojure.lang MapEntry]
+                   [java.util IdentityHashMap])
      :cljr (:import [editscript.edit EditScript]
-                   [clojure.lang MapEntry])))
+                   [clojure.lang MapEntry]
+                   [System.Runtime.CompilerServices RuntimeHelpers])))
 
 (defn diff
   "Create an editscript to represent the transformations needed to turn a
@@ -112,10 +113,90 @@ operations"}
 obtained through calling `get-edits` on an EditScript"}
   edits->script e/edits->script)
 
+(defn- size-context
+  []
+  #?(:clj  (IdentityHashMap.)
+     :cljs (js/WeakMap.)
+     :cljr (volatile! {})))
+
+(defn- cached-size
+  [context data]
+  #?(:clj  (.get ^IdentityHashMap context data)
+     :cljs (.get context data)
+     :cljr (some (fn [[candidate size]]
+                   (when (identical? candidate data) size))
+                 (get @context (RuntimeHelpers/GetHashCode data)))))
+
+(defn- cache-size!
+  [context data size]
+  #?(:clj  (.put ^IdentityHashMap context data size)
+     :cljs (.set context data size)
+     :cljr (vswap! context update (RuntimeHelpers/GetHashCode data)
+                   (fnil conj []) [data size]))
+  size)
+
+(declare data-nodes*)
+
+(defn- collection-nodes
+  ^long [type data]
+  (loop [entries       (seq data)
+         size          (long 1)
+         previous      nil
+         previous-size (long 0)
+         previous?     false]
+    (if entries
+      (let [entry      (first entries)
+            child      (if (= type :map)
+                         (clojure.core/val entry)
+                         entry)
+            ^long child-size (if (and previous? (identical? previous child))
+                               previous-size
+                               (data-nodes* child))]
+        (recur (next entries)
+               (+ size child-size)
+               child
+               (long child-size)
+               true))
+      size)))
+
+(defn- data-nodes*
+  ^long [data]
+  (let [type (e/get-type data)]
+    (if (contains? #{:map :set :vec :lst} type)
+      (collection-nodes type data)
+      1)))
+
+(declare cached-data-nodes*)
+
+(defn- cached-collection-nodes
+  ^long [context type data]
+  (loop [entries (seq data)
+         size    (long 1)]
+    (if entries
+      (let [entry            (first entries)
+            child            (if (= type :map)
+                               (clojure.core/val entry)
+                               entry)
+            ^long child-size (cached-data-nodes* context child)]
+        (recur (next entries)
+               (+ size child-size)))
+      size)))
+
+(defn- cached-data-nodes*
+  ^long [context data]
+  (let [type (e/get-type data)]
+    (if (contains? #{:map :set :vec :lst} type)
+      (if-some [cached (cached-size context data)]
+        (long cached)
+        (let [size (cached-collection-nodes context type data)]
+          (cache-size! context data size)
+          size))
+      1)))
+
 (defn data-nodes
   "Return the number of nodes of a piece of data."
   [data]
-  (i/get-size (i/index data)))
+  (data-nodes* data))
 
 (defn- get-data
   [data path]
@@ -129,12 +210,15 @@ obtained through calling `get-edits` on an EditScript"}
 (defn change-ratio
   "Return an approximation of the ratio of changes of an editscript, a double"
   [origin editscript]
-  (double
-    (/ (reduce
-         (fn [^long sum [path op v]]
-           (+ sum (case op
-                    (:r :+) (data-nodes v)
-                    :s      1
-                    :-      (data-nodes (get-data origin path)))))
-         0 (get-edits editscript))
-       (data-nodes origin))))
+  (let [context     (size-context)
+        origin-size (cached-data-nodes* context origin)]
+    (double
+      (/ (reduce
+           (fn [^long sum [path op v]]
+             (+ sum (case op
+                      (:r :+) (cached-data-nodes* context v)
+                      :s      1
+                      :-      (cached-data-nodes*
+                                context (get-data origin path)))))
+           0 (get-edits editscript))
+         origin-size))))
