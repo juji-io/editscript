@@ -34,6 +34,9 @@
   (get-dels-num [this] "Report the number of deletions")
   (get-reps-num [this] "Report the number of replacements"))
 
+(defprotocol ^:private IEditBuilder
+  (-persistent-script! [this]))
+
 (defprotocol IType
   (get-type [this] "Return a type keyword, :val, :map, :lst, etc."))
 
@@ -157,6 +160,8 @@
     (sizing* data size)
     @size))
 
+(declare generated-script-size)
+
 (deftype ^:no-doc EditScript [^:unsynchronized-mutable ^PersistentVector edits
                               ^boolean auto-sizing?
                               ^:unsynchronized-mutable ^long size
@@ -167,25 +172,31 @@
   IEdit
   (auto-sizing [this path value]
     (when auto-sizing?
+      (when (= -1 size)
+        (set! size (long (+ 0 (long (generated-script-size edits))))))
       (set! size (long (+ 2 size (sizing path) (if value (sizing value) 0)))))
     this)
   (add-data [this path value]
     (locking this
+      (auto-sizing this path value)
       (set! adds-num (inc adds-num))
       (set! edits (conj edits [path :+ value]))
-      (auto-sizing this path value)))
+      this))
   (delete-data [this path]
     (locking this
+      (auto-sizing this path nil)
       (set! dels-num (inc dels-num))
       (set! edits (conj edits [path :-]))
-      (auto-sizing this path nil)))
+      this))
   (replace-data [this path value]
     (locking this
+      (auto-sizing this path value)
       (set! reps-num (inc reps-num))
       (set! edits (conj edits [path :r value]))
-      (auto-sizing this path value)))
+      this))
   (replace-str [this path ops level]
     (locking this
+      (auto-sizing this path "")
       (set! reps-num (inc reps-num))
       (set! edits (conj edits [path
                                (case level
@@ -193,23 +204,93 @@
                                  :word      :sw
                                  :line      :sl)
                                ops]))
-      (auto-sizing this path "")))
+      this))
 
   IEditScript
-  (combine [_ that]
+  (combine [this that]
     (EditScript. (into edits (get-edits that))
                  auto-sizing?
-                 (+ size (get-size that))
+                 (+ (get-size this) (get-size that))
                  (+ adds-num (get-adds-num that))
                  (+ dels-num (get-dels-num that))
                  (+ reps-num (get-reps-num that))))
-  (get-size [_] size)
+  (get-size [this]
+    (if (= -1 size)
+      (locking this
+        (if (= -1 size)
+          (do
+            (set! size
+                  (long (+ 0 (long (generated-script-size edits)))))
+            size)
+          size))
+      size))
   (set-size [this s] (set! size (long s)) this)
   (get-edits [_] edits)
   (get-adds-num [_] adds-num)
   (get-dels-num [_] dels-num)
   (get-reps-num [_] reps-num)
   (edit-distance [_] (+ adds-num dels-num reps-num)))
+
+(defn- generated-script-size
+  [edits]
+  (let [size (volatile! 1)]
+    (doseq [edit edits]
+      (let [path  (nth edit 0)
+            op    (nth edit 1)
+            value (nth edit 2 nil)]
+        (vswap! size + 2)
+        (sizing* path size)
+        (case op
+          (:+ :r)      (when value (sizing* value size))
+          :-           nil
+          (:s :sw :sl) (vswap! size inc))))
+    @size))
+
+(deftype ^:no-doc EditBuilder [^:unsynchronized-mutable edits
+                               ^:unsynchronized-mutable ^long adds-num
+                               ^:unsynchronized-mutable ^long dels-num
+                               ^:unsynchronized-mutable ^long reps-num]
+  IEdit
+  (auto-sizing [this _ _]
+    this)
+  (add-data [this path value]
+    (set! adds-num (inc adds-num))
+    (set! edits (conj! edits [path :+ value]))
+    this)
+  (delete-data [this path]
+    (set! dels-num (inc dels-num))
+    (set! edits (conj! edits [path :-]))
+    this)
+  (replace-data [this path value]
+    (set! reps-num (inc reps-num))
+    (set! edits (conj! edits [path :r value]))
+    this)
+  (replace-str [this path ops level]
+    (set! reps-num (inc reps-num))
+    (set! edits (conj! edits [path
+                              (case level
+                                :character :s
+                                :word      :sw
+                                :line      :sl)
+                              ops]))
+    this)
+
+  IEditBuilder
+  (-persistent-script! [_]
+    ;; -1 defers the recursive size fold until a caller actually requests it.
+    (->EditScript (persistent! edits) true -1
+                  adds-num dels-num reps-num)))
+
+(defn ^:no-doc edit-builder
+  "Create the single-owner transient builder used internally by diffing."
+  []
+  (->EditBuilder (transient []) 0 0 0))
+
+(defn ^:no-doc persistent-script!
+  "Consume an internal edit builder and return its immutable edit vector in an
+  EditScript. A builder must be finalized exactly once."
+  [builder]
+  (-persistent-script! builder))
 
 (defn- valid-str-edits?
   [data level]

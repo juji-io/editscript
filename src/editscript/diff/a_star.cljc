@@ -507,7 +507,7 @@
   ([a b]
    (diff a b nil))
   ([a b opts]
-   (let [script (e/edits->script [])]
+   (let [script (e/edit-builder)]
      (when-not (= a b)
        (let [opts  (-> opts
                        co/with-vec-deadline
@@ -523,6 +523,5 @@
          ;;           (printf "cost is %d, explored %d of %d - %.1f%%\n"
          ;;                   cost explored total
          ;;                   (* 100 (double (/ explored total))))))
-         (trace @came root-coord script opts)
-         script))
-     script)))
+         (trace @came root-coord script opts)))
+     (e/persistent-script! script))))

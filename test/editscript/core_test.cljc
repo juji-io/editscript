@@ -223,6 +223,27 @@
 (def recursive-data
   (gen/recursive-gen compound scalars))
 
+(defn- replay-generated-edits
+  [edits]
+  (let [script (e/edits->script [])]
+    (doseq [[path op value] edits]
+      (case op
+        :+  (e/add-data script path value)
+        :-  (e/delete-data script path)
+        :r  (e/replace-data script path value)
+        :s  (e/replace-str script path value :character)
+        :sw (e/replace-str script path value :word)
+        :sl (e/replace-str script path value :line)))
+    script))
+
+(defn- script-metadata
+  [script]
+  [(get-size script)
+   (e/get-adds-num script)
+   (e/get-dels-num script)
+   (e/get-reps-num script)
+   (edit-distance script)])
+
 (defn- indexed-data-nodes
   [data]
   (i/get-size (i/index data)))
@@ -280,6 +301,46 @@
                       s' (e/edits->script e)]
                   (and (= b (patch a s))
                        (= b (patch a s'))))))
+
+(test/defspec large-quick-builder-generative-test
+  #?(:cljs 15 :cljr 15 :default 50)
+  (prop/for-all [values (gen/vector gen/small-integer 128 384)
+                 stride (gen/choose 3 11)]
+                (let [origin (mapv (fn [index value]
+                                     {:id      index
+                                      :label   (str "item-" index)
+                                      :payload [value {:slot (mod index 7)}]})
+                                   (range)
+                                   values)
+                      target (reduce-kv
+                               (fn [result index item]
+                                 (if (zero? (mod index stride))
+                                   (case (long (mod (quot index stride) 4))
+                                     0 result
+                                     1 (conj result
+                                             (assoc-in item
+                                                       [:payload 1 :changed]
+                                                       false))
+                                     2 (conj result item
+                                             {:id      [:inserted index]
+                                              :label   (str "inserted-" index)
+                                              :payload [nil {:slot :inserted}]})
+                                     3 (conj result
+                                             (update item :label str "!")))
+                                   (conj result item)))
+                               []
+                               origin)
+                      script (diff origin target
+                                   {:algo             :quick
+                                    :str-diff         :character
+                                    :str-change-limit 0.75
+                                    :vec-timeout      nil})
+                      legacy (replay-generated-edits (get-edits script))]
+                  (and (e/valid-edits? (get-edits script))
+                       (= target (patch origin script))
+                       (= (get-edits legacy) (get-edits script))
+                       (= (script-metadata legacy)
+                          (script-metadata script))))))
 
 
 (test/defspec a-star-end-2-end-generative-test
