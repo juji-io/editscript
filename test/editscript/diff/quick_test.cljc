@@ -10,8 +10,14 @@
 
 (ns editscript.diff.quick-test
   (:require [clojure.test :refer [is testing deftest]]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.clojure-test :as test
+             #?@(:cljs [:refer-macros [defspec] :include-macros true])]
+            [clojure.test.check.properties :as prop
+             #?@(:cljs [:include-macros true])]
             [editscript.edit :refer [get-edits]]
-            [editscript.util.common :refer [vec-edits min+plus->replace]]
+            [editscript.util.common :as common
+             :refer [vec-edits min+plus->replace]]
             [editscript.diff.quick :refer [diff]]
             [editscript.core :refer [patch]]))
 
@@ -23,6 +29,141 @@
           d [1 -1 -1 nil -1 1 -1 -1 -1]]
       (is (= (vec-edits a b nil) [2 :+ 2 :- 1 :- 1 :+ :+ :+ 2]))
       (is (= (vec-edits c d nil) [:+ :+ :+ :+ :+ :+ :+ :r :r])))))
+
+(defn- reference-vec-edits*
+  [a b n m]
+  (let [delta (- n m)
+        snake (fn [k x]
+                (loop [x x y (- x k)]
+                  (let [ax (get a x)
+                        by (get b y)]
+                    (if (and (< x n)
+                             (< y m)
+                             (= (type ax) (type by))
+                             (= ax by))
+                      (recur (inc x) (inc y))
+                      x))))
+        update-frontier
+        (fn [frontier k]
+          (let [[delete-x delete-ops] (get frontier (dec k) [-1 []])
+                delete-x             (inc delete-x)
+                [add-x add-ops]       (get frontier (inc k) [-1 []])
+                x                     (max delete-x add-x)
+                snake-x               (snake k x)
+                ops                   (if (> delete-x add-x)
+                                        (conj delete-ops :-)
+                                        (conj add-ops :+))
+                ops                   (if (> snake-x x)
+                                        (conj ops (- snake-x x))
+                                        ops)]
+            (assoc! frontier k [snake-x ops])))]
+    (loop [p 0 frontier (transient {})]
+      (let [frontier (loop [k (- p) frontier frontier]
+                       (if (< k delta)
+                         (recur (inc k) (update-frontier frontier k))
+                         frontier))
+            frontier (loop [k (+ delta p) frontier frontier]
+                       (if (< delta k)
+                         (recur (dec k) (update-frontier frontier k))
+                         frontier))
+            frontier (update-frontier frontier delta)]
+        (if (= n (first (get frontier delta)))
+          (-> (persistent! frontier) (get delta) second rest)
+          (recur (inc p) frontier))))))
+
+(defn- reference-swap-ops
+  [edits]
+  (mapv #(case % :+ :- :- :+ %) edits))
+
+(defn- reference-vec-edits
+  [a b]
+  (let [a (vec a)
+        b (vec b)
+        n (count a)
+        m (count b)
+        edits (if (< n m)
+                (reference-vec-edits* b a m n)
+                (reference-vec-edits* a b n m))]
+    (min+plus->replace (if (< n m) (reference-swap-ops edits) edits))))
+
+(def ^:private sequence-value
+  (gen/elements [nil false true -1 0 1 :a :b "a" "b" [0] '(0)]))
+
+(test/defspec dense-wu-reference-generative-test
+  #?(:cljs 250 :cljr 250 :default 1000)
+  (prop/for-all [a (gen/vector sequence-value 0 80)
+                 b (gen/vector sequence-value 0 80)]
+                (= (reference-vec-edits a b)
+                   (vec-edits a b {:vec-timeout nil}))))
+
+(defn- edits-align?
+  [a b edits]
+  (loop [ops (seq edits)
+         a-index 0
+         b-index 0]
+    (if-let [op (first ops)]
+      (cond
+        (integer? op)
+        (and (pos? op)
+             (<= (+ a-index op) (count a))
+             (<= (+ b-index op) (count b))
+             (= (subvec a a-index (+ a-index op))
+                (subvec b b-index (+ b-index op)))
+             (recur (next ops)
+                    (long (+ a-index op))
+                    (long (+ b-index op))))
+
+        (= op :-)
+        (and (< a-index (count a))
+             (recur (next ops) (inc a-index) b-index))
+
+        (= op :+)
+        (and (< b-index (count b))
+             (recur (next ops) a-index (inc b-index)))
+
+        (= op :r)
+        (and (< a-index (count a))
+             (< b-index (count b))
+             (recur (next ops) (inc a-index) (inc b-index)))
+
+        :else false)
+      (and (= a-index (count a))
+           (= b-index (count b))))))
+
+(test/defspec large-wu-alignment-generative-test
+  #?(:cljs 50 :cljr 50 :default 200)
+  (prop/for-all [a      (gen/vector gen/small-integer 128 512)
+                 stride (gen/choose 3 17)]
+                (let [b (reduce-kv
+                          (fn [result index value]
+                            (if (zero? (mod index stride))
+                              (case (long (mod (quot index stride) 3))
+                                0 result
+                                1 (conj result [:changed value])
+                                2 (conj result value [:inserted value]))
+                              (conj result value)))
+                          []
+                          a)
+                      edits (vec-edits a b {:vec-timeout nil})]
+                  (edits-align? a b edits))))
+
+(deftest long-snake-timeout-test
+  (let [clock-calls (volatile! 0)
+        values      (vec (range 10000))]
+    (with-redefs [common/current-time
+                  (fn []
+                    (if (<= (vswap! clock-calls inc) 2) 0 2))]
+      (is (= :timeout (vec-edits values values {:vec-timeout 1})))
+      (is (<= 3 @clock-calls)))))
+
+(deftest long-frontier-timeout-test
+  (let [clock-calls (volatile! 0)
+        values      (vec (range 10000))]
+    (with-redefs [common/current-time
+                  (fn []
+                    (if (<= (vswap! clock-calls inc) 2) 0 2))]
+      (is (= :timeout (vec-edits values [] {:vec-timeout 1})))
+      (is (<= 3 @clock-calls)))))
 
 (deftest min+plus->replace-test
   (testing "Replacement of consecutive :- :+ with :r"

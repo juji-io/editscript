@@ -11,7 +11,10 @@
 (ns ^:no-doc editscript.util.common
   (:refer-clojure :exclude [slurp])
   (:require [editscript.edit :as e]
-            [clojure.string :as s]))
+            [editscript.util.arrays :as arrays
+             #?@(:cljs [:include-macros true])]
+            [clojure.string :as s])
+  #?(:cljr (:import [System.Diagnostics Stopwatch])))
 
 #?(:clj (set! *warn-on-reflection* true))
 #?(:clj (set! *unchecked-math* :warn-on-boxed))
@@ -31,10 +34,11 @@
      (e/replace-data ~script ~path ~b)))
 
 (defn current-time
-  ^long []
-  #?(:clj (System/currentTimeMillis) 
-     :cljr (.ToUnixTimeMilliseconds (DateTimeOffset/Now))
-  :cljs (.getTime (js/Date.))))
+  []
+  #?(:clj  (quot (System/nanoTime) 1000000)
+     :cljs (long (.now js/performance))
+     :cljr (quot (* (Stopwatch/GetTimestamp) 1000)
+                 Stopwatch/Frequency)))
 
 (defn with-vec-deadline
   "Attach one absolute vector-diff deadline to an options map.
@@ -48,12 +52,84 @@
     (if (or (contains? opts ::vec-deadline) (nil? timeout))
       opts
       (assoc opts ::vec-deadline
-             (+ (current-time) (long timeout))))))
+             (+ (long (current-time)) (long timeout))))))
 
 (defn vec-timed-out?
   [opts]
   (when-let [deadline (::vec-deadline opts)]
-    (<= ^long deadline (current-time))))
+    (<= ^long deadline (long (current-time)))))
+
+(def ^:private deadline-check-mask (long 255))
+
+(defn- periodic-timeout?
+  [deadline ^long iterations]
+  (and deadline
+       (pos? iterations)
+       (zero? (bit-and iterations (long deadline-check-mask)))
+       (<= ^long deadline (long (current-time)))))
+
+#?(:cljs
+   (defprotocol ITrace
+     (addTrace [trace previous edge])
+     (previousAt [trace trace-id])
+     (edgeAt [trace trace-id]))
+   :bb
+   (defprotocol ITrace
+     (addTrace [trace previous edge])
+     (previousAt [trace trace-id])
+     (edgeAt [trace trace-id]))
+   :default
+   (definterface ITrace
+     (^long addTrace [^long previous ^long edge])
+     (^long previousAt [^long trace-id])
+     (^long edgeAt [^long trace-id])))
+
+(deftype Trace [^:unsynchronized-mutable previous
+                ^:unsynchronized-mutable edges
+                ^:unsynchronized-mutable ^long size]
+  ITrace
+  (addTrace [_ predecessor edge]
+    (let [index size]
+      (when (= index (arrays/ints-count previous))
+        (set! previous (arrays/grow-ints previous))
+        (set! edges (arrays/grow-ints edges)))
+      (arrays/set-int-at! previous index predecessor)
+      (arrays/set-int-at! edges index edge)
+      (set! size (inc (long index)))
+      index))
+  (previousAt [_ trace-id]
+    (arrays/int-at previous trace-id))
+  (edgeAt [_ trace-id]
+    (arrays/int-at edges trace-id)))
+
+(defn- make-trace
+  [capacity]
+  (->Trace (arrays/make-ints capacity)
+           (arrays/make-ints capacity)
+           0))
+
+(defn- trace-edits
+  [^Trace trace ^long trace-id]
+  (loop [trace-id (long trace-id)
+         reversed (transient [])]
+    (if (neg? trace-id)
+      (into [] (rseq (persistent! reversed)))
+      (let [previous       (long #?(:cljs (previousAt trace trace-id)
+                                    :bb (previousAt trace trace-id)
+                                    :default
+                                    (.previousAt ^ITrace trace trace-id)))
+            edge           (long #?(:cljs (edgeAt trace trace-id)
+                                    :bb (edgeAt trace trace-id)
+                                    :default
+                                    (.edgeAt ^ITrace trace trace-id)))
+            snake          (dec #?(:clj  (Math/abs edge)
+                                   :cljs (js/Math.abs edge)
+                                   :cljr (Math/Abs edge)))
+            reversed (if (pos? snake) (conj! reversed snake) reversed)
+            reversed (if (neg? previous)
+                       reversed
+                       (conj! reversed (if (neg? edge) :- :+)))]
+        (recur (long previous) reversed)))))
 
 (defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
@@ -67,45 +143,112 @@
   (let [^long n n
         ^long m m
         delta   (- n m)
+        offset  (inc m)
+        ;; Zero is the missing-value sentinel in both arrays. Furthest x
+        ;; positions and trace ids are stored incremented so p=0 needs no
+        ;; initialization pass, which matters when the length delta is large.
+        furthest (arrays/make-ints (+ n m 3))
+        paths    (arrays/make-ints (+ n m 3))
+        trace    (make-trace (max 16 (inc delta)))
+        timed-out? (volatile! false)
         snake   (fn [^long k ^long x]
-                  (loop [x x y (- x k)]
-                    (let [ax (get a x) by (get b y)]
-                      (if (and (< x n)
-                               (< y m)
-                               (= (type ax) (type by))
-                               (= ax by))
-                        (recur (inc x) (inc y))
-                        x))))
-        fp-fn   (fn [fp ^long k]
-                  (let [[dk-1 vk-1] (get fp (dec k) [-1 []])
-                        dk-1        (inc ^long dk-1)
-                        [dk+1 vk+1] (get fp (inc k) [-1 []])
-                        x           (max dk-1 ^long dk+1)
-                        ^long sk    (snake k x)
-                        ops         (let [es (if (> dk-1 ^long dk+1)
-                                               (conj vk-1 :-)
-                                               (conj vk+1 :+))]
-                                      (if (> sk x)
-                                        (conj es (- sk x))
-                                        es))]
-                    (assoc! fp k [sk ops])))]
-    (loop [p 0 fp (transient {})]
-      (let [fp (loop [k (* -1 p) fp fp]
-                 (if (< k delta)
-                   (recur (inc k) (fp-fn fp k))
-                   fp))
-            fp (loop [k (+ delta p) fp fp]
-                 (if (< delta k)
-                   (recur (dec k) (fp-fn fp k))
-                   fp))
-            fp (fp-fn fp delta)]
-        (cond
-          (and deadline (<= ^long deadline (current-time)))
-          :timeout
-          (= n (nth (get fp delta) 0))
-          (-> (persistent! fp) (get delta) (#(nth % 1)) rest)
-          :else
-          (recur (inc p) fp))))))
+                  (loop [x x
+                         y (- x k)
+                         until-check (long 256)]
+                    (if (and (< x n)
+                             (< y m)
+                             (let [ax (get a x)
+                                   by (get b y)]
+                               (and (= (type ax) (type by))
+                                    (= ax by))))
+                      (let [x'          (inc x)
+                            y'          (inc y)
+                            until-check (dec until-check)]
+                        (if (zero? until-check)
+                          (if (and deadline
+                                   (<= ^long deadline (long (current-time))))
+                            (do (vreset! timed-out? true) x')
+                            (recur x' y' 256))
+                          (recur x' y' until-check)))
+                      x)))
+        fp-fn   (fn [^long k]
+                  (let [index        (long (+ offset k))
+                        from-delete  (long (arrays/int-at furthest
+                                                          (dec index)))
+                        from-add     (dec (long (arrays/int-at
+                                                 furthest (inc index))))
+                        delete?      (> from-delete from-add)
+                        x            (long (if delete? from-delete from-add))
+                        previous     (dec (long (arrays/int-at
+                                                 paths
+                                                 (if delete?
+                                                   (dec index)
+                                                   (inc index)))))
+                        ^long sk     (snake k x)
+                        snake-length (long (- sk x))
+                        edge         (long (if delete?
+                                             (- (inc snake-length))
+                                             (inc snake-length)))
+                        trace-id     (long #?(:cljs (addTrace trace previous
+                                                              edge)
+                                             :bb (addTrace trace previous edge)
+                                             :default
+                                             (.addTrace ^ITrace trace previous
+                                                        edge)))]
+                    (arrays/set-int-at! furthest index (inc sk))
+                    (arrays/set-int-at! paths index (inc trace-id))))]
+    (loop [p (long 0)]
+      (if (and deadline (<= ^long deadline (long (current-time))))
+        :timeout
+        (let [low-boundary  (+ offset (- p) -1)
+              high-boundary (+ offset delta p 1)
+              _             (do
+                              (arrays/set-int-at! furthest low-boundary 0)
+                              (arrays/set-int-at! paths low-boundary 0)
+                              (arrays/set-int-at! furthest high-boundary 0)
+                              (arrays/set-int-at! paths high-boundary 0))
+              ^long updates
+              (loop [k (- p)
+                     updates (long 0)]
+                (if (< k delta)
+                  (if (and deadline
+                           (periodic-timeout? deadline updates))
+                    -1
+                    (do (fp-fn k)
+                        (if (and deadline @timed-out?)
+                          -1
+                          (recur (inc k) (inc updates)))))
+                  updates))]
+          (if (neg? updates)
+            :timeout
+            (let [^long updates
+                  (loop [k (+ delta p)
+                         updates (long updates)]
+                    (if (< delta k)
+                      (if (and deadline
+                               (periodic-timeout? deadline updates))
+                        -1
+                        (do (fp-fn k)
+                            (if (and deadline @timed-out?)
+                              -1
+                              (recur (dec k) (inc updates)))))
+                      updates))]
+              (if (neg? updates)
+                :timeout
+                (do
+                  (fp-fn delta)
+                  (cond
+                    (or (and deadline @timed-out?)
+                        (and deadline
+                             (<= ^long deadline (long (current-time)))))
+                    :timeout
+
+                    (= (inc n) (arrays/int-at furthest (+ offset delta)))
+                    (trace-edits trace
+                                 (dec (arrays/int-at paths (+ offset delta))))
+
+                    :else
+                    (recur (inc p))))))))))))
 
 (defn- swap-ops
   [edits]
