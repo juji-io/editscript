@@ -23,6 +23,13 @@
     (c/diff 1 2)
     (c/diff 3 2)))
 
+(deftest nada-singleton-test
+  (let [first-nada  (e/nada)
+        second-nada (e/nada)]
+    (is (identical? first-nada second-nada))
+    (is (= :nil (e/get-type first-nada)))
+    (is (not (nil? first-nada)))))
+
 (deftest valid-edits-test
   (are [edits] (e/valid-edits? edits)
     []

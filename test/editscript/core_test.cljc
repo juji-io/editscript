@@ -342,6 +342,26 @@
                        (= (script-metadata legacy)
                           (script-metadata script))))))
 
+(test/defspec nada-singleton-large-map-generative-test
+  #?(:cljs 15 :cljr 15 :default 50)
+  (prop/for-all [values (gen/vector gen/small-integer 128 384)]
+                (let [entry-count (count values)
+                      origin      (into {}
+                                        (map-indexed
+                                          (fn [index value]
+                                            [index {:value value}]))
+                                        values)
+                      target      (into {}
+                                        (map-indexed
+                                          (fn [index value]
+                                            [(+ entry-count index)
+                                             {:value value}]))
+                                        values)
+                      script      (diff origin target {:algo :quick})]
+                  (and (= target (patch origin script))
+                       (= (* 2 entry-count) (edit-distance script))
+                       (e/valid-edits? (get-edits script))))))
+
 
 (test/defspec a-star-end-2-end-generative-test
   2000

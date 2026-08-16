@@ -40,11 +40,14 @@
 (defprotocol IType
   (get-type [this] "Return a type keyword, :val, :map, :lst, etc."))
 
-(defn nada
-  "A special type means 'not present'"
-  []
+(def ^:private nada-instance
   (reify IType
     (get-type [_] :nil)))
+
+(defn nada
+  "Return the singleton sentinel that means 'not present'."
+  []
+  nada-instance)
 
 #?(:clj
    (extend-protocol IType
