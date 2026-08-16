@@ -80,30 +80,17 @@
 
 (defn- get-coord [^Coord coord] [(.-a coord) (.-b coord)])
 
-(defprotocol IStep
-  (operator [this] "Operator to try")
-  (current [this] "Starting pair of nodes")
-  (neighbor [this] "Destination pair of nodes"))
-
 (deftype Step [^Keyword op
                ^Coord cur
-               ^Coord nbr]
-  IStep
-  (operator [_] op)
-  (current [_] cur)
-  (neighbor [_] nbr))
+               ^Coord nbr])
 
 #?(:clj
    (defmethod print-method Step
-     [x ^Writer writer]
-     (print-method {:op  (operator x)
-                    :cur (current x)
-                    :nbr (neighbor x)}
+     [^Step x ^Writer writer]
+     (print-method {:op  (.-op x)
+                    :cur (.-cur x)
+                    :nbr (.-nbr x)}
                    writer)))
-
-(defn- get-step
-  [step]
-  ((juxt operator current neighbor) step))
 
 (defprotocol IState
   (get-came [this] "Get the local succession map")
@@ -123,10 +110,6 @@
   (set-open [this o] (set! open o) this)
   (get-g [_] g)
   (set-g [this got] (set! g got) this))
-
-(defn- get-state
-  [state]
-  ((juxt get-came get-open get-g) state))
 
 (defn- access-g
   [g cur]
@@ -171,12 +154,16 @@
                     :else     2))))
 
 (defn- explore
-  [type end came goal state step opts upper-bound]
-  (let [[came' open g] (get-state state)
-        [op cur nbr]   (get-step step)
-        tmp-g          (compute-cost cur came g op opts)
-        estimate       (+ ^long tmp-g
-                          ^long (heuristic type nbr end goal))]
+  [type end came goal ^State state ^Step step opts upper-bound]
+  (let [came'    (get-came state)
+        open     (get-open state)
+        g        (get-g state)
+        op       (.-op step)
+        cur      (.-cur step)
+        nbr      (.-nbr step)
+        tmp-g    (compute-cost cur came g op opts)
+        estimate (+ ^long tmp-g
+                    ^long (heuristic type nbr end goal))]
     (if (or (>= ^long tmp-g ^long (access-g g nbr))
             (> ^long estimate ^long upper-bound))
       state
@@ -255,10 +242,11 @@
         sequence? (#{:vec :lst} type)]
     (if (> ^long initial-estimate ^long upper-bound)
       ::bounded
-      (loop [state (->State (transient {})
-                            (pa/priority-map init initial-estimate)
-                            (transient {init 0}))]
-        (let [[came' open _] (get-state state)]
+      (loop [^State state (->State (transient {})
+                                   (pa/priority-map init initial-estimate)
+                                   (transient {init 0}))]
+        (let [came' (get-came state)
+              open  (get-open state)]
           (cond
             (empty? open)
             ::bounded
