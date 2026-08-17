@@ -419,8 +419,8 @@
                            (inc (data-nodes b)))))))
 
 (test/defspec large-a-star-frontier-generative-test
-  #?(:cljs 20 :cljr 20 :default 75)
-  (prop/for-all [values (gen/vector gen/small-integer 32 96)
+  #?(:cljs 30 :cljr 20 :default 75)
+  (prop/for-all [values (gen/vector gen/small-integer 48 160)
                  stride (gen/choose 5 13)]
                 (let [origin (mapv (fn [index value]
                                      {:id index

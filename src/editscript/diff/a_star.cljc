@@ -12,8 +12,7 @@
   (:require [editscript.edit :as e]
             [editscript.util.pairing :as pa]
             [editscript.util.index :as i]
-            [editscript.util.common :as co]
-            #?(:cljs [goog.math.Long :refer [getMaxValue]]))
+            [editscript.util.common :as co])
   #?(:clj (:import [java.lang Comparable]
                    [editscript.util.index Node])
      :cljr (:import [editscript.util.index Node])))
@@ -119,7 +118,7 @@
   [g cur]
   (get g cur #?(:clj Long/MAX_VALUE
                 :cljr Int64/MaxValue
-                :cljs (getMaxValue))))
+                :cljs js/Number.POSITIVE_INFINITY)))
 
 (declare diff*)
 
