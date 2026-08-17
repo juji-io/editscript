@@ -5,7 +5,7 @@
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
   :source-paths ["src" "../src"]
-  :plugins [[lein-cljsbuild "1.1.7"]]
+  :plugins [[lein-cljsbuild "1.1.8"]]
   :cljsbuild {:builds
               {:a-star-g
                {:source-paths ["src" "../src"]
@@ -23,14 +23,14 @@
                            :main          "editscript.bench.pairing-two-pass"
                            :target        :nodejs
                            :parallel-build true}}}}
-  :dependencies [[org.clojure/clojure "1.12.4"]
-                 [org.clojure/clojurescript "1.12.134"
+  :dependencies [[org.clojure/clojure "1.12.5"]
+                 [org.clojure/clojurescript "1.12.145"
                   :exclusions [org.clojure/core.rrb-vector]]
                  [quantum/org.clojure.core.rrb-vector "0.0.12"]
-                 [org.clojure/math.combinatorics "0.1.6"]
+                 [org.clojure/math.combinatorics "0.3.2"]
                  [org.clojure/test.check "1.1.3"]
-                 [org.clojure/data.csv "1.0.0"]
+                 [org.clojure/data.csv "1.1.1"]
                  [criterium "0.4.6"]
-                 [com.taoensso/nippy "3.1.1"]
+                 [com.taoensso/nippy "3.8.1"]
                  [differ "0.3.3"]
-                 [lambdaisland/deep-diff2 "2.0.108"]])
+                 [lambdaisland/deep-diff2 "2.14.235"]])

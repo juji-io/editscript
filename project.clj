@@ -8,9 +8,9 @@
                                     :sign-releases false}]]
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.12.4"]]
-  :plugins [[lein-cljsbuild "1.1.7"]
-            [lein-doo "0.1.10"]]
+  :dependencies [[org.clojure/clojure "1.12.5"]]
+  :plugins [[lein-cljsbuild "1.1.8"]
+            [lein-doo "0.1.11"]]
   :doo {:build "node"
         :paths {:karma "./node_modules/karma/bin/karma"}
         :karma {:config {"browserDisconnectTimeout" 30000
@@ -52,7 +52,7 @@
              {:aot      [#"editscript\.*"]
               :jvm-opts ["-Dclojure.compiler.direct-linking=true"] }
              :dev
-             {:dependencies [[org.clojure/clojurescript "1.12.134"
+             {:dependencies [[org.clojure/clojurescript "1.12.145"
                               :exclusions [org.clojure/core.rrb-vector]]
                              ;;see https://github.com/emezeske/lein-cljsbuild/issues/469
                              [quantum/org.clojure.core.rrb-vector "0.0.12"]
