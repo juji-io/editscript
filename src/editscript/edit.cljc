@@ -219,9 +219,10 @@
 
   IEditScript
   (combine [this that]
+    ;; Both sizes include an outer edits vector; concatenation shares one.
     (EditScript. (into edits (get-edits that))
                  auto-sizing?
-                 (+ (get-size this) (get-size that))
+                 (dec (+ (get-size this) (get-size that)))
                  (+ adds-num (get-adds-num that))
                  (+ dels-num (get-dels-num that))
                  (+ reps-num (get-reps-num that))))

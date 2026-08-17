@@ -316,18 +316,250 @@
           bc       (core/diff b c {:algo bc-algorithm :vec-timeout nil})
           ab-before (script-metadata ab)
           bc-before (script-metadata bc)
-          combined (edit/combine ab bc)]
+          combined (edit/combine ab bc)
+          rebuilt  (edit/edits->script (edit/get-edits combined))]
       (and (= c (core/patch a combined))
            (= c (sequential-patch a combined))
            (edit/valid-edits? (edit/get-edits combined))
            (= (into (edit/get-edits ab) (edit/get-edits bc))
               (edit/get-edits combined))
-           (= (+ (edit/get-size ab) (edit/get-size bc))
+           (= (dec (+ (edit/get-size ab) (edit/get-size bc)))
               (edit/get-size combined))
            (= (+ (edit/edit-distance ab) (edit/edit-distance bc))
               (edit/edit-distance combined))
+           (= (script-metadata combined) (script-metadata rebuilt))
            (= ab-before (script-metadata ab))
            (= bc-before (script-metadata bc))))))
+
+(def fuzz-state-gen
+  (gen/let [payload       nested-data-gen
+            vector-values (gen/vector nested-data-gen 0 5)
+            list-values   (gen/vector nested-data-gen 0 5)
+            set-values    (gen/vector nested-data-gen 0 5)
+            map-values    (gen/vector nested-data-gen 0 5)]
+    (let [shared [payload]]
+      {:payload  payload
+       :vector   vector-values
+       :list     (apply list list-values)
+       :set      (set set-values)
+       :map      (into {}
+                       (map-indexed (fn [index value]
+                                      [[:entry index] value]))
+                       map-values)
+       :shared-a shared
+       :shared-b shared
+       :nil      nil
+       :false    false})))
+
+(def fuzz-command-gen
+  (gen/let [kind     (gen/elements [:add :delete :replace])
+            selector gen/small-integer
+            position gen/small-integer
+            token    gen/small-integer
+            value    nested-data-gen]
+    {:kind     kind
+     :selector selector
+     :position position
+     :token    token
+     :value    value}))
+
+(def fuzz-edit-sequence-gen
+  (gen/tuple fuzz-state-gen (gen/vector fuzz-command-gen 1 32)))
+
+(defn- fuzz-locations
+  [data]
+  (letfn [(walk [locations path value]
+            (let [locations (conj locations [path value])]
+              (case (edit/get-type value)
+                :map
+                (reduce-kv (fn [result key child]
+                             (walk result (conj path key) child))
+                           locations
+                           value)
+
+                (:vec :lst)
+                (reduce-kv (fn [result index child]
+                             (walk result (conj path index) child))
+                           locations
+                           (vec value))
+
+                :set
+                (reduce (fn [result child]
+                          (walk result (conj path child) child))
+                        locations
+                        value)
+
+                locations)))]
+    (walk [] [] data)))
+
+(defn- reference-child
+  [data slot]
+  (case (edit/get-type data)
+    :lst             (nth data slot)
+    (:map :vec :set) (get data slot)))
+
+(defn- reference-replace-child
+  [data slot value]
+  (case (edit/get-type data)
+    :map (assoc data slot value)
+    :vec (assoc data slot value)
+    :lst (apply list (assoc (vec data) slot value))
+    :set (conj (disj data slot) value)))
+
+(defn- reference-replace-at
+  [data path value]
+  (if (empty? path)
+    value
+    (let [slot (first path)]
+      (reference-replace-child
+        data slot
+        (reference-replace-at (reference-child data slot)
+                              (subvec path 1)
+                              value)))))
+
+(defn- reference-get-at
+  [data path]
+  (reduce reference-child data path))
+
+(defn- insert-sequential
+  [data index value]
+  (let [values (vec data)
+        result (into (conj (subvec values 0 index) value)
+                     (subvec values index))]
+    (if (= :lst (edit/get-type data))
+      (apply list result)
+      result)))
+
+(defn- delete-sequential
+  [data index]
+  (let [values (vec data)
+        result (into (subvec values 0 index)
+                     (subvec values (inc index)))]
+    (if (= :lst (edit/get-type data))
+      (apply list result)
+      result)))
+
+(defn- reference-add-child
+  [data slot value]
+  (case (edit/get-type data)
+    :map (assoc data slot value)
+    (:vec :lst) (insert-sequential data slot value)
+    :set (conj data value)))
+
+(defn- reference-delete-child
+  [data slot]
+  (case (edit/get-type data)
+    :map (dissoc data slot)
+    (:vec :lst) (delete-sequential data slot)
+    :set (disj data slot)))
+
+(defn- fresh-member
+  [data marker token preferred]
+  (loop [attempt 0
+         candidate preferred]
+    (if (contains? data candidate)
+      (recur (inc attempt) [marker token attempt preferred])
+      candidate)))
+
+(defn- different-value
+  [old value token]
+  (if (= old value)
+    [::fuzz-replacement token value]
+    value))
+
+(defn- choose-location
+  [locations selector]
+  (nth locations (long (mod selector (count locations)))))
+
+(defn- realize-add
+  [state {:keys [selector position token value]}]
+  (let [containers (filterv (fn [[_ candidate]]
+                              (contains? #{:map :vec :lst :set}
+                                         (edit/get-type candidate)))
+                            (fuzz-locations state))
+        [path data] (choose-location containers selector)
+        type        (edit/get-type data)
+        slot        (case type
+                      :map (fresh-member data ::fuzz-key token
+                                         [::fuzz-key token])
+                      (:vec :lst) (long (mod position (inc (count data))))
+                      :set (fresh-member data ::fuzz-member token value))
+        value       (if (= type :set) slot value)
+        target-data (reference-add-child data slot value)]
+    {:edit   [(conj path slot) :+ value]
+     :target (reference-replace-at state path target-data)}))
+
+(defn- realize-delete
+  [state {:keys [selector] :as command}]
+  (let [locations (subvec (fuzz-locations state) 1)]
+    (if (empty? locations)
+      (realize-add state command)
+      (let [[path _]   (choose-location locations selector)
+            parent-path (pop path)
+            slot         (peek path)
+            parent       (reference-get-at state parent-path)
+            target-data  (reference-delete-child parent slot)]
+        {:edit   [path :-]
+         :target (reference-replace-at state parent-path target-data)}))))
+
+(defn- realize-replace
+  [state {:keys [selector token value] :as command}]
+  (let [locations (subvec (fuzz-locations state) 1)]
+    (if (empty? locations)
+      (realize-add state command)
+      (let [[path old]  (choose-location locations selector)
+            parent-path (pop path)
+            slot         (peek path)
+            parent       (reference-get-at state parent-path)
+            value        (if (= :set (edit/get-type parent))
+                           (fresh-member parent ::fuzz-replacement token value)
+                           (different-value old value token))
+            target-data  (reference-replace-child parent slot value)]
+        {:edit   [path :r value]
+         :target (reference-replace-at state parent-path target-data)}))))
+
+(defn- realize-fuzz-command
+  [state {:keys [kind] :as command}]
+  (case kind
+    :add     (realize-add state command)
+    :delete  (realize-delete state command)
+    :replace (realize-replace state command)))
+
+(defn- algorithm-cycle-invariants?
+  [before target algorithm]
+  (let [options {:algo algorithm :vec-timeout nil}
+        forward (core/diff before target options)
+        reverse (core/diff target before options)
+        cycle   (edit/combine forward reverse)]
+    (and (data-script-invariants? before target forward)
+         (data-script-invariants? target before reverse)
+         (data-script-invariants? before before cycle))))
+
+(defn- fuzz-edit-sequence?
+  [[initial commands]]
+  (loop [before     initial
+         cumulative (edit/edits->script [])
+         commands   (seq commands)]
+    (if-let [command (first commands)]
+      (let [{:keys [edit target]} (realize-fuzz-command before command)
+            direct      (edit/edits->script [edit])
+            cumulative' (edit/combine cumulative direct)
+            valid?      (and (not= before target)
+                             (data-script-invariants? before target direct)
+                             (data-script-invariants? initial target cumulative')
+                             (algorithm-cycle-invariants?
+                               before target :a-star)
+                             (algorithm-cycle-invariants?
+                               before target :quick))]
+        (if valid?
+          (recur target cumulative' (next commands))
+          false))
+      true)))
+
+(test/defspec randomized-edit-sequence-roundtrip-fuzz-test
+  #?(:cljs 30 :cljr 30 :default 150)
+  (prop/for-all [fuzz-case fuzz-edit-sequence-gen]
+    (fuzz-edit-sequence? fuzz-case)))
 
 (deftest exhaustive-small-cross-type-roundtrip-test
   (let [corpus [nil false true -1 0 1 "" "a" "a b" [] '() {} #{}
