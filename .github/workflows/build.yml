@@ -52,6 +52,28 @@ jobs:
            bb test:bb
 
 
+   cljr-test:
+     runs-on: ubuntu-latest
+     timeout-minutes: 20
+     steps:
+       - name: Git checkout
+         uses: actions/checkout@v4
+
+       - name: Prepare .NET
+         uses: actions/setup-dotnet@v4
+         with:
+          dotnet-version: '8.0.x'
+
+       - name: Install ClojureCLR tools
+         run: |
+           dotnet tool install --global Clojure.Main --version 1.12.2
+           dotnet tool install --global Clojure.Cljr --version 0.1.0-alpha11
+           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+       - name: Run ClojureCLR tests
+         run: cljr -X:test
+
+
    cljs-test:
      runs-on: ubuntu-latest
      steps:
