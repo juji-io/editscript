@@ -337,7 +337,7 @@
                  (< (* ca (- 1.0 ^double str-change-limit)) unchanged))
           (let [edits' (group-strs edits b' str-diff)]
             (e/replace-str script path edits' str-diff))
-          (e/replace-data script path b'))))))
+          (e/replace-data script path b))))))
 
 #?(:clj (defmacro vslurp
           [file]

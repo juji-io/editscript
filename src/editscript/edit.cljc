@@ -44,6 +44,10 @@
   (reify IType
     (get-type [_] :nil)))
 
+;; `nil` and `false` are valid added/replacement values. Keep a distinct marker
+;; for the one operation (deletion) whose edit vector omits a value entirely.
+(def ^:private omitted-value (volatile! nil))
+
 (defn nada
   "Return the singleton sentinel that means 'not present'."
   []
@@ -177,7 +181,11 @@
     (when auto-sizing?
       (when (= -1 size)
         (set! size (long (+ 0 (long (generated-script-size edits))))))
-      (set! size (long (+ 2 size (sizing path) (if value (sizing value) 0)))))
+      (set! size
+            (long (+ 2 size (sizing path)
+                     (if (identical? value omitted-value)
+                       0
+                       (sizing value))))))
     this)
   (add-data [this path value]
     (locking this
@@ -187,7 +195,7 @@
       this))
   (delete-data [this path]
     (locking this
-      (auto-sizing this path nil)
+      (auto-sizing this path omitted-value)
       (set! dels-num (inc dels-num))
       (set! edits (conj edits [path :-]))
       this))
@@ -244,7 +252,7 @@
         (vswap! size + 2)
         (sizing* path size)
         (case op
-          (:+ :r)      (when value (sizing* value size))
+          (:+ :r)      (sizing* value size)
           :-           nil
           (:s :sw :sl) (vswap! size inc))))
     @size))
@@ -332,26 +340,17 @@
       (every? valid-edit? edits)
       true)))
 
-(defn- count-str-ops
-  [data adds dels reps]
-  (doseq [d     data
-          :when (vector? d)]
-    (case (nth d 0)
-      :+ (vswap! adds inc)
-      :- (vswap! dels inc)
-      :r (vswap! reps inc))))
-
 (defn- count-ops
   [edits]
   (let [adds (volatile! 0)
         dels (volatile! 0)
         reps (volatile! 0)]
-    (doseq [[_ op data] edits]
-      (case op
+    (doseq [edit edits]
+      (case (nth edit 1)
         :+           (vswap! adds inc)
         :-           (vswap! dels inc)
         :r           (vswap! reps inc)
-        (:s :sw :sl) (count-str-ops data adds dels reps)))
+        (:s :sw :sl) (vswap! reps inc)))
     [@adds @dels @reps]))
 
 (defn edits->script
@@ -360,7 +359,8 @@
   [edits]
   (assert (valid-edits? edits) "Not a vector of valid edits")
   (let [[adds dels reps] (count-ops edits)]
-    (->EditScript edits true (sizing edits) adds dels reps)))
+    (->EditScript edits true (generated-script-size edits)
+                  adds dels reps)))
 
 
 #?(:clj (defmethod print-method EditScript

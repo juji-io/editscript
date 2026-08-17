@@ -217,7 +217,7 @@ obtained through calling `get-edits` on an EditScript"}
            (fn [^long sum [path op v]]
              (+ sum (case op
                       (:r :+) (cached-data-nodes* context v)
-                      :s      1
+                      (:s :sw :sl) 1
                       :-      (cached-data-nodes*
                                 context (get-data origin path)))))
            0 (get-edits editscript))

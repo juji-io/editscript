@@ -81,6 +81,37 @@
     (is (= (e/get-reps-num legacy) (e/get-reps-num built)))
     (is (= (e/edit-distance legacy) (e/edit-distance built)))))
 
+(deftest falsey-value-sizing-test
+  (let [legacy  (doto (e/edits->script [])
+                  (e/add-data [:nil] nil)
+                  (e/replace-data [:false] false)
+                  (e/delete-data [:omitted]))
+        builder (doto (e/edit-builder)
+                  (e/add-data [:nil] nil)
+                  (e/replace-data [:false] false)
+                  (e/delete-data [:omitted]))
+        built   (e/persistent-script! builder)
+        rebuilt (e/edits->script (e/get-edits built))]
+    (is (= (e/get-edits legacy) (e/get-edits built)))
+    (is (= (e/get-size legacy) (e/get-size built) (e/get-size rebuilt)))
+    (is (= (e/edit-distance legacy)
+           (e/edit-distance built)
+           (e/edit-distance rebuilt)))))
+
+(deftest string-script-rehydration-metadata-test
+  (let [operations [1 [:+ ["inserted"]] [:- 1]
+                    [:r ["replacement"]] 2]
+        built      (doto (e/edit-builder)
+                     (e/replace-str [:title] operations :word))
+        built      (e/persistent-script! built)
+        rebuilt    (e/edits->script (e/get-edits built))]
+    (is (= (e/get-edits built) (e/get-edits rebuilt)))
+    (is (= (e/get-size built) (e/get-size rebuilt)))
+    (is (= (e/get-adds-num built) (e/get-adds-num rebuilt)))
+    (is (= (e/get-dels-num built) (e/get-dels-num rebuilt)))
+    (is (= (e/get-reps-num built) (e/get-reps-num rebuilt)))
+    (is (= (e/edit-distance built) (e/edit-distance rebuilt)))))
+
 (deftest finalized-builder-script-remains-mutable-test
   (let [legacy (add-mixed-edits! (e/edits->script []))
         built  (-> (e/edit-builder)
