@@ -1,6 +1,7 @@
 # Change Log
 
-## WIP
+## [0.8.0] - 2026-08-16
+
 ### Improved
 - Batch patch, applying patches in vector/list in one pass, can be orders of
   magnitude faster in some cases, e.g. vector/list prefix delete.
@@ -8,6 +9,11 @@
 - Prune A* states above the whole-subtree replacement cost and memoize repeated
   recursive cost calculations.
 - Lazy indexing.
+- Identity-based subtree metadata caching.
+- A number of small optimizations to increase speed and reduce memory
+  allocations.
+- Better test coverage.
+- Update deps.
 
 ### Fixed
 - Apply `:vec-timeout` as one deadline across nested A* and quick searches.
