@@ -25,7 +25,8 @@ jobs:
        - name: Install clojure tools
          uses: DeLaGuardo/setup-clojure@13.6.1
          with:
-          lein: 2.13.0
+          # 2.13.0's launcher incorrectly requests 2.12.1-SNAPSHOT.
+          lein: 2.12.0
 
        - name: Run JVM tests
          run: lein test
@@ -89,7 +90,8 @@ jobs:
        - name: Install clojure tools
          uses: DeLaGuardo/setup-clojure@13.6.1
          with:
-          lein: 2.13.0
+          # 2.13.0's launcher incorrectly requests 2.12.1-SNAPSHOT.
+          lein: 2.12.0
 
        - uses: actions/setup-node@v7
          with:
