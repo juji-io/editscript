@@ -14,6 +14,14 @@
                            :optimizations :advanced
                            :main          "editscript.bench.a-star-g-lookup"
                            :target        :nodejs
+                           :parallel-build true}}
+               :pairing-two-pass
+               {:source-paths ["src" "../src"]
+                :compiler {:output-to     "../out/bench/pairing-two-pass.js"
+                           :output-dir    "../out/bench/pairing-two-pass"
+                           :optimizations :advanced
+                           :main          "editscript.bench.pairing-two-pass"
+                           :target        :nodejs
                            :parallel-build true}}}}
   :dependencies [[org.clojure/clojure "1.12.4"]
                  [org.clojure/clojurescript "1.12.134"

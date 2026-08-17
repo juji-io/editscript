@@ -60,14 +60,31 @@
 
 (defn two-pass
   [^HeapNode node]
-  (if (or (nil? node) (nil? (get-right node)))
-    node
-    (let [a node
-          b (get-right node)
-          n (get-right b)]
-      (set-right a nil)
-      (set-right b nil)
-      (merge-nodes (merge-nodes a b) (two-pass n)))))
+  ;; Pair siblings from left to right, linking the resulting roots through
+  ;; their otherwise-detached right pointers as a reverse stack. Then merge
+  ;; that stack from right to left, preserving the recursive algorithm's
+  ;; association and tie ordering without consuming the runtime call stack.
+  (loop [^HeapNode node  node
+         ^HeapNode pairs nil]
+    (if node
+      (let [^HeapNode sibling (get-right node)]
+        (set-right node nil)
+        (if sibling
+          (let [^HeapNode next-node (get-right sibling)]
+            (set-right sibling nil)
+            (let [^HeapNode pair (merge-nodes node sibling)]
+              (set-right pair pairs)
+              (recur next-node pair)))
+          (do
+            (set-right node pairs)
+            (recur nil node))))
+      (loop [^HeapNode pairs  pairs
+             ^HeapNode merged nil]
+        (if pairs
+          (let [^HeapNode next-pair (get-right pairs)]
+            (set-right pairs nil)
+            (recur next-pair (merge-nodes pairs merged)))
+          merged)))))
 
 (defn- current-node?
   [m ^HeapNode node]

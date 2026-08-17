@@ -16,7 +16,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop
     #?@(:cljs [:include-macros true])]
-   [editscript.util.pairing :refer [priority-map]]))
+   [editscript.util.pairing :as pairing :refer [priority-map]]))
 
 (deftest test-priority-map
   (let [a (priority-map :a 1 :b 2 :c 3 :d 4 :e 5 :f 6)]
@@ -54,13 +54,24 @@
       (is (= [:b 2] (peek queue)))
       (is (= 1 (count queue))))))
 
+(deftest wide-root-pop-is-stack-safe-test
+  (let [item-count #?(:bb 5000 :cljs 20000 :cljr 20000 :default 50000)
+        queue      (reduce (fn [queue item]
+                             (assoc queue item item))
+                           (priority-map)
+                           (range item-count))]
+    (is (= [0 0] (peek queue)))
+    (let [queue (pop queue)]
+      (is (= [1 1] (peek queue)))
+      (is (= (dec item-count) (count queue))))))
+
 (def queue-operation-gen
   (gen/frequency
     [[5 (gen/tuple (gen/return :assoc)
-                   (gen/choose 0 31)
+                   (gen/choose 0 127)
                    gen/int)]
      [1 (gen/tuple (gen/return :dissoc)
-                   (gen/choose 0 31)
+                   (gen/choose 0 127)
                    (gen/return nil))]]))
 
 (defn- apply-queue-operation
@@ -81,9 +92,46 @@
           (recur (pop queue) (dissoc model item))
           false)))))
 
+(defn- recursive-two-pass
+  [node]
+  (if (or (nil? node) (nil? (pairing/get-right node)))
+    node
+    (let [a node
+          b (pairing/get-right node)
+          n (pairing/get-right b)]
+      (pairing/set-right a nil)
+      (pairing/set-right b nil)
+      (pairing/merge-nodes
+        (pairing/merge-nodes a b)
+        (recursive-two-pass n)))))
+
+(defn- heap-from-priorities
+  [priorities]
+  (reduce-kv (fn [heap item priority]
+               (pairing/insert heap item priority))
+             nil
+             priorities))
+
+(defn- drain-node-heap
+  [two-pass heap]
+  (loop [heap heap
+         result []]
+    (if heap
+      (recur (two-pass (pairing/get-left heap))
+             (conj result [(.-item heap) (.-priority heap)]))
+      result)))
+
+(test/defspec iterative-two-pass-equivalence-test
+  #?(:cljs 50 :cljr 50 :default 200)
+  (prop/for-all [priorities (gen/vector (gen/choose -16 16) 1 512)]
+    (= (drain-node-heap recursive-two-pass
+                        (heap-from-priorities priorities))
+       (drain-node-heap pairing/two-pass
+                        (heap-from-priorities priorities)))))
+
 (test/defspec reprioritized-queue-model-test
   #?(:cljs 30 :cljr 30 :default 100)
-  (prop/for-all [operations (gen/vector queue-operation-gen 128 512)]
+  (prop/for-all [operations (gen/vector queue-operation-gen 256 1024)]
     (let [[queue model] (reduce apply-queue-operation
                                 [(priority-map) {}]
                                 operations)]
