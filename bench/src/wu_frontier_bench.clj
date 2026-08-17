@@ -4,10 +4,18 @@
             [criterium.core :as criterium]
             [editscript.util.common :as common]))
 
+(set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
+
 (defn- legacy-vec-edits*
+  ;; Preserve the primitive hints and hot-loop shape from 0.7.0. Omitting the
+  ;; hints makes this benchmark-local control substantially slower than the
+  ;; published artifact and can hide a real release regression.
   [a b n m]
-  (let [delta (- n m)
-        snake (fn [k x]
+  (let [^long n n
+        ^long m m
+        delta (- n m)
+        snake (fn [^long k ^long x]
                 (loop [x x y (- x k)]
                   (let [ax (get a x)
                         by (get b y)]
@@ -18,13 +26,13 @@
                       (recur (inc x) (inc y))
                       x))))
         update-frontier
-        (fn [frontier k]
+        (fn [frontier ^long k]
           (let [[delete-x delete-ops] (get frontier (dec k) [-1 []])
-                delete-x             (inc delete-x)
+                delete-x             (inc ^long delete-x)
                 [add-x add-ops]       (get frontier (inc k) [-1 []])
-                x                     (max delete-x add-x)
-                snake-x               (snake k x)
-                ops                   (if (> delete-x add-x)
+                x                     (max delete-x ^long add-x)
+                ^long snake-x         (snake k x)
+                ops                   (if (> delete-x ^long add-x)
                                         (conj delete-ops :-)
                                         (conj add-ops :+))
                 ops                   (if (> snake-x x)

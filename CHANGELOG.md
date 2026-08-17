@@ -11,7 +11,8 @@
 - Lazy indexing.
 - Identity-based subtree metadata caching.
 - A number of small optimizations to increase speed and reduce memory
-  allocations.
+  allocations. Taken together, more than 2X speed increase for diff, 30X speed
+  increase for patch, and 10X reduction in allocation.
 - Better test coverage.
 - Update deps.
 

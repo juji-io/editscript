@@ -68,68 +68,27 @@
        (zero? (bit-and iterations (long deadline-check-mask)))
        (<= ^long deadline (long (current-time)))))
 
-#?(:cljs
-   (defprotocol ITrace
-     (addTrace [trace previous edge])
-     (previousAt [trace trace-id])
-     (edgeAt [trace trace-id]))
-   :bb
-   (defprotocol ITrace
-     (addTrace [trace previous edge])
-     (previousAt [trace trace-id])
-     (edgeAt [trace trace-id]))
-   :default
-   (definterface ITrace
-     (^long addTrace [^long previous ^long edge])
-     (^long previousAt [^long trace-id])
-     (^long edgeAt [^long trace-id])))
-
-(deftype Trace [^:unsynchronized-mutable previous
-                ^:unsynchronized-mutable edges
-                ^:unsynchronized-mutable ^long size]
-  ITrace
-  (addTrace [_ predecessor edge]
-    (let [index size]
-      (when (= index (arrays/ints-count previous))
-        (set! previous (arrays/grow-ints previous))
-        (set! edges (arrays/grow-ints edges)))
-      (arrays/set-int-at! previous index predecessor)
-      (arrays/set-int-at! edges index edge)
-      (set! size (inc (long index)))
-      index))
-  (previousAt [_ trace-id]
-    (arrays/int-at previous trace-id))
-  (edgeAt [_ trace-id]
-    (arrays/int-at edges trace-id)))
-
-(defn- make-trace
-  [capacity]
-  (->Trace (arrays/make-ints capacity)
-           (arrays/make-ints capacity)
-           0))
+;; A direct predecessor reference is cheaper than assigning every frontier
+;; update an id and looking it up in a second pair of growable integer arrays.
+;; It also lets unreachable branches be reclaimed before the search ends.
+(deftype TraceNode [previous ^long edge])
 
 (defn- trace-edits
-  [^Trace trace ^long trace-id]
-  (loop [trace-id (long trace-id)
+  [^TraceNode trace]
+  (loop [^TraceNode trace trace
          reversed (transient [])]
-    (if (neg? trace-id)
+    (if (nil? trace)
       (into [] (rseq (persistent! reversed)))
-      (let [previous       (long #?(:cljs (previousAt trace trace-id)
-                                    :bb (previousAt trace trace-id)
-                                    :default
-                                    (.previousAt ^ITrace trace trace-id)))
-            edge           (long #?(:cljs (edgeAt trace trace-id)
-                                    :bb (edgeAt trace trace-id)
-                                    :default
-                                    (.edgeAt ^ITrace trace trace-id)))
+      (let [^TraceNode previous (.-previous trace)
+            edge           (long (.-edge trace))
             snake          (dec #?(:clj  (Math/abs edge)
                                    :cljs (js/Math.abs edge)
                                    :cljr (Math/Abs edge)))
             reversed (if (pos? snake) (conj! reversed snake) reversed)
-            reversed (if (neg? previous)
+            reversed (if (nil? previous)
                        reversed
                        (conj! reversed (if (neg? edge) :- :+)))]
-        (recur (long previous) reversed)))))
+        (recur previous reversed)))))
 
 (defn- vec-edits*
   "Based on 'Wu, S. et al., 1990, An O(NP) Sequence Comparison Algorithm,
@@ -144,12 +103,11 @@
         ^long m m
         delta   (- n m)
         offset  (inc m)
-        ;; Zero is the missing-value sentinel in both arrays. Furthest x
-        ;; positions and trace ids are stored incremented so p=0 needs no
-        ;; initialization pass, which matters when the length delta is large.
+        ;; Zero is the missing-value sentinel in the integer array. Furthest x
+        ;; positions are stored incremented so p=0 needs no initialization
+        ;; pass, which matters when the length delta is large.
         furthest (arrays/make-ints (+ n m 3))
-        paths    (arrays/make-ints (+ n m 3))
-        trace    (make-trace (max 16 (inc delta)))
+        paths    (arrays/make-objects (+ n m 3))
         timed-out? (volatile! false)
         snake   (fn [^long k ^long x]
                   (loop [x x
@@ -179,24 +137,19 @@
                                                  furthest (inc index))))
                         delete?      (> from-delete from-add)
                         x            (long (if delete? from-delete from-add))
-                        previous     (dec (long (arrays/int-at
-                                                 paths
-                                                 (if delete?
-                                                   (dec index)
-                                                   (inc index)))))
+                        previous     (arrays/object-at
+                                       paths
+                                       (if delete?
+                                         (dec index)
+                                         (inc index)))
                         ^long sk     (snake k x)
                         snake-length (long (- sk x))
                         edge         (long (if delete?
                                              (- (inc snake-length))
                                              (inc snake-length)))
-                        trace-id     (long #?(:cljs (addTrace trace previous
-                                                              edge)
-                                             :bb (addTrace trace previous edge)
-                                             :default
-                                             (.addTrace ^ITrace trace previous
-                                                        edge)))]
+                        trace-node   (->TraceNode previous edge)]
                     (arrays/set-int-at! furthest index (inc sk))
-                    (arrays/set-int-at! paths index (inc trace-id))))]
+                    (arrays/set-object-at! paths index trace-node)))]
     (loop [p (long 0)]
       (if (and deadline (<= ^long deadline (long (current-time))))
         :timeout
@@ -204,9 +157,9 @@
               high-boundary (+ offset delta p 1)
               _             (do
                               (arrays/set-int-at! furthest low-boundary 0)
-                              (arrays/set-int-at! paths low-boundary 0)
+                              (arrays/set-object-at! paths low-boundary nil)
                               (arrays/set-int-at! furthest high-boundary 0)
-                              (arrays/set-int-at! paths high-boundary 0))
+                              (arrays/set-object-at! paths high-boundary nil))
               ^long updates
               (loop [k (- p)
                      updates (long 0)]
@@ -244,8 +197,8 @@
                     :timeout
 
                     (= (inc n) (arrays/int-at furthest (+ offset delta)))
-                    (trace-edits trace
-                                 (dec (arrays/int-at paths (+ offset delta))))
+                    (trace-edits
+                      (arrays/object-at paths (+ offset delta)))
 
                     :else
                     (recur (inc p))))))))))))
